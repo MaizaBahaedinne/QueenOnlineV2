@@ -23,6 +23,8 @@
         .reservation-inline-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .reservation-field { display: flex; flex-direction: column; gap: 5px; }
         .reservation-field label { font-size: 12px; font-weight: 700; color: #3e536b; }
+        .reservation-radio-group { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; min-height: 42px; }
+        .reservation-radio { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #334a62; }
         .reservation-hint { margin: 8px 0 0; font-size: 12px; color: #5f6b7a; background: #f4f8fc; border: 1px solid #d7e4f2; border-radius: 9px; padding: 8px 9px; }
         .reservation-hint.is-error { color: #7a1f1f; background: #fff1f1; border-color: #f2caca; }
         .salle-cards-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
@@ -160,35 +162,18 @@
                 <div class="reservation-helper-box">
                     <div class="reservation-step-head">
                         <span class="reservation-step-badge">2</span>
-                        <p class="reservation-helper-title">Recherche client</p>
+                        <p class="reservation-helper-title">Fiche client</p>
                     </div>
-                    <div class="reservation-inline-grid-2">
-                        <div class="reservation-field">
-                            <label for="reservation-client-search-input">Nom, prenom, CIN ou telephone</label>
-                            <input class="search" style="max-width:none;" type="text" id="reservation-client-search-input" placeholder="Ex: Sami, 07209911, 12345678">
-                        </div>
-                        <div class="reservation-actions" style="align-items:flex-end; justify-content:flex-start; margin-top:0;">
-                            <button type="button" class="btn" id="reservation-client-search-btn">Rechercher client</button>
-                        </div>
-                    </div>
-
-                    <p class="reservation-hint" id="reservation-client-search-status">Recherche un client apres la selection de la salle.</p>
+                    <p class="reservation-hint" id="reservation-client-search-status">Saisis le CIN (8 chiffres). La recherche se fait automatiquement sur ce champ.</p>
                     <input type="hidden" name="client_id" id="reservation-create-client-id">
 
                     <div class="reservation-inline-grid-2" style="margin-top:10px;">
                         <div class="reservation-field">
                             <label for="reservation-client-type">Type client</label>
-                            <select class="search" style="max-width:none;" name="client_type" id="reservation-client-type" required>
-                                <option value="personne-physique">Personne physique</option>
-                                <option value="societe">Societe</option>
-                            </select>
-                        </div>
-                        <div class="reservation-field">
-                            <label for="reservation-client-status">Statut client</label>
-                            <select class="search" style="max-width:none;" name="status" id="reservation-client-status" required>
-                                <option value="active">Actif</option>
-                                <option value="inactive">Inactif</option>
-                            </select>
+                            <div class="reservation-radio-group" id="reservation-client-type">
+                                <label class="reservation-radio"><input type="radio" name="client_type" value="personne-physique" checked> Personne physique</label>
+                                <label class="reservation-radio"><input type="radio" name="client_type" value="societe"> Societe</label>
+                            </div>
                         </div>
                     </div>
 
@@ -207,23 +192,23 @@
 
                     <div class="reservation-inline-grid-2" style="margin-top:10px;">
                         <div class="reservation-field">
-                            <label for="reservation-client-first-name">Prenom</label>
-                            <input class="search" style="max-width:none;" type="text" name="first_name" id="reservation-client-first-name" required>
-                        </div>
-                        <div class="reservation-field">
-                            <label for="reservation-client-name">Nom</label>
-                            <input class="search" style="max-width:none;" type="text" name="name" id="reservation-client-name" required>
-                        </div>
-                    </div>
-
-                    <div class="reservation-inline-grid-2" style="margin-top:10px;">
-                        <div class="reservation-field">
                             <label for="reservation-client-cin">CIN</label>
                             <input class="search" style="max-width:none;" type="text" name="cin" id="reservation-client-cin" minlength="8" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" required>
                         </div>
                         <div class="reservation-field">
                             <label for="reservation-client-date-cin">Date delivrance CIN</label>
                             <input class="search" style="max-width:none;" type="date" name="date_cin" id="reservation-client-date-cin">
+                        </div>
+                    </div>
+
+                    <div class="reservation-inline-grid-2" style="margin-top:10px;">
+                        <div class="reservation-field">
+                            <label for="reservation-client-first-name">Prenom</label>
+                            <input class="search" style="max-width:none;" type="text" name="first_name" id="reservation-client-first-name" required>
+                        </div>
+                        <div class="reservation-field">
+                            <label for="reservation-client-name">Nom</label>
+                            <input class="search" style="max-width:none;" type="text" name="name" id="reservation-client-name" required>
                         </div>
                     </div>
 
@@ -348,12 +333,9 @@
         const selectedSalleInput = document.getElementById('reservation-create-salle-id');
         const salleCardsContainer = document.getElementById('reservation-salle-cards');
 
-        const clientSearchInput = document.getElementById('reservation-client-search-input');
-        const clientSearchButton = document.getElementById('reservation-client-search-btn');
         const clientSearchStatus = document.getElementById('reservation-client-search-status');
         const clientIdInput = document.getElementById('reservation-create-client-id');
-        const reservationClientType = document.getElementById('reservation-client-type');
-        const reservationClientStatus = document.getElementById('reservation-client-status');
+        const reservationClientTypeContainer = document.getElementById('reservation-client-type');
         const reservationClientFiscalNumber = document.getElementById('reservation-client-fiscal-number');
         const reservationClientCompanyName = document.getElementById('reservation-client-company-name');
         const reservationClientFirstName = document.getElementById('reservation-client-first-name');
@@ -398,18 +380,20 @@
             return fallbackMessage;
         };
 
-        const toggleCompanyFields = (typeSelectId) => {
-            const select = document.getElementById(typeSelectId);
-            if (!select) return;
-            const isCompany = select.value === 'societe';
-            document.querySelectorAll(`[data-company-fields="${typeSelectId}"]`).forEach((container) => {
+        const getClientTypeValue = () => {
+            const checked = document.querySelector('input[name="client_type"]:checked');
+            return checked ? checked.value : 'personne-physique';
+        };
+
+        const toggleCompanyFields = () => {
+            const isCompany = getClientTypeValue() === 'societe';
+            document.querySelectorAll('[data-company-fields="reservation-client-type"]').forEach((container) => {
                 container.classList.toggle('show', isCompany);
             });
         };
 
         const clientFormDefaults = {
             client_type: 'personne-physique',
-            status: 'active',
             fiscal_number: '',
             company_name: '',
             first_name: '',
@@ -432,8 +416,9 @@
         const applyClientFormData = (data = {}) => {
             const payload = { ...clientFormDefaults, ...data };
 
-            reservationClientType.value = payload.client_type || 'personne-physique';
-            reservationClientStatus.value = payload.status || 'active';
+            document.querySelectorAll('input[name="client_type"]').forEach((radio) => {
+                radio.checked = radio.value === (payload.client_type || 'personne-physique');
+            });
             reservationClientFiscalNumber.value = payload.fiscal_number || '';
             reservationClientCompanyName.value = payload.company_name || '';
             reservationClientFirstName.value = payload.first_name || '';
@@ -452,7 +437,7 @@
             reservationClientSource.value = payload.source || 'passager';
             reservationClientNote.value = payload.note || '';
 
-            toggleCompanyFields('reservation-client-type');
+            toggleCompanyFields();
         };
 
         const toMinutes = (timeValue) => {
@@ -566,9 +551,59 @@
             applyClientFormData(firstClient.data || {});
         };
 
-        if (reservationClientType) {
-            reservationClientType.addEventListener('change', () => toggleCompanyFields('reservation-client-type'));
-            toggleCompanyFields('reservation-client-type');
+        if (reservationClientTypeContainer) {
+            reservationClientTypeContainer.querySelectorAll('input[name="client_type"]').forEach((radio) => {
+                radio.addEventListener('change', () => toggleCompanyFields());
+            });
+            toggleCompanyFields();
+        }
+
+        const runCinSearch = async () => {
+            if (!hasSelectedSalle()) {
+                setStatusMessage(clientSearchStatus, 'Selectionne d abord une salle disponible.', 'error');
+                return;
+            }
+
+            const cinValue = (reservationClientCin?.value || '').trim();
+            if (!/^\d{8}$/.test(cinValue)) {
+                resetClientSelect();
+                applyClientFormData({ cin: cinValue });
+                setStatusMessage(clientSearchStatus, 'CIN invalide: 8 chiffres obligatoires.', 'error');
+                return;
+            }
+
+            setStatusMessage(clientSearchStatus, 'Recherche client par CIN...');
+
+            try {
+                const params = new URLSearchParams({ cin: cinValue });
+                const response = await fetch(`${clientSearchUrl}?${params.toString()}`, {
+                    headers: {
+                        Accept: 'application/json',
+                    },
+                });
+
+                const payload = await response.json();
+                if (!response.ok) {
+                    throw new Error(extractErrorMessage(payload, 'Erreur API client'));
+                }
+
+                const foundClients = payload.clients ?? [];
+                if (foundClients.length === 0) {
+                    resetClientSelect();
+                    applyClientFormData({ cin: cinValue });
+                    setStatusMessage(clientSearchStatus, 'Aucun client trouve avec ce CIN. Continue avec un nouveau client.');
+                    return;
+                }
+
+                fillClientSelect(foundClients);
+                setStatusMessage(clientSearchStatus, 'Client charge automatiquement a partir du CIN.');
+            } catch (error) {
+                setStatusMessage(clientSearchStatus, error instanceof Error ? error.message : 'Impossible de rechercher les clients pour le moment.', 'error');
+            }
+        };
+
+        if (reservationClientCin) {
+            reservationClientCin.addEventListener('blur', runCinSearch);
         }
 
         if (availabilityButton) {
@@ -650,53 +685,6 @@
             });
         }
 
-        if (clientSearchButton) {
-            clientSearchButton.addEventListener('click', async () => {
-                if (!hasSelectedSalle()) {
-                    setStatusMessage(clientSearchStatus, 'Selectionne d abord une salle disponible.', 'error');
-                    return;
-                }
-
-                const keyword = (clientSearchInput?.value || '').trim();
-
-                resetClientSelect();
-
-                if (keyword.length < 2) {
-                    setStatusMessage(clientSearchStatus, 'Saisis au moins 2 caracteres pour rechercher un client.', 'error');
-                    return;
-                }
-
-                setStatusMessage(clientSearchStatus, 'Recherche client en cours...');
-
-                try {
-                    const params = new URLSearchParams({ q: keyword });
-                    const response = await fetch(`${clientSearchUrl}?${params.toString()}`, {
-                        headers: {
-                            Accept: 'application/json',
-                        },
-                    });
-
-                    const payload = await response.json();
-                    if (!response.ok) {
-                        throw new Error(extractErrorMessage(payload, 'Erreur API client'));
-                    }
-                    const foundClients = payload.clients ?? [];
-
-                    if (foundClients.length === 0) {
-                        setStatusMessage(clientSearchStatus, 'Aucun client trouve. Remplis la fiche client pour creer un nouveau client.');
-                        resetClientSelect();
-                        applyClientFormData();
-                        return;
-                    }
-
-                    fillClientSelect(foundClients);
-                    setStatusMessage(clientSearchStatus, `Client trouve et charge automatiquement (${foundClients.length} resultat(s)).`);
-                } catch (error) {
-                    setStatusMessage(clientSearchStatus, error instanceof Error ? error.message : 'Impossible de rechercher les clients pour le moment.', 'error');
-                }
-            });
-        }
-
         if (startTimeInput && endTimeInput) {
             startTimeInput.addEventListener('change', () => syncEndTimeConstraints(startTimeInput, endTimeInput));
             startTimeInput.addEventListener('input', () => syncEndTimeConstraints(startTimeInput, endTimeInput));
@@ -738,7 +726,7 @@
                     resetClientSelect();
                     applyClientFormData();
                     setStatusMessage(availabilityStatus, 'Selectionne la date et les horaires, puis clique sur verifier.');
-                    setStatusMessage(clientSearchStatus, 'Recherche un client apres la selection de la salle.');
+                    setStatusMessage(clientSearchStatus, 'Saisis le CIN (8 chiffres). La recherche se fait automatiquement sur ce champ.');
                     endDateInput.value = '';
                 }
             });

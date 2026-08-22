@@ -20,6 +20,8 @@
         .cin-alert.show { display:block; }
         .company-fields { display:none; }
         .company-fields.show { display:contents; }
+        .type-radio-group { display:flex; gap:14px; align-items:center; min-height:42px; flex-wrap:wrap; }
+        .type-radio { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:#334a62; }
 
         @media (max-width: 780px) {
             .form-grid-two { grid-template-columns: 1fr; }
@@ -113,26 +115,24 @@
     @if ($canCreate)
         <div class="modal-overlay" id="client-create-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Ajouter client</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
             <form method="POST" action="{{ route('clients.store') }}" id="client-create-form" class="form-grid-two">@csrf
-                <select class="search" style="max-width:none;" name="client_type" id="client-create-type" required>
-                    <option value="personne-physique">Personne physique</option>
-                    <option value="societe">Societe</option>
-                </select>
-                <select class="search" style="max-width:none;" name="status" required>
-                    <option value="active">Actif</option>
-                    <option value="inactive">Inactif</option>
-                </select>
+                <div class="full-span" id="client-create-type">
+                    <div class="type-radio-group">
+                        <label class="type-radio"><input type="radio" name="client_type" value="personne-physique" checked> Personne physique</label>
+                        <label class="type-radio"><input type="radio" name="client_type" value="societe"> Societe</label>
+                    </div>
+                </div>
 
                 <div class="company-fields" data-company-fields="client-create-type">
                     <input class="search" style="max-width:none;" type="text" name="fiscal_number" placeholder="Matricule fiscale">
                     <input class="search" style="max-width:none;" type="text" name="company_name" placeholder="Raison sociale">
                 </div>
 
-                <input class="search" style="max-width:none;" type="text" name="first_name" placeholder="Prenom" required>
-                <input class="search" style="max-width:none;" type="text" name="name" placeholder="Nom" required>
-
                 <input class="search" style="max-width:none;" type="text" name="cin" placeholder="CIN (8 chiffres)" id="client-create-cin" minlength="8" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" required>
                 <input class="search" style="max-width:none;" type="date" name="date_cin" placeholder="Date delivrance CIN">
                 <p class="cin-alert full-span" id="client-create-cin-alert">Ce CIN existe deja dans la base.</p>
+
+                <input class="search" style="max-width:none;" type="text" name="first_name" placeholder="Prenom" required>
+                <input class="search" style="max-width:none;" type="text" name="name" placeholder="Nom" required>
 
                 <input class="search" style="max-width:none;" type="text" name="address_number" placeholder="N adresse">
                 <input class="search" style="max-width:none;" type="text" name="address_street" placeholder="Rue">
@@ -169,26 +169,24 @@
     @if ($canUpdate)
         <div class="modal-overlay" id="client-edit-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Modifier client</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
             <form method="POST" id="client-edit-form" action="#" class="form-grid-two">@csrf @method('PATCH')
-                <select class="search" style="max-width:none;" name="client_type" id="client-edit-type" required>
-                    <option value="personne-physique">Personne physique</option>
-                    <option value="societe">Societe</option>
-                </select>
-                <select class="search" style="max-width:none;" name="status" id="client-edit-status" required>
-                    <option value="active">Actif</option>
-                    <option value="inactive">Inactif</option>
-                </select>
+                <div class="full-span" id="client-edit-type">
+                    <div class="type-radio-group">
+                        <label class="type-radio"><input type="radio" name="client_type" value="personne-physique"> Personne physique</label>
+                        <label class="type-radio"><input type="radio" name="client_type" value="societe"> Societe</label>
+                    </div>
+                </div>
 
                 <div class="company-fields" data-company-fields="client-edit-type">
                     <input class="search" style="max-width:none;" type="text" name="fiscal_number" id="client-edit-fiscal-number" placeholder="Matricule fiscale">
                     <input class="search" style="max-width:none;" type="text" name="company_name" id="client-edit-company-name" placeholder="Raison sociale">
                 </div>
 
-                <input class="search" style="max-width:none;" type="text" name="first_name" id="client-edit-first-name" required>
-                <input class="search" style="max-width:none;" type="text" name="name" id="client-edit-name" required>
-
                 <input class="search" style="max-width:none;" type="text" name="cin" id="client-edit-cin" minlength="8" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" required>
                 <input class="search" style="max-width:none;" type="date" name="date_cin" id="client-edit-date-cin">
                 <p class="cin-alert full-span" id="client-edit-cin-alert">Ce CIN existe deja dans la base.</p>
+
+                <input class="search" style="max-width:none;" type="text" name="first_name" id="client-edit-first-name" required>
+                <input class="search" style="max-width:none;" type="text" name="name" id="client-edit-name" required>
 
                 <input class="search" style="max-width:none;" type="text" name="address_number" id="client-edit-address-number" placeholder="N adresse">
                 <input class="search" style="max-width:none;" type="text" name="address_street" id="client-edit-address-street" placeholder="Rue">
@@ -236,10 +234,15 @@
         const openModal = (id) => { const m = document.getElementById(id); if (m) m.classList.add('show'); };
         const closeModal = (m) => m.classList.remove('show');
 
+        function getClientTypeValue(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return 'personne-physique';
+            const checked = container.querySelector('input[name="client_type"]:checked');
+            return checked ? checked.value : 'personne-physique';
+        }
+
         function toggleCompanyFields(typeSelectId) {
-            const select = document.getElementById(typeSelectId);
-            if (!select) return;
-            const isCompany = select.value === 'societe';
+            const isCompany = getClientTypeValue(typeSelectId) === 'societe';
             document.querySelectorAll(`[data-company-fields="${typeSelectId}"]`).forEach((container) => {
                 container.classList.toggle('show', isCompany);
             });
@@ -281,7 +284,9 @@
                 openModal(modalId);
                 if (modalId === 'client-edit-modal') {
                     document.getElementById('client-edit-form').action = `{{ url('clients') }}/${button.dataset.clientId}`;
-                    document.getElementById('client-edit-type').value = button.dataset.clientType ?? 'personne-physique';
+                    document.querySelectorAll('#client-edit-type input[name="client_type"]').forEach((radio) => {
+                        radio.checked = radio.value === (button.dataset.clientType ?? 'personne-physique');
+                    });
                     document.getElementById('client-edit-fiscal-number').value = button.dataset.clientFiscalNumber ?? '';
                     document.getElementById('client-edit-company-name').value = button.dataset.clientCompanyName ?? '';
                     document.getElementById('client-edit-first-name').value = button.dataset.clientFirstName ?? '';
@@ -298,7 +303,6 @@
                     document.getElementById('client-edit-city').value = button.dataset.clientCity ?? '';
                     document.getElementById('client-edit-governorate').value = button.dataset.clientGovernorate ?? '';
                     document.getElementById('client-edit-source').value = button.dataset.clientSource ?? '';
-                    document.getElementById('client-edit-status').value = button.dataset.clientStatus ?? 'active';
                     toggleCompanyFields('client-edit-type');
                     checkCin('client-edit-cin', 'client-edit-cin-alert', 'client-edit-submit', button.dataset.clientId);
                 }
@@ -323,12 +327,16 @@
         const createType = document.getElementById('client-create-type');
         if (createType) {
             toggleCompanyFields('client-create-type');
-            createType.addEventListener('change', () => toggleCompanyFields('client-create-type'));
+            createType.querySelectorAll('input[name="client_type"]').forEach((radio) => {
+                radio.addEventListener('change', () => toggleCompanyFields('client-create-type'));
+            });
         }
 
         const editType = document.getElementById('client-edit-type');
         if (editType) {
-            editType.addEventListener('change', () => toggleCompanyFields('client-edit-type'));
+            editType.querySelectorAll('input[name="client_type"]').forEach((radio) => {
+                radio.addEventListener('change', () => toggleCompanyFields('client-edit-type'));
+            });
         }
 
         const createCin = document.getElementById('client-create-cin');

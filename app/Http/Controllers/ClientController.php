@@ -66,8 +66,10 @@ class ClientController extends MatrixAwareController
         $this->enforcePermission('clients', 'create', 'create');
 
         $validated = $this->validateClientPayload($request);
+        $payload = $this->normalizeClientPayload($validated);
+        $payload['status'] = 'active';
 
-        Client::create($this->normalizeClientPayload($validated));
+        Client::create($payload);
 
         return redirect()->route('clients.index')->with('success', 'Client cree.');
     }
@@ -131,13 +133,11 @@ class ClientController extends MatrixAwareController
                 'cin' => ['required', 'regex:/^[0-9]{8}$/', Rule::unique('clients', 'cin')->ignore($ignoreId)],
                 'date_cin' => ['nullable', 'date'],
                 'city' => ['nullable', 'string', 'max:255'],
-                'status' => ['nullable', Rule::in(['active', 'inactive'])],
             ]);
         }
 
         return $request->validate([
             'client_type' => ['required', Rule::in(['personne-physique', 'societe'])],
-            'status' => ['nullable', Rule::in(['active', 'inactive'])],
             'fiscal_number' => ['nullable', 'string', 'max:100', 'required_if:client_type,societe'],
             'company_name' => ['nullable', 'string', 'max:255', 'required_if:client_type,societe'],
 

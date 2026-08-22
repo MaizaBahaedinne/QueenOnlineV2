@@ -196,7 +196,7 @@ class ReservationController extends MatrixAwareController
         $this->enforcePermission('reservations', 'create', 'create');
 
         $validator = Validator::make($request->all(), [
-            'q' => ['required', 'string', 'min:2', 'max:120'],
+            'cin' => ['required', 'regex:/^[0-9]{8}$/'],
         ]);
 
         if ($validator->fails()) {
@@ -206,26 +206,9 @@ class ReservationController extends MatrixAwareController
             ], 422);
         }
 
-        $validated = $validator->validated();
-
-        $keyword = trim($validated['q']);
-
         $clients = Client::query()
-            ->where(function ($query) use ($keyword) {
-                $query->where('name', 'like', "%{$keyword}%")
-                    ->orWhere('phone', 'like', "%{$keyword}%")
-                    ->orWhere('cin', 'like', "%{$keyword}%");
-
-                if (Schema::hasColumn('clients', 'first_name')) {
-                    $query->orWhere('first_name', 'like', "%{$keyword}%");
-                }
-
-                if (Schema::hasColumn('clients', 'phone_2')) {
-                    $query->orWhere('phone_2', 'like', "%{$keyword}%");
-                }
-            })
-            ->orderBy('name')
-            ->limit(20)
+            ->where('cin', $validator->validated()['cin'])
+            ->limit(1)
             ->get();
 
         $formatted = $clients->map(function (Client $client) {
@@ -245,7 +228,6 @@ class ReservationController extends MatrixAwareController
                 'label' => $display,
                 'data' => [
                     'client_type' => $client->client_type ?? 'personne-physique',
-                    'status' => $client->status ?? 'active',
                     'fiscal_number' => $client->fiscal_number,
                     'company_name' => $client->company_name,
                     'first_name' => $client->first_name,
@@ -356,7 +338,6 @@ class ReservationController extends MatrixAwareController
                 'cin' => ['required', 'regex:/^[0-9]{8}$/', Rule::unique('clients', 'cin')->ignore($existingClient?->id)],
                 'date_cin' => ['nullable', 'date'],
                 'city' => ['nullable', 'string', 'max:255'],
-                'status' => ['nullable', Rule::in(['active', 'inactive'])],
             ];
 
             $basicValidated = $request->validate($basicRules);
@@ -365,13 +346,13 @@ class ReservationController extends MatrixAwareController
                 return $existingClient->id;
             }
 
+            $basicValidated['status'] = 'active';
             $createdClient = Client::query()->create($basicValidated);
             return $createdClient->id;
         }
 
         $extendedValidated = $request->validate([
             'client_type' => ['required', Rule::in(['personne-physique', 'societe'])],
-            'status' => ['nullable', Rule::in(['active', 'inactive'])],
             'fiscal_number' => ['nullable', 'string', 'max:100', 'required_if:client_type,societe'],
             'company_name' => ['nullable', 'string', 'max:255', 'required_if:client_type,societe'],
             'first_name' => ['required', 'string', 'max:255'],
@@ -401,6 +382,7 @@ class ReservationController extends MatrixAwareController
             return $existingClient->id;
         }
 
+        $extendedValidated['status'] = 'active';
         $createdClient = Client::query()->create($extendedValidated);
         return $createdClient->id;
     }
