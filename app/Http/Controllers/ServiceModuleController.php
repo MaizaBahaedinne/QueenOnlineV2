@@ -35,16 +35,38 @@ class ServiceModuleController extends Controller
             ->latest()
             ->get();
 
-        $packs = collect();
-        if ($meta['packs']) {
-            $packs = ServiceModulePack::query()
-                ->with('item')
-                ->where('module_slug', $module)
-                ->latest()
-                ->get();
+        return view('service-modules.show', [
+            'title' => $meta['name'],
+            'moduleSlug' => $module,
+            'moduleMeta' => $meta,
+            'items' => $items,
+        ]);
+    }
+
+    public function showPacks(string $module)
+    {
+        $meta = $this->moduleMeta($module);
+        abort_unless($meta['packs'], 404);
+
+        if (! Schema::hasTable('service_module_items') || ! Schema::hasTable('service_module_packs')) {
+            return view('service-modules/not-ready', [
+                'title' => $meta['name'],
+                'moduleMeta' => $meta,
+            ]);
         }
 
-        return view('service-modules.show', [
+        $items = ServiceModuleItem::query()
+            ->where('module_slug', $module)
+            ->latest()
+            ->get();
+
+        $packs = ServiceModulePack::query()
+            ->with('item')
+            ->where('module_slug', $module)
+            ->latest()
+            ->get();
+
+        return view('service-modules.packs', [
             'title' => $meta['name'],
             'moduleSlug' => $module,
             'moduleMeta' => $meta,
@@ -125,7 +147,7 @@ class ServiceModuleController extends Controller
             'description' => $validated['description'] ?? null,
         ]);
 
-        return redirect()->route('service-modules.show', $module)->with('success', 'Pack ajoute.');
+        return redirect()->route('service-modules.packs.index', $module)->with('success', 'Pack ajoute.');
     }
 
     public function updatePack(Request $request, string $module, ServiceModulePack $pack)
@@ -142,7 +164,7 @@ class ServiceModuleController extends Controller
 
         $pack->update($validated);
 
-        return redirect()->route('service-modules.show', $module)->with('success', 'Pack mis a jour.');
+        return redirect()->route('service-modules.packs.index', $module)->with('success', 'Pack mis a jour.');
     }
 
     public function destroyPack(string $module, ServiceModulePack $pack)
@@ -151,7 +173,7 @@ class ServiceModuleController extends Controller
 
         $pack->delete();
 
-        return redirect()->route('service-modules.show', $module)->with('success', 'Pack supprime.');
+        return redirect()->route('service-modules.packs.index', $module)->with('success', 'Pack supprime.');
     }
 
     private function moduleMeta(string $module): array

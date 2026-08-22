@@ -52,6 +52,12 @@
         <h1 class="panel-title">{{ $moduleMeta['name'] }}</h1>
         <p class="panel-sub">Module metier operationnel (donnees + CRUD).</p>
 
+        @if ($moduleMeta['packs'])
+            <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+                <a class="btn" href="{{ route('service-modules.packs.index', $moduleSlug) }}">Gerer les packs</a>
+            </div>
+        @endif
+
         @if (session('success'))
             <p class="badge badge-success" style="margin-top:10px;">{{ session('success') }}</p>
         @endif
@@ -119,70 +125,6 @@
                 </div>
             </div>
 
-            @if ($moduleMeta['packs'])
-                <div class="panel" style="box-shadow:none;">
-                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-                        <h2 class="panel-title" style="margin:0;">Packs</h2>
-                        <button type="button" class="btn btn-primary" data-open-modal="pack-create-modal">Ajouter pack</button>
-                    </div>
-
-                    <div style="overflow-x:auto;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Pack</th>
-                                    <th>Element lie</th>
-                                    <th>Prix</th>
-                                    <th>Statut</th>
-                                    <th>Description</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse ($packs as $pack)
-                                    <tr>
-                                        <td>{{ $pack->name }}</td>
-                                        <td>{{ $pack->item?->name ?? '-' }}</td>
-                                        <td>{{ number_format((float) $pack->price, 2, '.', ' ') }}</td>
-                                        <td>{{ $pack->status }}</td>
-                                        <td>{{ $pack->description ?? '-' }}</td>
-                                        <td>
-                                            <div class="action-row">
-                                                <button
-                                                    type="button"
-                                                    class="btn"
-                                                    data-open-modal="pack-edit-modal"
-                                                    data-pack-id="{{ $pack->id }}"
-                                                    data-pack-item-id="{{ $pack->service_module_item_id }}"
-                                                    data-pack-name="{{ $pack->name }}"
-                                                    data-pack-price="{{ $pack->price }}"
-                                                    data-pack-status="{{ $pack->status }}"
-                                                    data-pack-description="{{ $pack->description }}"
-                                                >
-                                                    Modifier
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="btn"
-                                                    data-open-modal="pack-delete-modal"
-                                                    data-pack-id="{{ $pack->id }}"
-                                                    data-pack-name="{{ $pack->name }}"
-                                                >
-                                                    Supprimer
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="6" class="muted">Aucun pack.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            @endif
         </div>
     </section>
 
@@ -244,76 +186,6 @@
         </div>
     </div>
 
-    @if ($moduleMeta['packs'])
-        <div class="modal-overlay" id="pack-create-modal">
-            <div class="modal-card">
-                <div class="modal-head">
-                    <h3 class="modal-title">Ajouter un pack</h3>
-                    <button type="button" class="btn" data-close-modal>Fermer</button>
-                </div>
-                <form method="POST" action="{{ route('service-modules.packs.store', $moduleSlug) }}" style="display:grid; gap:10px;">
-                    @csrf
-                    <select class="search" style="max-width:none;" name="service_module_item_id">
-                        <option value="">Sans element parent</option>
-                        @foreach ($items as $item)
-                            <option value="{{ $item->id }}">{{ $item->name }}</option>
-                        @endforeach
-                    </select>
-                    <input class="search" style="max-width:none;" type="text" name="name" placeholder="Nom pack" required>
-                    <input class="search" style="max-width:none;" type="number" step="0.01" min="0" name="price" placeholder="Prix pack">
-                    <select class="search" style="max-width:none;" name="status" required>
-                        <option value="active">Actif</option>
-                        <option value="inactive">Inactif</option>
-                    </select>
-                    <input class="search" style="max-width:none;" type="text" name="description" placeholder="Description pack">
-                    <button type="submit" class="btn btn-primary">Enregistrer</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="modal-overlay" id="pack-edit-modal">
-            <div class="modal-card">
-                <div class="modal-head">
-                    <h3 class="modal-title">Modifier pack</h3>
-                    <button type="button" class="btn" data-close-modal>Fermer</button>
-                </div>
-                <form method="POST" id="pack-edit-form" action="#" style="display:grid; gap:10px;">
-                    @csrf
-                    @method('PATCH')
-                    <select class="search" style="max-width:none;" name="service_module_item_id" id="pack-edit-item-id">
-                        <option value="">Sans element parent</option>
-                        @foreach ($items as $item)
-                            <option value="{{ $item->id }}">{{ $item->name }}</option>
-                        @endforeach
-                    </select>
-                    <input class="search" style="max-width:none;" type="text" name="name" id="pack-edit-name" required>
-                    <input class="search" style="max-width:none;" type="number" step="0.01" min="0" name="price" id="pack-edit-price">
-                    <select class="search" style="max-width:none;" name="status" id="pack-edit-status" required>
-                        <option value="active">Actif</option>
-                        <option value="inactive">Inactif</option>
-                    </select>
-                    <input class="search" style="max-width:none;" type="text" name="description" id="pack-edit-description">
-                    <button type="submit" class="btn btn-primary">Mettre a jour</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="modal-overlay" id="pack-delete-modal">
-            <div class="modal-card">
-                <div class="modal-head">
-                    <h3 class="modal-title">Supprimer pack</h3>
-                    <button type="button" class="btn" data-close-modal>Fermer</button>
-                </div>
-                <p id="pack-delete-text" class="panel-sub"></p>
-                <form method="POST" id="pack-delete-form" action="#" style="margin-top:10px;">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn">Confirmer suppression</button>
-                </form>
-            </div>
-        </div>
-    @endif
-
     <script>
         const openModalButtons = document.querySelectorAll('[data-open-modal]');
         const closeModalButtons = document.querySelectorAll('[data-close-modal]');
@@ -346,20 +218,6 @@
                 if (modalId === 'item-delete-modal') {
                     document.getElementById('item-delete-form').action = `{{ url('service-modules/'.$moduleSlug.'/items') }}/${button.dataset.itemId}`;
                     document.getElementById('item-delete-text').textContent = `Confirmer la suppression de "${button.dataset.itemName}" ?`;
-                }
-
-                if (modalId === 'pack-edit-modal') {
-                    document.getElementById('pack-edit-form').action = `{{ url('service-modules/'.$moduleSlug.'/packs') }}/${button.dataset.packId}`;
-                    document.getElementById('pack-edit-item-id').value = button.dataset.packItemId ?? '';
-                    document.getElementById('pack-edit-name').value = button.dataset.packName ?? '';
-                    document.getElementById('pack-edit-price').value = button.dataset.packPrice ?? '';
-                    document.getElementById('pack-edit-status').value = button.dataset.packStatus ?? 'active';
-                    document.getElementById('pack-edit-description').value = button.dataset.packDescription ?? '';
-                }
-
-                if (modalId === 'pack-delete-modal') {
-                    document.getElementById('pack-delete-form').action = `{{ url('service-modules/'.$moduleSlug.'/packs') }}/${button.dataset.packId}`;
-                    document.getElementById('pack-delete-text').textContent = `Confirmer la suppression du pack "${button.dataset.packName}" ?`;
                 }
             });
         });

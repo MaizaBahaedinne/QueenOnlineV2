@@ -49,6 +49,7 @@ Route::middleware('auth')->group(function () {
 	Route::post('permissions/matrix', [RolePermissionController::class, 'update'])->name('permissions.matrix.update');
 
 	Route::get('service-modules/{module}', [ServiceModuleController::class, 'show'])->name('service-modules.show');
+	Route::get('service-modules/{module}/packs', [ServiceModuleController::class, 'showPacks'])->name('service-modules.packs.index');
 	Route::post('service-modules/{module}/items', [ServiceModuleController::class, 'storeItem'])->name('service-modules.items.store');
 	Route::patch('service-modules/{module}/items/{item}', [ServiceModuleController::class, 'updateItem'])->name('service-modules.items.update');
 	Route::delete('service-modules/{module}/items/{item}', [ServiceModuleController::class, 'destroyItem'])->name('service-modules.items.destroy');
