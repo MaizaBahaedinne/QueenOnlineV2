@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Reservation;
 use App\Models\Salle;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
@@ -35,10 +36,23 @@ class ReservationController extends MatrixAwareController
         $validated = $request->validate([
             'client_id' => ['required', 'exists:clients,id'],
             'salle_id' => ['required', 'exists:salles,id'],
-            'start_date' => ['required', 'date'],
-            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
+            'start_date' => ['required', 'date', 'after_or_equal:today'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date', 'after_or_equal:today'],
+            'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
+            'end_time' => [
+                'required',
+                'date_format:H:i',
+                'after:start_time',
+                'before_or_equal:23:59',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request) {
+                    $start = Carbon::createFromFormat('H:i', (string) $request->input('start_time'));
+                    $end = Carbon::createFromFormat('H:i', (string) $value);
+
+                    if ($start && $end && $end->diffInMinutes($start, false) < 60) {
+                        $fail('Heure fin doit etre au moins heure debut + 1 heure.');
+                    }
+                },
+            ],
             'total_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
@@ -54,10 +68,23 @@ class ReservationController extends MatrixAwareController
         $validated = $request->validate([
             'client_id' => ['required', 'exists:clients,id'],
             'salle_id' => ['required', 'exists:salles,id'],
-            'start_date' => ['required', 'date'],
-            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
+            'start_date' => ['required', 'date', 'after_or_equal:today'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date', 'after_or_equal:today'],
+            'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
+            'end_time' => [
+                'required',
+                'date_format:H:i',
+                'after:start_time',
+                'before_or_equal:23:59',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request) {
+                    $start = Carbon::createFromFormat('H:i', (string) $request->input('start_time'));
+                    $end = Carbon::createFromFormat('H:i', (string) $value);
+
+                    if ($start && $end && $end->diffInMinutes($start, false) < 60) {
+                        $fail('Heure fin doit etre au moins heure debut + 1 heure.');
+                    }
+                },
+            ],
             'status' => ['nullable', Rule::in(['pending', 'confirmed', 'cancelled', 'completed'])],
             'total_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
@@ -81,9 +108,22 @@ class ReservationController extends MatrixAwareController
         $this->enforcePermission('reservations', 'create', 'create');
 
         $validated = $request->validate([
-            'event_date' => ['required', 'date'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
+            'event_date' => ['required', 'date', 'after_or_equal:today'],
+            'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
+            'end_time' => [
+                'required',
+                'date_format:H:i',
+                'after:start_time',
+                'before_or_equal:23:59',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request) {
+                    $start = Carbon::createFromFormat('H:i', (string) $request->input('start_time'));
+                    $end = Carbon::createFromFormat('H:i', (string) $value);
+
+                    if ($start && $end && $end->diffInMinutes($start, false) < 60) {
+                        $fail('Heure fin doit etre au moins heure debut + 1 heure.');
+                    }
+                },
+            ],
             'exclude_reservation_id' => ['nullable', 'integer', 'exists:reservations,id'],
         ]);
 

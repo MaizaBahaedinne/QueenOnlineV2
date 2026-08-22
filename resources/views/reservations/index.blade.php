@@ -108,9 +108,9 @@
                 <div class="reservation-helper-box">
                     <p class="reservation-helper-title">1) Recherche disponibilite salle</p>
                     <div class="reservation-inline-grid">
-                        <input class="search" style="max-width:none;" type="date" name="start_date" id="reservation-create-event-date" required>
-                        <input class="search" style="max-width:none;" type="time" name="start_time" id="reservation-create-start-time" required>
-                        <input class="search" style="max-width:none;" type="time" name="end_time" id="reservation-create-end-time" required>
+                        <input class="search" style="max-width:none;" type="date" name="start_date" id="reservation-create-event-date" min="{{ now()->toDateString() }}" required>
+                        <input class="search" style="max-width:none;" type="time" name="start_time" id="reservation-create-start-time" min="08:00" max="23:59" required>
+                        <input class="search" style="max-width:none;" type="time" name="end_time" id="reservation-create-end-time" min="09:00" max="23:59" required>
                     </div>
                     <input type="hidden" name="end_date" id="reservation-create-end-date">
                     <button type="button" class="btn" id="reservation-check-availability" style="margin-top:10px;">Verifier disponibilite</button>
@@ -155,10 +155,10 @@
             <form method="POST" id="reservation-edit-form" action="#" style="display:grid; gap:10px;">@csrf @method('PATCH')
                 <select class="search" style="max-width:none;" name="client_id" id="reservation-edit-client-id" required><option value="">Client</option>@foreach ($clients as $client)<option value="{{ $client->id }}">{{ $client->name }}</option>@endforeach</select>
                 <select class="search" style="max-width:none;" name="salle_id" id="reservation-edit-salle-id" required><option value="">Salle</option>@foreach ($salles as $salle)<option value="{{ $salle->id }}">{{ $salle->name }}</option>@endforeach</select>
-                <input class="search" style="max-width:none;" type="date" name="start_date" id="reservation-edit-start-date" required>
-                <input class="search" style="max-width:none;" type="date" name="end_date" id="reservation-edit-end-date" required>
-                <input class="search" style="max-width:none;" type="time" name="start_time" id="reservation-edit-start-time" required>
-                <input class="search" style="max-width:none;" type="time" name="end_time" id="reservation-edit-end-time" required>
+                <input class="search" style="max-width:none;" type="date" name="start_date" id="reservation-edit-start-date" min="{{ now()->toDateString() }}" required>
+                <input class="search" style="max-width:none;" type="date" name="end_date" id="reservation-edit-end-date" min="{{ now()->toDateString() }}" required>
+                <input class="search" style="max-width:none;" type="time" name="start_time" id="reservation-edit-start-time" min="08:00" max="23:59" required>
+                <input class="search" style="max-width:none;" type="time" name="end_time" id="reservation-edit-end-time" min="09:00" max="23:59" required>
                 <select class="search" style="max-width:none;" name="status" id="reservation-edit-status"><option value="pending">En attente</option><option value="confirmed">Confirmee</option><option value="cancelled">Annulee</option><option value="completed">Terminee</option></select>
                 <input class="search" style="max-width:none;" type="number" step="0.01" min="0" name="total_amount" id="reservation-edit-total-amount">
                 <button type="submit" class="btn btn-primary">Mettre a jour</button>
@@ -198,6 +198,58 @@
         const quickClientNameInput = document.getElementById('quick-client-name');
         const quickClientPhoneInput = document.getElementById('quick-client-phone');
         const quickClientCinInput = document.getElementById('quick-client-cin');
+        const editStartTimeInput = document.getElementById('reservation-edit-start-time');
+        const editEndTimeInput = document.getElementById('reservation-edit-end-time');
+
+        const minimumStartTime = '08:00';
+        const maximumTime = '23:59';
+
+        const toMinutes = (timeValue) => {
+            if (!timeValue || !timeValue.includes(':')) return null;
+            const [hourRaw, minuteRaw] = timeValue.split(':');
+            const hour = Number(hourRaw);
+            const minute = Number(minuteRaw);
+
+            if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
+            return (hour * 60) + minute;
+        };
+
+        const minutesToTime = (totalMinutes) => {
+            if (totalMinutes === null || totalMinutes < 0 || totalMinutes > (23 * 60 + 59)) {
+                return null;
+            }
+
+            const hour = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+            const minute = String(totalMinutes % 60).padStart(2, '0');
+            return `${hour}:${minute}`;
+        };
+
+        const getEndTimeMinFromStart = (startValue) => {
+            const startMinutes = toMinutes(startValue);
+
+            if (startMinutes === null) {
+                return '09:00';
+            }
+
+            return minutesToTime(startMinutes + 60) || '23:59';
+        };
+
+        const syncEndTimeConstraints = (startInput, endInput) => {
+            if (!startInput || !endInput) return;
+
+            const computedMin = getEndTimeMinFromStart(startInput.value);
+            endInput.min = computedMin;
+            endInput.max = maximumTime;
+
+            if (endInput.value) {
+                const currentEnd = toMinutes(endInput.value);
+                const requiredEnd = toMinutes(computedMin);
+
+                if (currentEnd === null || requiredEnd === null || currentEnd < requiredEnd) {
+                    endInput.value = '';
+                }
+            }
+        };
 
         const resetSalleSelection = () => {
             if (selectedSalleInput) {
@@ -282,8 +334,31 @@
                     return;
                 }
 
+                const today = new Date().toISOString().slice(0, 10);
+                if (eventDate < today) {
+                    availabilityStatus.textContent = 'Date event doit etre aujourd hui ou plus.';
+                    return;
+                }
+
+                if (startTime < minimumStartTime || startTime > maximumTime) {
+                    availabilityStatus.textContent = 'Heure debut doit etre entre 08:00 et 23:59.';
+                    return;
+                }
+
                 if (startTime >= endTime) {
                     availabilityStatus.textContent = 'L heure de fin doit etre apres l heure de debut.';
+                    return;
+                }
+
+                const startMinutes = toMinutes(startTime);
+                const endMinutes = toMinutes(endTime);
+                if (startMinutes === null || endMinutes === null || (endMinutes - startMinutes) < 60) {
+                    availabilityStatus.textContent = 'Heure fin doit etre au moins heure debut + 1 heure.';
+                    return;
+                }
+
+                if (endTime > maximumTime) {
+                    availabilityStatus.textContent = 'Heure fin ne doit pas depasser 23:59.';
                     return;
                 }
 
@@ -422,6 +497,18 @@
             });
         }
 
+        if (startTimeInput && endTimeInput) {
+            startTimeInput.addEventListener('change', () => syncEndTimeConstraints(startTimeInput, endTimeInput));
+            startTimeInput.addEventListener('input', () => syncEndTimeConstraints(startTimeInput, endTimeInput));
+            syncEndTimeConstraints(startTimeInput, endTimeInput);
+        }
+
+        if (editStartTimeInput && editEndTimeInput) {
+            editStartTimeInput.addEventListener('change', () => syncEndTimeConstraints(editStartTimeInput, editEndTimeInput));
+            editStartTimeInput.addEventListener('input', () => syncEndTimeConstraints(editStartTimeInput, editEndTimeInput));
+            syncEndTimeConstraints(editStartTimeInput, editEndTimeInput);
+        }
+
         const openModalButtons = document.querySelectorAll('[data-open-modal]');
         const closeModalButtons = document.querySelectorAll('[data-close-modal]');
         const openModal = (id) => { const m = document.getElementById(id); if (m) m.classList.add('show'); };
@@ -438,6 +525,7 @@
                     document.getElementById('reservation-edit-end-date').value = button.dataset.reservationEndDate ?? '';
                     document.getElementById('reservation-edit-start-time').value = button.dataset.reservationStartTime ?? '';
                     document.getElementById('reservation-edit-end-time').value = button.dataset.reservationEndTime ?? '';
+                    syncEndTimeConstraints(editStartTimeInput, editEndTimeInput);
                     document.getElementById('reservation-edit-status').value = button.dataset.reservationStatus ?? 'pending';
                     document.getElementById('reservation-edit-total-amount').value = button.dataset.reservationTotalAmount ?? '';
                 }
