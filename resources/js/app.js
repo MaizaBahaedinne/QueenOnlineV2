@@ -1,6 +1,8 @@
 const toggleButton = document.querySelector('[data-sidebar-toggle]');
 const sectionToggles = document.querySelectorAll('[data-menu-toggle]');
 const mediaQueryMobile = window.matchMedia('(max-width: 900px)');
+const userMenu = document.querySelector('[data-user-menu]');
+const userMenuToggle = document.querySelector('[data-user-menu-toggle]');
 
 function syncAccordionStateForViewport() {
 	const isMobile = mediaQueryMobile.matches;
@@ -32,6 +34,20 @@ if (toggleButton) {
 
 		if (!clickedInsideSidebar && !clickedToggle) {
 			document.body.classList.remove('is-sidebar-open');
+		}
+	});
+}
+
+if (userMenu && userMenuToggle) {
+	userMenuToggle.addEventListener('click', () => {
+		const isOpen = userMenu.classList.toggle('is-open');
+		userMenuToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+	});
+
+	document.addEventListener('click', (event) => {
+		if (!userMenu.contains(event.target)) {
+			userMenu.classList.remove('is-open');
+			userMenuToggle.setAttribute('aria-expanded', 'false');
 		}
 	});
 }

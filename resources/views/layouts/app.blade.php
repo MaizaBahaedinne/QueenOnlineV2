@@ -123,16 +123,28 @@
                     <button type="button" class="top-icon-btn" aria-label="Notifications">
                         <i class="fa fa-bell" aria-hidden="true"></i>
                     </button>
-                    <div class="user-chip">
-                        <i class="fa fa-user-circle" aria-hidden="true"></i>
-                        <span>{{ auth()->user()?->name ?? 'Utilisateur' }}</span>
+                    <div class="user-menu" data-user-menu>
+                        <button type="button" class="user-chip user-chip-button" data-user-menu-toggle aria-expanded="false" aria-haspopup="true">
+                            <i class="fa fa-user-circle" aria-hidden="true"></i>
+                            <span>{{ auth()->user()?->name ?? 'Utilisateur' }}</span>
+                            <i class="fa fa-angle-down" aria-hidden="true"></i>
+                        </button>
+
+                        <div class="user-menu-dropdown" data-user-menu-dropdown>
+                            <div class="user-menu-header">Production panel • {{ now()->format('d/m/Y H:i') }}</div>
+                            <a href="{{ route('profile.password.edit') }}" class="user-menu-item">
+                                <i class="fa fa-key" aria-hidden="true"></i>
+                                <span>Mot de passe</span>
+                            </a>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="user-menu-item user-menu-item-danger">
+                                    <i class="fa fa-sign-out" aria-hidden="true"></i>
+                                    <span>Logout</span>
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                    <a href="{{ route('profile.password.edit') }}" class="btn">Mot de passe</a>
-                    <div class="profile">Production panel • {{ now()->format('d/m/Y H:i') }}</div>
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit" class="btn">Logout</button>
-                    </form>
                 </div>
             </div>
 

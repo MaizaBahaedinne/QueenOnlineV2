@@ -208,6 +208,66 @@ a:hover {
     font-size: 13px;
 }
 
+.user-menu {
+    position: relative;
+}
+
+.user-chip-button {
+    cursor: pointer;
+    min-width: 170px;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.user-menu-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: 220px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 8px;
+    display: none;
+    z-index: 60;
+}
+
+.user-menu.is-open .user-menu-dropdown {
+    display: block;
+}
+
+.user-menu-header {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 8px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 6px;
+}
+
+.user-menu-item {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: #334155;
+    font-size: 14px;
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.user-menu-item:hover {
+    background: #f1f5f9;
+}
+
+.user-menu-item-danger {
+    color: #b91c1c;
+}
+
 .menu a:hover {
     background: rgba(255, 255, 255, 0.06);
     border-color: rgba(148, 163, 184, 0.25);
@@ -347,6 +407,10 @@ a:focus-visible {
         width: 100%;
         justify-content: flex-end;
         flex-wrap: wrap;
+    }
+
+    .user-chip-button {
+        min-width: auto;
     }
 
     .menu-section .menu-section-content {
