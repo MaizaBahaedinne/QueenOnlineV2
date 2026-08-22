@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ServiceModuleItem;
 use App\Models\ServiceModulePack;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
 class ServiceModuleController extends Controller
@@ -21,6 +22,13 @@ class ServiceModuleController extends Controller
     public function show(string $module)
     {
         $meta = $this->moduleMeta($module);
+
+        if (! Schema::hasTable('service_module_items') || ! Schema::hasTable('service_module_packs')) {
+            return view('service-modules/not-ready', [
+                'title' => $meta['name'],
+                'moduleMeta' => $meta,
+            ]);
+        }
 
         $items = ServiceModuleItem::query()
             ->where('module_slug', $module)

@@ -33,6 +33,16 @@
                 <li><a class="{{ str_starts_with((string) $current, 'permissions.') ? 'active' : '' }}" href="{{ route('permissions.matrix') }}">Matrice roles</a></li>
             </ul>
 
+            <div class="menu-title">Services</div>
+            <ul class="menu">
+                <li><a href="{{ route('service-modules.show', 'troupe-musicale') }}">Troupe musicale</a></li>
+                <li><a href="{{ route('service-modules.show', 'photographe') }}">Photographe</a></li>
+                <li><a href="{{ route('service-modules.show', 'chanteur') }}">Chanteur</a></li>
+                <li><a href="{{ route('service-modules.show', 'notaire') }}">Notaire</a></li>
+                <li><a href="{{ route('service-modules.show', 'animation') }}">Animation</a></li>
+                <li><a href="{{ route('service-modules.show', 'voiture') }}">Voiture</a></li>
+            </ul>
+
         </aside>
 
         <main class="main">
