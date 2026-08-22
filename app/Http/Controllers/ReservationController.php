@@ -8,6 +8,7 @@ use App\Models\Salle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class ReservationController extends MatrixAwareController
@@ -107,7 +108,7 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'create', 'create');
 
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'event_date' => ['required', 'date', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
             'end_time' => [
@@ -126,6 +127,15 @@ class ReservationController extends MatrixAwareController
             ],
             'exclude_reservation_id' => ['nullable', 'integer', 'exists:reservations,id'],
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Parametres invalides.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $validated = $validator->validated();
 
         $eventDate = $validated['event_date'];
         $startTime = $validated['start_time'];
@@ -165,9 +175,18 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'create', 'create');
 
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'q' => ['required', 'string', 'min:2', 'max:120'],
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Parametres invalides.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $validated = $validator->validated();
 
         $keyword = trim($validated['q']);
 
@@ -216,12 +235,21 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'create', 'create');
 
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
             'first_name' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:40'],
             'cin' => ['nullable', 'string', 'max:80', 'unique:clients,cin'],
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Parametres invalides.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $validated = $validator->validated();
 
         $payload = [
             'name' => $validated['name'],
