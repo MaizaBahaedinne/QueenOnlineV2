@@ -175,8 +175,6 @@
                     <p class="reservation-hint" id="reservation-client-search-status">Recherche un client apres la selection de la salle.</p>
                     <input type="hidden" name="client_id" id="reservation-create-client-id">
 
-                    <div class="reservation-hint" style="margin-top:10px;">La fiche client est toujours editable: si client existe, les champs sont pre-remplis; sinon ils restent vides pour un nouvel ajout.</div>
-
                     <div class="reservation-inline-grid-2" style="margin-top:10px;">
                         <div class="reservation-field">
                             <label for="reservation-client-type">Type client</label>
