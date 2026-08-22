@@ -2,6 +2,10 @@
 
 Ce guide est pour un VPS qui a deja CyberPanel (OpenLiteSpeed) installe.
 
+Version rapide:
+
+- Si tu veux deployer en mode copier-coller, utilise aussi SETUP_CYBERPANEL_QUICKSTART.md.
+
 ## 1) Ce qui change avec CyberPanel
 
 - Pas de configuration Nginx manuelle.
