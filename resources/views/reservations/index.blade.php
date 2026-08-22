@@ -24,6 +24,7 @@
         .reservation-field { display: flex; flex-direction: column; gap: 5px; }
         .reservation-field label { font-size: 12px; font-weight: 700; color: #3e536b; }
         .reservation-hint { margin: 8px 0 0; font-size: 12px; color: #5f6b7a; background: #f4f8fc; border: 1px solid #d7e4f2; border-radius: 9px; padding: 8px 9px; }
+        .reservation-hint.is-error { color: #7a1f1f; background: #fff1f1; border-color: #f2caca; }
         .salle-cards-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
         .salle-card { border: 1px solid #d7dee8; border-radius: 12px; padding: 11px; cursor: pointer; background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%); transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; text-align: left; }
         .salle-card:hover { border-color: #8ca6c1; box-shadow: 0 6px 14px rgba(8, 24, 48, 0.08); transform: translateY(-1px); }
@@ -47,6 +48,17 @@
 
         @if (session('success'))
             <p class="badge badge-success" style="margin-top:10px;">{{ session('success') }}</p>
+        @endif
+
+        @if ($errors->any())
+            <div class="reservation-hint is-error" style="margin-top:10px;">
+                <strong>Erreurs de validation:</strong>
+                <ul style="margin: 6px 0 0 18px;">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
         @endif
 
         <div style="display:flex; justify-content:flex-end; margin-top:12px;">
@@ -261,6 +273,27 @@
         const minimumStartTime = '08:00';
         const maximumTime = '23:59';
 
+        const setStatusMessage = (targetElement, message, type = 'info') => {
+            if (!targetElement) return;
+            targetElement.textContent = message;
+            targetElement.classList.toggle('is-error', type === 'error');
+        };
+
+        const extractErrorMessage = (payload, fallbackMessage) => {
+            if (payload && payload.errors && typeof payload.errors === 'object') {
+                const firstFieldErrors = Object.values(payload.errors)[0];
+                if (Array.isArray(firstFieldErrors) && firstFieldErrors.length > 0) {
+                    return String(firstFieldErrors[0]);
+                }
+            }
+
+            if (payload && payload.message) {
+                return String(payload.message);
+            }
+
+            return fallbackMessage;
+        };
+
         const toMinutes = (timeValue) => {
             if (!timeValue || !timeValue.includes(':')) return null;
             const [hourRaw, minuteRaw] = timeValue.split(':');
@@ -345,7 +378,7 @@
                     salleCardsContainer.querySelectorAll('.salle-card').forEach((node) => node.classList.remove('is-selected'));
                     card.classList.add('is-selected');
                     selectedSalleInput.value = String(salle.id);
-                    clientSearchStatus.textContent = 'Salle selectionnee. Tu peux maintenant rechercher un client.';
+                    setStatusMessage(clientSearchStatus, 'Salle selectionnee. Tu peux maintenant rechercher un client.');
                 });
 
                 salleCardsContainer.appendChild(card);
@@ -387,40 +420,40 @@
                 quickClientBox.style.display = 'none';
 
                 if (!eventDate || !startTime || !endTime) {
-                    availabilityStatus.textContent = 'Renseigne date, heure debut et heure fin.';
+                    setStatusMessage(availabilityStatus, 'Renseigne date, heure debut et heure fin.', 'error');
                     return;
                 }
 
                 const today = new Date().toISOString().slice(0, 10);
                 if (eventDate < today) {
-                    availabilityStatus.textContent = 'Date event doit etre aujourd hui ou plus.';
+                    setStatusMessage(availabilityStatus, 'Date event doit etre aujourd hui ou plus.', 'error');
                     return;
                 }
 
                 if (startTime < minimumStartTime || startTime > maximumTime) {
-                    availabilityStatus.textContent = 'Heure debut doit etre entre 08:00 et 23:59.';
+                    setStatusMessage(availabilityStatus, 'Heure debut doit etre entre 08:00 et 23:59.', 'error');
                     return;
                 }
 
                 if (startTime >= endTime) {
-                    availabilityStatus.textContent = 'L heure de fin doit etre apres l heure de debut.';
+                    setStatusMessage(availabilityStatus, 'L heure de fin doit etre apres l heure de debut.', 'error');
                     return;
                 }
 
                 const startMinutes = toMinutes(startTime);
                 const endMinutes = toMinutes(endTime);
                 if (startMinutes === null || endMinutes === null || (endMinutes - startMinutes) < 60) {
-                    availabilityStatus.textContent = 'Heure fin doit etre au moins heure debut + 1 heure.';
+                    setStatusMessage(availabilityStatus, 'Heure fin doit etre au moins heure debut + 1 heure.', 'error');
                     return;
                 }
 
                 if (endTime > maximumTime) {
-                    availabilityStatus.textContent = 'Heure fin ne doit pas depasser 23:59.';
+                    setStatusMessage(availabilityStatus, 'Heure fin ne doit pas depasser 23:59.', 'error');
                     return;
                 }
 
                 endDateInput.value = eventDate;
-                availabilityStatus.textContent = 'Recherche des salles disponibles...';
+                setStatusMessage(availabilityStatus, 'Recherche des salles disponibles...');
 
                 try {
                     const params = new URLSearchParams({
@@ -435,23 +468,22 @@
                         },
                     });
 
-                    if (!response.ok) {
-                        throw new Error('Erreur API disponibilite');
-                    }
-
                     const payload = await response.json();
+                    if (!response.ok) {
+                        throw new Error(extractErrorMessage(payload, 'Erreur API disponibilite'));
+                    }
                     const availableSalles = payload.salles ?? [];
 
                     renderSalleCards(availableSalles);
 
                     if (availableSalles.length === 0) {
-                        availabilityStatus.textContent = 'Aucune salle disponible pour ce creneau.';
+                        setStatusMessage(availabilityStatus, 'Aucune salle disponible pour ce creneau.');
                         return;
                     }
 
-                    availabilityStatus.textContent = `${availableSalles.length} salle(s) disponible(s). Selectionne une salle.`;
+                    setStatusMessage(availabilityStatus, `${availableSalles.length} salle(s) disponible(s). Selectionne une salle.`);
                 } catch (error) {
-                    availabilityStatus.textContent = 'Impossible de verifier la disponibilite pour le moment.';
+                    setStatusMessage(availabilityStatus, error instanceof Error ? error.message : 'Impossible de verifier la disponibilite pour le moment.', 'error');
                 }
             });
         }
@@ -459,7 +491,7 @@
         if (clientSearchButton) {
             clientSearchButton.addEventListener('click', async () => {
                 if (!hasSelectedSalle()) {
-                    clientSearchStatus.textContent = 'Selectionne d abord une salle disponible.';
+                    setStatusMessage(clientSearchStatus, 'Selectionne d abord une salle disponible.', 'error');
                     return;
                 }
 
@@ -469,11 +501,11 @@
                 resetClientSelect();
 
                 if (keyword.length < 2) {
-                    clientSearchStatus.textContent = 'Saisis au moins 2 caracteres pour rechercher un client.';
+                    setStatusMessage(clientSearchStatus, 'Saisis au moins 2 caracteres pour rechercher un client.', 'error');
                     return;
                 }
 
-                clientSearchStatus.textContent = 'Recherche client en cours...';
+                setStatusMessage(clientSearchStatus, 'Recherche client en cours...');
 
                 try {
                     const params = new URLSearchParams({ q: keyword });
@@ -483,15 +515,14 @@
                         },
                     });
 
-                    if (!response.ok) {
-                        throw new Error('Erreur API client');
-                    }
-
                     const payload = await response.json();
+                    if (!response.ok) {
+                        throw new Error(extractErrorMessage(payload, 'Erreur API client'));
+                    }
                     const foundClients = payload.clients ?? [];
 
                     if (foundClients.length === 0) {
-                        clientSearchStatus.textContent = 'Aucun client trouve. Tu peux l ajouter rapidement ci-dessous.';
+                        setStatusMessage(clientSearchStatus, 'Aucun client trouve. Tu peux l ajouter rapidement ci-dessous.');
                         quickClientBox.style.display = 'block';
                         if (quickClientNameInput && !quickClientNameInput.value) {
                             quickClientNameInput.value = keyword;
@@ -500,9 +531,9 @@
                     }
 
                     fillClientSelect(foundClients);
-                    clientSearchStatus.textContent = `${foundClients.length} client(s) trouve(s).`;
+                    setStatusMessage(clientSearchStatus, `${foundClients.length} client(s) trouve(s).`);
                 } catch (error) {
-                    clientSearchStatus.textContent = 'Impossible de rechercher les clients pour le moment.';
+                    setStatusMessage(clientSearchStatus, error instanceof Error ? error.message : 'Impossible de rechercher les clients pour le moment.', 'error');
                 }
             });
         }
@@ -515,11 +546,11 @@
                 const cin = (quickClientCinInput?.value || '').trim();
 
                 if (!name) {
-                    clientSearchStatus.textContent = 'Le nom du client est obligatoire pour l ajout rapide.';
+                    setStatusMessage(clientSearchStatus, 'Le nom du client est obligatoire pour l ajout rapide.', 'error');
                     return;
                 }
 
-                clientSearchStatus.textContent = 'Ajout rapide client en cours...';
+                setStatusMessage(clientSearchStatus, 'Ajout rapide client en cours...');
 
                 try {
                     const body = new URLSearchParams({
@@ -542,14 +573,14 @@
                     const payload = await response.json();
 
                     if (!response.ok || !payload.client) {
-                        throw new Error(payload.message || 'Erreur ajout client');
+                        throw new Error(extractErrorMessage(payload, 'Erreur ajout client'));
                     }
 
                     fillClientSelect([payload.client]);
-                    clientSearchStatus.textContent = payload.message || 'Client ajoute avec succes.';
+                    setStatusMessage(clientSearchStatus, payload.message || 'Client ajoute avec succes.');
                     quickClientBox.style.display = 'none';
                 } catch (error) {
-                    clientSearchStatus.textContent = 'Ajout client impossible. Verifie les donnees (ex: CIN deja utilise).' ;
+                    setStatusMessage(clientSearchStatus, error instanceof Error ? error.message : 'Ajout client impossible. Verifie les donnees (ex: CIN deja utilise).', 'error');
                 }
             });
         }
@@ -593,8 +624,8 @@
                 if (modalId === 'reservation-create-modal') {
                     resetSalleSelection();
                     resetClientSelect();
-                    availabilityStatus.textContent = 'Selectionne la date et les horaires, puis clique sur verifier.';
-                    clientSearchStatus.textContent = 'Recherche un client apres la selection de la salle.';
+                    setStatusMessage(availabilityStatus, 'Selectionne la date et les horaires, puis clique sur verifier.');
+                    setStatusMessage(clientSearchStatus, 'Recherche un client apres la selection de la salle.');
                     quickClientBox.style.display = 'none';
                     endDateInput.value = '';
                 }

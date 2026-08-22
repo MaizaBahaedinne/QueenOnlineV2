@@ -49,7 +49,7 @@ class ReservationController extends MatrixAwareController
                     $start = Carbon::createFromFormat('H:i', (string) $request->input('start_time'));
                     $end = Carbon::createFromFormat('H:i', (string) $value);
 
-                    if ($start && $end && $end->diffInMinutes($start, false) < 60) {
+                    if ($start && $end && $start->diffInMinutes($end, false) < 60) {
                         $fail('Heure fin doit etre au moins heure debut + 1 heure.');
                     }
                 },
@@ -81,7 +81,7 @@ class ReservationController extends MatrixAwareController
                     $start = Carbon::createFromFormat('H:i', (string) $request->input('start_time'));
                     $end = Carbon::createFromFormat('H:i', (string) $value);
 
-                    if ($start && $end && $end->diffInMinutes($start, false) < 60) {
+                    if ($start && $end && $start->diffInMinutes($end, false) < 60) {
                         $fail('Heure fin doit etre au moins heure debut + 1 heure.');
                     }
                 },
@@ -120,7 +120,7 @@ class ReservationController extends MatrixAwareController
                     $start = Carbon::createFromFormat('H:i', (string) $request->input('start_time'));
                     $end = Carbon::createFromFormat('H:i', (string) $value);
 
-                    if ($start && $end && $end->diffInMinutes($start, false) < 60) {
+                    if ($start && $end && $start->diffInMinutes($end, false) < 60) {
                         $fail('Heure fin doit etre au moins heure debut + 1 heure.');
                     }
                 },
