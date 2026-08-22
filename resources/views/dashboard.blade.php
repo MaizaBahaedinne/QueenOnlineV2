@@ -1,85 +1,100 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title ?? 'Dashboard' }} - QueenOnlineV2</title>
+@extends('layouts.app')
 
-    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @endif
+@section('content')
+    <section class="panel">
+        <h1 class="panel-title">Projects Classic Dashboard</h1>
+        <p class="panel-sub">Vue globale des operations QueenPark avec un style admin moderne.</p>
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Georgia, "Times New Roman", serif;
-            background: linear-gradient(120deg, #f8f4e8 0%, #f0e6cf 100%);
-            color: #1f2937;
-        }
-        .container {
-            max-width: 980px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
-        .hero {
-            background: #fff;
-            border: 1px solid #e5dfcf;
-            border-radius: 14px;
-            padding: 28px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-        }
-        h1 {
-            margin: 0 0 10px;
-            font-size: 32px;
-            line-height: 1.2;
-        }
-        p {
-            margin: 0;
-            color: #4b5563;
-        }
-        .grid {
-            margin-top: 24px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
-        }
-        .card {
-            display: block;
-            text-decoration: none;
-            padding: 16px;
-            border-radius: 10px;
-            border: 1px solid #e6d9bf;
-            background: #fffdfa;
-            color: #111827;
-            transition: transform .15s ease, box-shadow .15s ease;
-        }
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-        }
-        .note {
-            margin-top: 18px;
-            font-size: 14px;
-            color: #6b7280;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <section class="hero">
-            <h1>QueenOnlineV2</h1>
-            <p>Application accessible. Le serveur fonctionne correctement.</p>
+        <div class="page-actions">
+            <a class="btn btn-primary" href="{{ route('reservations.index') }}">Voir les reservations</a>
+            <a class="btn" href="{{ route('clients.index') }}">Gerer les clients</a>
+            <a class="btn" href="{{ route('payments.index') }}">Suivre les paiements</a>
+        </div>
 
-            <div class="grid">
-                <a class="card" href="{{ route('users.index') }}">Utilisateurs</a>
-                <a class="card" href="{{ route('clients.index') }}">Clients</a>
-                <a class="card" href="{{ route('salles.index') }}">Salles</a>
-                <a class="card" href="{{ route('reservations.index') }}">Reservations</a>
-                <a class="card" href="{{ route('payments.index') }}">Paiements</a>
+        <div class="kpi-grid">
+            <article class="kpi-card">
+                <div class="kpi-label">Utilisateurs</div>
+                <div class="kpi-value">{{ $stats['users'] ?? 0 }}</div>
+                <div class="kpi-foot">Comptes enregistres</div>
+            </article>
+            <article class="kpi-card">
+                <div class="kpi-label">Clients</div>
+                <div class="kpi-value">{{ $stats['clients'] ?? 0 }}</div>
+                <div class="kpi-foot">Base clients active</div>
+            </article>
+            <article class="kpi-card">
+                <div class="kpi-label">Salles</div>
+                <div class="kpi-value">{{ $stats['salles'] ?? 0 }}</div>
+                <div class="kpi-foot">Ressources disponibles</div>
+            </article>
+            <article class="kpi-card">
+                <div class="kpi-label">Reservations</div>
+                <div class="kpi-value">{{ $stats['reservations'] ?? 0 }}</div>
+                <div class="kpi-foot">Demandes totalisees</div>
+            </article>
+        </div>
+
+        <div class="kpi-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 12px;">
+            <article class="kpi-card">
+                <div class="kpi-label">Paiements</div>
+                <div class="kpi-value">{{ $stats['payments'] ?? 0 }}</div>
+                <div class="kpi-foot">Transactions enregistrees</div>
+            </article>
+            <article class="kpi-card">
+                <div class="kpi-label">Montant encaisse</div>
+                <div class="kpi-value">{{ number_format((float) ($stats['payments_total'] ?? 0), 2, '.', ' ') }}</div>
+                <div class="kpi-foot">Somme des paiements</div>
+            </article>
+        </div>
+    </section>
+
+    <section class="content-grid">
+        <div class="panel">
+            <h2 class="panel-title">Reservations recentes</h2>
+            <p class="panel-sub">Derniers dossiers crees dans le systeme.</p>
+            <div style="overflow-x:auto; margin-top: 12px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Client</th>
+                            <th>Salle</th>
+                            <th>Debut</th>
+                            <th>Fin</th>
+                            <th>Statut</th>
+                            <th>Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($recentReservations as $reservation)
+                            <tr>
+                                <td>{{ $reservation->id }}</td>
+                                <td>{{ $reservation->client?->name ?? 'N/A' }}</td>
+                                <td>{{ $reservation->salle?->name ?? 'N/A' }}</td>
+                                <td>{{ $reservation->start_date }}</td>
+                                <td>{{ $reservation->end_date }}</td>
+                                <td>
+                                    @php
+                                        $status = strtolower((string) $reservation->status);
+                                        $badge = match ($status) {
+                                            'confirmed', 'paid', 'active' => 'badge-success',
+                                            'cancelled', 'failed' => 'badge-danger',
+                                            'pending' => 'badge-warning',
+                                            default => 'badge-info',
+                                        };
+                                    @endphp
+                                    <span class="badge {{ $badge }}">{{ $reservation->status ?? 'pending' }}</span>
+                                </td>
+                                <td>{{ number_format((float) $reservation->total_amount, 2, '.', ' ') }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="muted">Aucune reservation recente.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
-
-            <p class="note">Si une section reste vide, c'est normal: certaines vues CRUD sont encore des placeholders.</p>
-        </section>
-    </div>
-</body>
-</html>
+        </div>
+    </section>
+@endsection
