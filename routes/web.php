@@ -26,6 +26,7 @@ Route::middleware('auth')->group(function () {
 	Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 	Route::get('/profile/password', [ProfileController::class, 'editPassword'])->name('profile.password.edit');
 	Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+	Route::get('clients/cin-check', [ClientController::class, 'checkCin'])->name('clients.cin-check');
 
 	Route::resource('users', UserController::class);
 	Route::resource('clients', ClientController::class);

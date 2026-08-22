@@ -4,16 +4,55 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
 class ClientController extends MatrixAwareController
 {
+    private const GOVERNORATES = [
+        'Ariana',
+        'Beja',
+        'Ben Arous',
+        'Bizerte',
+        'Gabes',
+        'Gafsa',
+        'Jendouba',
+        'Kairouan',
+        'Kasserine',
+        'Kebili',
+        'Le Kef',
+        'Mahdia',
+        'La Manouba',
+        'Medenine',
+        'Monastir',
+        'Nabeul',
+        'Sfax',
+        'Sidi Bouzid',
+        'Siliana',
+        'Sousse',
+        'Tataouine',
+        'Tozeur',
+        'Tunis',
+        'Zaghouan',
+    ];
+
+    private const SOURCES = [
+        'passager',
+        'reseaux-sociaux-web',
+        'presence-event',
+        'recommandation',
+        'connaissance-queenpark',
+    ];
+
     public function index()
     {
         $this->enforcePermission('clients', 'list', 'view');
 
         return view('clients.index', [
+            'title' => 'Clients',
             'clients' => Client::query()->latest()->get(),
+            'governorates' => self::GOVERNORATES,
+            'sources' => self::SOURCES,
         ]);
     }
 
@@ -26,14 +65,9 @@ class ClientController extends MatrixAwareController
     {
         $this->enforcePermission('clients', 'create', 'create');
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'email'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'cin' => ['nullable', 'string', 'max:50'],
-        ]);
+        $validated = $this->validateClientPayload($request);
 
-        Client::create($validated);
+        Client::create($this->normalizeClientPayload($validated));
 
         return redirect()->route('clients.index')->with('success', 'Client cree.');
     }
@@ -42,18 +76,36 @@ class ClientController extends MatrixAwareController
     {
         $this->enforcePermission('clients', 'update', 'update');
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'email'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'cin' => ['nullable', 'string', 'max:50'],
-            'city' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', Rule::in(['active', 'inactive'])],
-        ]);
+        $validated = $this->validateClientPayload($request, $client->id);
 
-        $client->update($validated);
+        $client->update($this->normalizeClientPayload($validated));
 
         return redirect()->route('clients.index')->with('success', 'Client mis a jour.');
+    }
+
+    public function checkCin(Request $request)
+    {
+        $cin = trim((string) $request->query('cin', ''));
+        $ignoreId = $request->query('ignore_id');
+
+        if ($cin === '') {
+            return response()->json([
+                'exists' => false,
+                'message' => null,
+            ]);
+        }
+
+        $query = Client::query()->where('cin', $cin);
+        if (! empty($ignoreId)) {
+            $query->where('id', '!=', (int) $ignoreId);
+        }
+
+        $exists = $query->exists();
+
+        return response()->json([
+            'exists' => $exists,
+            'message' => $exists ? 'Ce CIN existe deja dans la base.' : null,
+        ]);
     }
 
     public function destroy(Client $client)
@@ -63,5 +115,61 @@ class ClientController extends MatrixAwareController
         $client->delete();
 
         return redirect()->route('clients.index')->with('success', 'Client supprime.');
+    }
+
+    private function validateClientPayload(Request $request, ?int $ignoreId = null): array
+    {
+        $hasExtendedColumns = Schema::hasColumn('clients', 'client_type')
+            && Schema::hasColumn('clients', 'first_name')
+            && Schema::hasColumn('clients', 'gender');
+
+        if (! $hasExtendedColumns) {
+            return $request->validate([
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['nullable', 'email'],
+                'phone' => ['nullable', 'string', 'max:50'],
+                'cin' => ['nullable', 'string', 'max:50', Rule::unique('clients', 'cin')->ignore($ignoreId)],
+                'city' => ['nullable', 'string', 'max:255'],
+                'status' => ['nullable', Rule::in(['active', 'inactive'])],
+            ]);
+        }
+
+        return $request->validate([
+            'client_type' => ['required', Rule::in(['personne-physique', 'societe'])],
+            'status' => ['nullable', Rule::in(['active', 'inactive'])],
+            'fiscal_number' => ['nullable', 'string', 'max:100', 'required_if:client_type,societe'],
+            'company_name' => ['nullable', 'string', 'max:255', 'required_if:client_type,societe'],
+
+            'first_name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'gender' => ['required', Rule::in(['homme', 'femme'])],
+            'birth_date' => ['nullable', 'date'],
+
+            'cin' => ['required', 'string', 'max:50', Rule::unique('clients', 'cin')->ignore($ignoreId)],
+            'email' => ['nullable', 'email'],
+
+            'address_number' => ['nullable', 'string', 'max:50'],
+            'address_street' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'governorate' => ['required', Rule::in(self::GOVERNORATES)],
+
+            'phone' => ['nullable', 'string', 'max:50'],
+            'phone_label_1' => ['nullable', 'string', 'max:100'],
+            'phone_2' => ['nullable', 'string', 'max:50'],
+            'phone_label_2' => ['nullable', 'string', 'max:100'],
+
+            'source' => ['required', Rule::in(self::SOURCES)],
+            'note' => ['nullable', 'string'],
+        ]);
+    }
+
+    private function normalizeClientPayload(array $validated): array
+    {
+        if (($validated['client_type'] ?? null) === 'personne-physique') {
+            $validated['fiscal_number'] = null;
+            $validated['company_name'] = null;
+        }
+
+        return $validated;
     }
 }
