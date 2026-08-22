@@ -38,7 +38,13 @@
             <div class="topbar">
                 <button type="button" class="btn sidebar-toggle" data-sidebar-toggle>Menu</button>
                 <div class="search">Workspace: QueenOnlineV2</div>
-                <div class="profile">Production panel • {{ now()->format('d/m/Y H:i') }}</div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="profile">Production panel • {{ now()->format('d/m/Y H:i') }}</div>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="btn">Logout</button>
+                    </form>
+                </div>
             </div>
 
             @yield('content')
