@@ -1,6 +1,12 @@
-# QueenOnlineV2 - CyberPanel Quickstart (copier-coller)
+# QueenOnlineV2 - CyberPanel Quickstart (sans npm sur VPS)
 
-Objectif: deploy rapide en mode production sur un VPS avec CyberPanel deja installe.
+Objectif: deploy rapide en production sur un VPS avec CyberPanel, sans installer Node/npm sur le serveur.
+
+Principe:
+
+- Build frontend en local (ton PC)
+- Push des assets compiles (`public/build`) dans Git
+- Sur VPS: `git pull` + commandes Laravel uniquement
 
 ## 0) Variables a adapter
 
@@ -16,15 +22,13 @@ export DB_PASS="r0gOkJqdt+eH9EpD"
 
 Note:
 
-- Tu as indique "QueenBD", mais CyberPanel prefixe automatiquement avec le compte domaine.
-- Les valeurs finales a utiliser sont donc bien `quee_QueenBD` pour le nom de base et l'utilisateur.
+- CyberPanel prefixe souvent les noms SQL avec le compte/site.
+- Ici, les valeurs finales retenues sont `quee_QueenBD`.
 
-## 1) Installer outils
+## 1) Installer outils VPS (sans Node)
 
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y git unzip mysql-server supervisor
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt install -y nodejs
 command -v composer >/dev/null || (cd /tmp && php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && php composer-setup.php && sudo mv composer.phar /usr/local/bin/composer)
 
 ## 2) Creer base MySQL
@@ -38,7 +42,7 @@ sudo mysql -e "GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'127.0.0.1';
 sudo mkdir -p "$APP_PATH"
 sudo chown -R "$SITE_USER":"$SITE_USER" "$APP_PATH"
 sudo -u "$SITE_USER" bash -lc "cd '$APP_PATH' && [ -d .git ] || git clone '$REPO_URL' ."
-sudo -u "$SITE_USER" bash -lc "cd '$APP_PATH' && composer install --no-dev --optimize-autoloader && npm install && npm run build"
+sudo -u "$SITE_USER" bash -lc "cd '$APP_PATH' && composer install --no-dev --optimize-autoloader"
 sudo -u "$SITE_USER" bash -lc "cd '$APP_PATH' && [ -f .env ] || cp .env.example .env && php artisan key:generate"
 
 ## 4) Ecrire .env production
@@ -61,11 +65,28 @@ sudo -u "$SITE_USER" bash -lc "cd '$APP_PATH' && php artisan optimize:clear && p
 sudo chown -R "$SITE_USER":"$SITE_USER" "$APP_PATH"
 sudo chmod -R ug+rwx "$APP_PATH/storage" "$APP_PATH/bootstrap/cache"
 
-## 6) Activer scheduler
+## 6) Workflow obligatoire en local (a chaque changement UI)
+
+Sur ton PC (pas sur VPS):
+
+npm install
+npm run build
+git add resources public/build
+git commit -m "build: update frontend assets"
+git push origin main
+
+Puis sur VPS:
+
+cd /home/<site-user>/public_html
+git pull
+php artisan optimize:clear
+php artisan view:cache
+
+## 7) Activer scheduler
 
 ( crontab -l 2>/dev/null; echo "* * * * * cd $APP_PATH && php artisan schedule:run >> /dev/null 2>&1" ) | crontab -
 
-## 7) Activer queue worker
+## 8) Activer queue worker
 
 sudo tee /etc/supervisor/conf.d/queenonlinev2-worker.conf >/dev/null <<EOF
 [program:queenonlinev2-worker]
@@ -83,7 +104,7 @@ stopwaitsecs=3600
 EOF
 sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl start queenonlinev2-worker:*
 
-## 8) Verifications finales
+## 9) Verifications finales
 
 sudo -u "$SITE_USER" bash -lc "cd '$APP_PATH' && php artisan about"
 sudo supervisorctl status
@@ -93,9 +114,10 @@ Dans CyberPanel:
 2. Issue SSL
 3. Force HTTPS
 4. Rewrite ON
+5. Purge LiteSpeed cache apres chaque deploiement
 
-## 9) Si erreur 500
+## 10) Si erreur 500
 
 - Lire: /home/<site-user>/public_html/storage/logs/laravel.log
-- Verifier owner et permissions sur storage + bootstrap/cache
-- Relancer build: npm run build
+- Verifier owner/permissions sur storage + bootstrap/cache
+- Verifier que `public/build/manifest.json` existe apres `git pull`
