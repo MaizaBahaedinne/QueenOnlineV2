@@ -250,9 +250,8 @@ class ReservationController extends MatrixAwareController
                     'company_name' => $client->company_name,
                     'first_name' => $client->first_name,
                     'name' => $client->name,
-                    'gender' => $client->gender ?? 'homme',
-                    'birth_date' => $client->birth_date,
                     'cin' => $client->cin,
+                    'date_cin' => $client->date_cin,
                     'email' => $client->email,
                     'address_number' => $client->address_number,
                     'address_street' => $client->address_street,
@@ -347,14 +346,15 @@ class ReservationController extends MatrixAwareController
 
         $hasExtendedColumns = Schema::hasColumn('clients', 'client_type')
             && Schema::hasColumn('clients', 'first_name')
-            && Schema::hasColumn('clients', 'gender');
+            && Schema::hasColumn('clients', 'governorate');
 
         if (! $hasExtendedColumns) {
             $basicRules = [
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['nullable', 'email'],
-                'phone' => ['nullable', 'string', 'max:50'],
-                'cin' => ['nullable', 'string', 'max:50', Rule::unique('clients', 'cin')->ignore($existingClient?->id)],
+                'phone' => ['required', 'string', 'max:50'],
+                'cin' => ['required', 'regex:/^[0-9]{8}$/', Rule::unique('clients', 'cin')->ignore($existingClient?->id)],
+                'date_cin' => ['nullable', 'date'],
                 'city' => ['nullable', 'string', 'max:255'],
                 'status' => ['nullable', Rule::in(['active', 'inactive'])],
             ];
@@ -376,15 +376,14 @@ class ReservationController extends MatrixAwareController
             'company_name' => ['nullable', 'string', 'max:255', 'required_if:client_type,societe'],
             'first_name' => ['required', 'string', 'max:255'],
             'name' => ['required', 'string', 'max:255'],
-            'gender' => ['required', Rule::in(['homme', 'femme'])],
-            'birth_date' => ['nullable', 'date'],
-            'cin' => ['required', 'string', 'max:50', Rule::unique('clients', 'cin')->ignore($existingClient?->id)],
+            'cin' => ['required', 'regex:/^[0-9]{8}$/', Rule::unique('clients', 'cin')->ignore($existingClient?->id)],
+            'date_cin' => ['nullable', 'date'],
             'email' => ['nullable', 'email'],
             'address_number' => ['nullable', 'string', 'max:50'],
             'address_street' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             'governorate' => ['required', Rule::in(self::GOVERNORATES)],
-            'phone' => ['nullable', 'string', 'max:50'],
+            'phone' => ['required', 'string', 'max:50'],
             'phone_label_1' => ['nullable', 'string', 'max:100'],
             'phone_2' => ['nullable', 'string', 'max:50'],
             'phone_label_2' => ['nullable', 'string', 'max:100'],

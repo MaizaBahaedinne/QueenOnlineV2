@@ -121,14 +121,15 @@ class ClientController extends MatrixAwareController
     {
         $hasExtendedColumns = Schema::hasColumn('clients', 'client_type')
             && Schema::hasColumn('clients', 'first_name')
-            && Schema::hasColumn('clients', 'gender');
+            && Schema::hasColumn('clients', 'governorate');
 
         if (! $hasExtendedColumns) {
             return $request->validate([
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['nullable', 'email'],
-                'phone' => ['nullable', 'string', 'max:50'],
-                'cin' => ['nullable', 'string', 'max:50', Rule::unique('clients', 'cin')->ignore($ignoreId)],
+                'phone' => ['required', 'string', 'max:50'],
+                'cin' => ['required', 'regex:/^[0-9]{8}$/', Rule::unique('clients', 'cin')->ignore($ignoreId)],
+                'date_cin' => ['nullable', 'date'],
                 'city' => ['nullable', 'string', 'max:255'],
                 'status' => ['nullable', Rule::in(['active', 'inactive'])],
             ]);
@@ -142,10 +143,8 @@ class ClientController extends MatrixAwareController
 
             'first_name' => ['required', 'string', 'max:255'],
             'name' => ['required', 'string', 'max:255'],
-            'gender' => ['required', Rule::in(['homme', 'femme'])],
-            'birth_date' => ['nullable', 'date'],
-
-            'cin' => ['required', 'string', 'max:50', Rule::unique('clients', 'cin')->ignore($ignoreId)],
+            'cin' => ['required', 'regex:/^[0-9]{8}$/', Rule::unique('clients', 'cin')->ignore($ignoreId)],
+            'date_cin' => ['nullable', 'date'],
             'email' => ['nullable', 'email'],
 
             'address_number' => ['nullable', 'string', 'max:50'],
@@ -153,7 +152,7 @@ class ClientController extends MatrixAwareController
             'city' => ['nullable', 'string', 'max:255'],
             'governorate' => ['required', Rule::in(self::GOVERNORATES)],
 
-            'phone' => ['nullable', 'string', 'max:50'],
+            'phone' => ['required', 'string', 'max:50'],
             'phone_label_1' => ['nullable', 'string', 'max:100'],
             'phone_2' => ['nullable', 'string', 'max:50'],
             'phone_label_2' => ['nullable', 'string', 'max:100'],

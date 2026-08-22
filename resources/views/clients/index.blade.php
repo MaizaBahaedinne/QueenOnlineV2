@@ -78,14 +78,13 @@
                                             data-client-company-name="{{ $client->company_name }}"
                                             data-client-first-name="{{ $client->first_name }}"
                                             data-client-name="{{ $client->name }}"
-                                            data-client-gender="{{ $client->gender }}"
-                                            data-client-birth-date="{{ $client->birth_date }}"
                                             data-client-email="{{ $client->email }}"
                                             data-client-phone="{{ $client->phone }}"
                                             data-client-phone-label-1="{{ $client->phone_label_1 }}"
                                             data-client-phone-2="{{ $client->phone_2 }}"
                                             data-client-phone-label-2="{{ $client->phone_label_2 }}"
                                             data-client-cin="{{ $client->cin }}"
+                                            data-client-date-cin="{{ $client->date_cin }}"
                                             data-client-address-number="{{ $client->address_number }}"
                                             data-client-address-street="{{ $client->address_street }}"
                                             data-client-city="{{ $client->city }}"
@@ -131,13 +130,8 @@
                 <input class="search" style="max-width:none;" type="text" name="first_name" placeholder="Prenom" required>
                 <input class="search" style="max-width:none;" type="text" name="name" placeholder="Nom" required>
 
-                <select class="search" style="max-width:none;" name="gender" required>
-                    <option value="homme">Homme</option>
-                    <option value="femme">Femme</option>
-                </select>
-                <input class="search" style="max-width:none;" type="date" name="birth_date" placeholder="Date de naissance">
-
-                <input class="search" style="max-width:none;" type="text" name="cin" placeholder="CIN" id="client-create-cin" required>
+                <input class="search" style="max-width:none;" type="text" name="cin" placeholder="CIN (8 chiffres)" id="client-create-cin" minlength="8" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" required>
+                <input class="search" style="max-width:none;" type="date" name="date_cin" placeholder="Date delivrance CIN">
                 <p class="cin-alert full-span" id="client-create-cin-alert">Ce CIN existe deja dans la base.</p>
 
                 <input class="search" style="max-width:none;" type="text" name="address_number" placeholder="N adresse">
@@ -151,7 +145,7 @@
                     @endforeach
                 </select>
 
-                <input class="search" style="max-width:none;" type="text" name="phone" placeholder="Mobile 1">
+                <input class="search" style="max-width:none;" type="text" name="phone" placeholder="Mobile 1" required>
                 <input class="search" style="max-width:none;" type="text" name="phone_label_1" placeholder="Label mobile 1">
 
                 <input class="search" style="max-width:none;" type="text" name="phone_2" placeholder="Mobile 2">
@@ -192,13 +186,8 @@
                 <input class="search" style="max-width:none;" type="text" name="first_name" id="client-edit-first-name" required>
                 <input class="search" style="max-width:none;" type="text" name="name" id="client-edit-name" required>
 
-                <select class="search" style="max-width:none;" name="gender" id="client-edit-gender" required>
-                    <option value="homme">Homme</option>
-                    <option value="femme">Femme</option>
-                </select>
-                <input class="search" style="max-width:none;" type="date" name="birth_date" id="client-edit-birth-date">
-
-                <input class="search" style="max-width:none;" type="text" name="cin" id="client-edit-cin" required>
+                <input class="search" style="max-width:none;" type="text" name="cin" id="client-edit-cin" minlength="8" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" required>
+                <input class="search" style="max-width:none;" type="date" name="date_cin" id="client-edit-date-cin">
                 <p class="cin-alert full-span" id="client-edit-cin-alert">Ce CIN existe deja dans la base.</p>
 
                 <input class="search" style="max-width:none;" type="text" name="address_number" id="client-edit-address-number" placeholder="N adresse">
@@ -212,7 +201,7 @@
                     @endforeach
                 </select>
 
-                <input class="search" style="max-width:none;" type="text" name="phone" id="client-edit-phone" placeholder="Mobile 1">
+                <input class="search" style="max-width:none;" type="text" name="phone" id="client-edit-phone" placeholder="Mobile 1" required>
                 <input class="search" style="max-width:none;" type="text" name="phone_label_1" id="client-edit-phone-label-1" placeholder="Label mobile 1">
 
                 <input class="search" style="max-width:none;" type="text" name="phone_2" id="client-edit-phone-2" placeholder="Mobile 2">
@@ -297,14 +286,13 @@
                     document.getElementById('client-edit-company-name').value = button.dataset.clientCompanyName ?? '';
                     document.getElementById('client-edit-first-name').value = button.dataset.clientFirstName ?? '';
                     document.getElementById('client-edit-name').value = button.dataset.clientName ?? '';
-                    document.getElementById('client-edit-gender').value = button.dataset.clientGender ?? 'homme';
-                    document.getElementById('client-edit-birth-date').value = button.dataset.clientBirthDate ?? '';
                     document.getElementById('client-edit-email').value = button.dataset.clientEmail ?? '';
                     document.getElementById('client-edit-phone').value = button.dataset.clientPhone ?? '';
                     document.getElementById('client-edit-phone-label-1').value = button.dataset.clientPhoneLabel1 ?? '';
                     document.getElementById('client-edit-phone-2').value = button.dataset.clientPhone2 ?? '';
                     document.getElementById('client-edit-phone-label-2').value = button.dataset.clientPhoneLabel2 ?? '';
                     document.getElementById('client-edit-cin').value = button.dataset.clientCin ?? '';
+                    document.getElementById('client-edit-date-cin').value = button.dataset.clientDateCin ?? '';
                     document.getElementById('client-edit-address-number').value = button.dataset.clientAddressNumber ?? '';
                     document.getElementById('client-edit-address-street').value = button.dataset.clientAddressStreet ?? '';
                     document.getElementById('client-edit-city').value = button.dataset.clientCity ?? '';

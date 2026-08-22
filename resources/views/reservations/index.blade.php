@@ -218,23 +218,16 @@
 
                     <div class="reservation-inline-grid-2" style="margin-top:10px;">
                         <div class="reservation-field">
-                            <label for="reservation-client-gender">Sexe</label>
-                            <select class="search" style="max-width:none;" name="gender" id="reservation-client-gender" required>
-                                <option value="homme">Homme</option>
-                                <option value="femme">Femme</option>
-                            </select>
+                            <label for="reservation-client-cin">CIN</label>
+                            <input class="search" style="max-width:none;" type="text" name="cin" id="reservation-client-cin" minlength="8" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" required>
                         </div>
                         <div class="reservation-field">
-                            <label for="reservation-client-birth-date">Date naissance</label>
-                            <input class="search" style="max-width:none;" type="date" name="birth_date" id="reservation-client-birth-date">
+                            <label for="reservation-client-date-cin">Date delivrance CIN</label>
+                            <input class="search" style="max-width:none;" type="date" name="date_cin" id="reservation-client-date-cin">
                         </div>
                     </div>
 
                     <div class="reservation-inline-grid-2" style="margin-top:10px;">
-                        <div class="reservation-field">
-                            <label for="reservation-client-cin">CIN</label>
-                            <input class="search" style="max-width:none;" type="text" name="cin" id="reservation-client-cin" required>
-                        </div>
                         <div class="reservation-field">
                             <label for="reservation-client-email">Email</label>
                             <input class="search" style="max-width:none;" type="email" name="email" id="reservation-client-email">
@@ -271,7 +264,7 @@
                     <div class="reservation-inline-grid-2" style="margin-top:10px;">
                         <div class="reservation-field">
                             <label for="reservation-client-phone">Mobile 1</label>
-                            <input class="search" style="max-width:none;" type="text" name="phone" id="reservation-client-phone">
+                            <input class="search" style="max-width:none;" type="text" name="phone" id="reservation-client-phone" required>
                         </div>
                         <div class="reservation-field">
                             <label for="reservation-client-phone-label-1">Label mobile 1</label>
@@ -365,9 +358,8 @@
         const reservationClientCompanyName = document.getElementById('reservation-client-company-name');
         const reservationClientFirstName = document.getElementById('reservation-client-first-name');
         const reservationClientName = document.getElementById('reservation-client-name');
-        const reservationClientGender = document.getElementById('reservation-client-gender');
-        const reservationClientBirthDate = document.getElementById('reservation-client-birth-date');
         const reservationClientCin = document.getElementById('reservation-client-cin');
+        const reservationClientDateCin = document.getElementById('reservation-client-date-cin');
         const reservationClientEmail = document.getElementById('reservation-client-email');
         const reservationClientAddressNumber = document.getElementById('reservation-client-address-number');
         const reservationClientAddressStreet = document.getElementById('reservation-client-address-street');
@@ -422,9 +414,8 @@
             company_name: '',
             first_name: '',
             name: '',
-            gender: 'homme',
-            birth_date: '',
             cin: '',
+            date_cin: '',
             email: '',
             address_number: '',
             address_street: '',
@@ -447,9 +438,8 @@
             reservationClientCompanyName.value = payload.company_name || '';
             reservationClientFirstName.value = payload.first_name || '';
             reservationClientName.value = payload.name || '';
-            reservationClientGender.value = payload.gender || 'homme';
-            reservationClientBirthDate.value = payload.birth_date || '';
             reservationClientCin.value = payload.cin || '';
+            reservationClientDateCin.value = payload.date_cin || '';
             reservationClientEmail.value = payload.email || '';
             reservationClientAddressNumber.value = payload.address_number || '';
             reservationClientAddressStreet.value = payload.address_street || '';
