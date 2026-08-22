@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ ($title ?? 'Dashboard') . ' - QueenPark Admin' }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -34,76 +35,76 @@
             </div>
 
             <div class="menu-section {{ $isPilotage ? 'is-open' : '' }}" data-menu-section>
-                <button type="button" class="menu-section-toggle" data-menu-toggle>
+                <button type="button" class="menu-section-toggle" data-menu-toggle aria-expanded="{{ $isPilotage ? 'true' : 'false' }}">
                     <span class="menu-title">Pilotage</span>
-                    <span class="menu-chevron">+</span>
+                    <i class="fa fa-angle-down menu-chevron" aria-hidden="true"></i>
                 </button>
                 <div class="menu-section-content">
                     <ul class="menu">
-                        <li><a class="{{ $current === 'dashboard' ? 'active' : '' }}" href="{{ route('dashboard') }}"><span class="menu-icon">DB</span><span>Dashboard</span></a></li>
+                        <li><a class="{{ $current === 'dashboard' ? 'active' : '' }}" href="{{ route('dashboard') }}"><i class="fa fa-tachometer menu-icon" aria-hidden="true"></i><span>Dashboard</span></a></li>
                     </ul>
                 </div>
             </div>
 
             <div class="menu-section {{ $isExploitation ? 'is-open' : '' }}" data-menu-section>
-                <button type="button" class="menu-section-toggle" data-menu-toggle>
+                <button type="button" class="menu-section-toggle" data-menu-toggle aria-expanded="{{ $isExploitation ? 'true' : 'false' }}">
                     <span class="menu-title">Exploitation</span>
-                    <span class="menu-chevron">+</span>
+                    <i class="fa fa-angle-down menu-chevron" aria-hidden="true"></i>
                 </button>
                 <div class="menu-section-content">
                     <ul class="menu">
-                        <li><a class="{{ str_starts_with((string) $current, 'clients.') ? 'active' : '' }}" href="{{ route('clients.index') }}"><span class="menu-icon">CL</span><span>Clients</span></a></li>
-                        <li><a class="{{ str_starts_with((string) $current, 'salles.') ? 'active' : '' }}" href="{{ route('salles.index') }}"><span class="menu-icon">SA</span><span>Salles</span></a></li>
-                        <li><a class="{{ str_starts_with((string) $current, 'reservations.') ? 'active' : '' }}" href="{{ route('reservations.index') }}"><span class="menu-icon">RS</span><span>Reservations</span></a></li>
-                        <li><a class="{{ str_starts_with((string) $current, 'payments.') ? 'active' : '' }}" href="{{ route('payments.index') }}"><span class="menu-icon">PA</span><span>Paiements</span></a></li>
+                        <li><a class="{{ str_starts_with((string) $current, 'clients.') ? 'active' : '' }}" href="{{ route('clients.index') }}"><i class="fa fa-users menu-icon" aria-hidden="true"></i><span>Clients</span></a></li>
+                        <li><a class="{{ str_starts_with((string) $current, 'salles.') ? 'active' : '' }}" href="{{ route('salles.index') }}"><i class="fa fa-building menu-icon" aria-hidden="true"></i><span>Salles</span></a></li>
+                        <li><a class="{{ str_starts_with((string) $current, 'reservations.') ? 'active' : '' }}" href="{{ route('reservations.index') }}"><i class="fa fa-calendar menu-icon" aria-hidden="true"></i><span>Reservations</span></a></li>
+                        <li><a class="{{ str_starts_with((string) $current, 'payments.') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa fa-credit-card menu-icon" aria-hidden="true"></i><span>Paiements</span></a></li>
                     </ul>
                 </div>
             </div>
 
             <div class="menu-section {{ $isAdministration ? 'is-open' : '' }}" data-menu-section>
-                <button type="button" class="menu-section-toggle" data-menu-toggle>
+                <button type="button" class="menu-section-toggle" data-menu-toggle aria-expanded="{{ $isAdministration ? 'true' : 'false' }}">
                     <span class="menu-title">Administration</span>
-                    <span class="menu-chevron">+</span>
+                    <i class="fa fa-angle-down menu-chevron" aria-hidden="true"></i>
                 </button>
                 <div class="menu-section-content">
                     <ul class="menu">
-                        <li><a class="{{ str_starts_with((string) $current, 'users.') ? 'active' : '' }}" href="{{ route('users.index') }}"><span class="menu-icon">US</span><span>Utilisateurs</span></a></li>
-                        <li><a class="{{ str_starts_with((string) $current, 'roles.') ? 'active' : '' }}" href="{{ route('roles.index') }}"><span class="menu-icon">RL</span><span>Roles utilisateurs</span></a></li>
-                        <li><a class="{{ str_starts_with((string) $current, 'modules.') ? 'active' : '' }}" href="{{ route('modules.index') }}"><span class="menu-icon">MD</span><span>Modules</span></a></li>
-                        <li><a class="{{ str_starts_with((string) $current, 'permissions.') ? 'active' : '' }}" href="{{ route('permissions.matrix') }}"><span class="menu-icon">MX</span><span>Matrice roles</span></a></li>
+                        <li><a class="{{ str_starts_with((string) $current, 'users.') ? 'active' : '' }}" href="{{ route('users.index') }}"><i class="fa fa-user menu-icon" aria-hidden="true"></i><span>Utilisateurs</span></a></li>
+                        <li><a class="{{ str_starts_with((string) $current, 'roles.') ? 'active' : '' }}" href="{{ route('roles.index') }}"><i class="fa fa-shield menu-icon" aria-hidden="true"></i><span>Roles utilisateurs</span></a></li>
+                        <li><a class="{{ str_starts_with((string) $current, 'modules.') ? 'active' : '' }}" href="{{ route('modules.index') }}"><i class="fa fa-th-large menu-icon" aria-hidden="true"></i><span>Modules</span></a></li>
+                        <li><a class="{{ str_starts_with((string) $current, 'permissions.') ? 'active' : '' }}" href="{{ route('permissions.matrix') }}"><i class="fa fa-lock menu-icon" aria-hidden="true"></i><span>Matrice roles</span></a></li>
                     </ul>
                 </div>
             </div>
 
             <div class="menu-section {{ $isServices ? 'is-open' : '' }}" data-menu-section>
-                <button type="button" class="menu-section-toggle" data-menu-toggle>
+                <button type="button" class="menu-section-toggle" data-menu-toggle aria-expanded="{{ $isServices ? 'true' : 'false' }}">
                     <span class="menu-title">Services</span>
-                    <span class="menu-chevron">+</span>
+                    <i class="fa fa-angle-down menu-chevron" aria-hidden="true"></i>
                 </button>
                 <div class="menu-section-content">
                     <div class="menu-subtitle">Services avec packs</div>
                     <ul class="menu">
                         @if (auth()->user()?->canFeature('troupe-musicale', 'list', 'view'))
-                            <li><a class="{{ $currentModuleSlug === 'troupe-musicale' ? 'active' : '' }}" href="{{ route('service-modules.show', 'troupe-musicale') }}"><span class="menu-icon">TM</span><span>Troupe musicale</span></a></li>
+                            <li><a class="{{ $currentModuleSlug === 'troupe-musicale' ? 'active' : '' }}" href="{{ route('service-modules.show', 'troupe-musicale') }}"><i class="fa fa-music menu-icon" aria-hidden="true"></i><span>Troupe musicale</span></a></li>
                         @endif
                         @if (auth()->user()?->canFeature('photographe', 'list', 'view'))
-                            <li><a class="{{ $currentModuleSlug === 'photographe' ? 'active' : '' }}" href="{{ route('service-modules.show', 'photographe') }}"><span class="menu-icon">PH</span><span>Photographe</span></a></li>
+                            <li><a class="{{ $currentModuleSlug === 'photographe' ? 'active' : '' }}" href="{{ route('service-modules.show', 'photographe') }}"><i class="fa fa-camera menu-icon" aria-hidden="true"></i><span>Photographe</span></a></li>
                         @endif
                     </ul>
 
                     <div class="menu-subtitle">Services standards</div>
                     <ul class="menu">
                         @if (auth()->user()?->canFeature('chanteur', 'list', 'view'))
-                            <li><a class="{{ $currentModuleSlug === 'chanteur' ? 'active' : '' }}" href="{{ route('service-modules.show', 'chanteur') }}"><span class="menu-icon">CH</span><span>Chanteur</span></a></li>
+                            <li><a class="{{ $currentModuleSlug === 'chanteur' ? 'active' : '' }}" href="{{ route('service-modules.show', 'chanteur') }}"><i class="fa fa-microphone menu-icon" aria-hidden="true"></i><span>Chanteur</span></a></li>
                         @endif
                         @if (auth()->user()?->canFeature('notaire', 'list', 'view'))
-                            <li><a class="{{ $currentModuleSlug === 'notaire' ? 'active' : '' }}" href="{{ route('service-modules.show', 'notaire') }}"><span class="menu-icon">NO</span><span>Notaire</span></a></li>
+                            <li><a class="{{ $currentModuleSlug === 'notaire' ? 'active' : '' }}" href="{{ route('service-modules.show', 'notaire') }}"><i class="fa fa-file-text-o menu-icon" aria-hidden="true"></i><span>Notaire</span></a></li>
                         @endif
                         @if (auth()->user()?->canFeature('animation', 'list', 'view'))
-                            <li><a class="{{ $currentModuleSlug === 'animation' ? 'active' : '' }}" href="{{ route('service-modules.show', 'animation') }}"><span class="menu-icon">AN</span><span>Animation</span></a></li>
+                            <li><a class="{{ $currentModuleSlug === 'animation' ? 'active' : '' }}" href="{{ route('service-modules.show', 'animation') }}"><i class="fa fa-smile-o menu-icon" aria-hidden="true"></i><span>Animation</span></a></li>
                         @endif
                         @if (auth()->user()?->canFeature('voiture', 'list', 'view'))
-                            <li><a class="{{ $currentModuleSlug === 'voiture' ? 'active' : '' }}" href="{{ route('service-modules.show', 'voiture') }}"><span class="menu-icon">VO</span><span>Voiture</span></a></li>
+                            <li><a class="{{ $currentModuleSlug === 'voiture' ? 'active' : '' }}" href="{{ route('service-modules.show', 'voiture') }}"><i class="fa fa-car menu-icon" aria-hidden="true"></i><span>Voiture</span></a></li>
                         @endif
                     </ul>
                 </div>
@@ -115,7 +116,17 @@
             <div class="topbar">
                 <button type="button" class="btn sidebar-toggle" data-sidebar-toggle>Menu</button>
                 <div class="search">Workspace: QueenOnlineV2</div>
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div class="topbar-right">
+                    <button type="button" class="top-icon-btn" aria-label="Messages">
+                        <i class="fa fa-envelope" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" class="top-icon-btn" aria-label="Notifications">
+                        <i class="fa fa-bell" aria-hidden="true"></i>
+                    </button>
+                    <div class="user-chip">
+                        <i class="fa fa-user-circle" aria-hidden="true"></i>
+                        <span>{{ auth()->user()?->name ?? 'Utilisateur' }}</span>
+                    </div>
                     <a href="{{ route('profile.password.edit') }}" class="btn">Mot de passe</a>
                     <div class="profile">Production panel • {{ now()->format('d/m/Y H:i') }}</div>
                     <form method="POST" action="{{ route('logout') }}">
