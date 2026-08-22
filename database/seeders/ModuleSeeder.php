@@ -58,6 +58,68 @@ class ModuleSeeder extends Seeder
                     ['name' => 'Suppression paiement', 'slug' => 'delete', 'sort_order' => 40],
                 ],
             ],
+            [
+                'module' => ['name' => 'Troupe musicale', 'slug' => 'troupe-musicale', 'description' => 'Gestion des troupes musicales et packs', 'sort_order' => 60],
+                'features' => [
+                    ['name' => 'Liste troupes musicales', 'slug' => 'list', 'sort_order' => 10],
+                    ['name' => 'Creation troupe musicale', 'slug' => 'create', 'sort_order' => 20],
+                    ['name' => 'Edition troupe musicale', 'slug' => 'update', 'sort_order' => 30],
+                    ['name' => 'Suppression troupe musicale', 'slug' => 'delete', 'sort_order' => 40],
+                    ['name' => 'Liste packs troupe musicale', 'slug' => 'list-pack', 'sort_order' => 50],
+                    ['name' => 'Creation pack troupe musicale', 'slug' => 'create-pack', 'sort_order' => 60],
+                    ['name' => 'Edition pack troupe musicale', 'slug' => 'update-pack', 'sort_order' => 70],
+                    ['name' => 'Suppression pack troupe musicale', 'slug' => 'delete-pack', 'sort_order' => 80],
+                ],
+            ],
+            [
+                'module' => ['name' => 'Photographe', 'slug' => 'photographe', 'description' => 'Gestion des photographes et packs', 'sort_order' => 70],
+                'features' => [
+                    ['name' => 'Liste photographes', 'slug' => 'list', 'sort_order' => 10],
+                    ['name' => 'Creation photographe', 'slug' => 'create', 'sort_order' => 20],
+                    ['name' => 'Edition photographe', 'slug' => 'update', 'sort_order' => 30],
+                    ['name' => 'Suppression photographe', 'slug' => 'delete', 'sort_order' => 40],
+                    ['name' => 'Liste packs photographe', 'slug' => 'list-pack', 'sort_order' => 50],
+                    ['name' => 'Creation pack photographe', 'slug' => 'create-pack', 'sort_order' => 60],
+                    ['name' => 'Edition pack photographe', 'slug' => 'update-pack', 'sort_order' => 70],
+                    ['name' => 'Suppression pack photographe', 'slug' => 'delete-pack', 'sort_order' => 80],
+                ],
+            ],
+            [
+                'module' => ['name' => 'Chanteur', 'slug' => 'chanteur', 'description' => 'Gestion des chanteurs', 'sort_order' => 80],
+                'features' => [
+                    ['name' => 'Liste chanteurs', 'slug' => 'list', 'sort_order' => 10],
+                    ['name' => 'Creation chanteur', 'slug' => 'create', 'sort_order' => 20],
+                    ['name' => 'Edition chanteur', 'slug' => 'update', 'sort_order' => 30],
+                    ['name' => 'Suppression chanteur', 'slug' => 'delete', 'sort_order' => 40],
+                ],
+            ],
+            [
+                'module' => ['name' => 'Notaire', 'slug' => 'notaire', 'description' => 'Gestion des notaires', 'sort_order' => 90],
+                'features' => [
+                    ['name' => 'Liste notaires', 'slug' => 'list', 'sort_order' => 10],
+                    ['name' => 'Creation notaire', 'slug' => 'create', 'sort_order' => 20],
+                    ['name' => 'Edition notaire', 'slug' => 'update', 'sort_order' => 30],
+                    ['name' => 'Suppression notaire', 'slug' => 'delete', 'sort_order' => 40],
+                ],
+            ],
+            [
+                'module' => ['name' => 'Animation', 'slug' => 'animation', 'description' => 'Gestion des services d animation', 'sort_order' => 100],
+                'features' => [
+                    ['name' => 'Liste animations', 'slug' => 'list', 'sort_order' => 10],
+                    ['name' => 'Creation animation', 'slug' => 'create', 'sort_order' => 20],
+                    ['name' => 'Edition animation', 'slug' => 'update', 'sort_order' => 30],
+                    ['name' => 'Suppression animation', 'slug' => 'delete', 'sort_order' => 40],
+                ],
+            ],
+            [
+                'module' => ['name' => 'Voiture', 'slug' => 'voiture', 'description' => 'Gestion des voitures', 'sort_order' => 110],
+                'features' => [
+                    ['name' => 'Liste voitures', 'slug' => 'list', 'sort_order' => 10],
+                    ['name' => 'Creation voiture', 'slug' => 'create', 'sort_order' => 20],
+                    ['name' => 'Edition voiture', 'slug' => 'update', 'sort_order' => 30],
+                    ['name' => 'Suppression voiture', 'slug' => 'delete', 'sort_order' => 40],
+                ],
+            ],
         ];
 
         foreach ($structure as $item) {
