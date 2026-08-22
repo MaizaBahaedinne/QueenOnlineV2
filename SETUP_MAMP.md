@@ -52,3 +52,4 @@ Application: `http://127.0.0.1:8082`
 
 - Ce projet est separe de l'ancien (`QueenOnline`) et ne le modifie pas.
 - Les variables metier visibles pourront etre stockees en base via une interface admin (approche recommandee pour ce contexte).
+- Si MAMP n'est pas stable sur ta machine, utilise le guide VPS: `SETUP_VPS.md`.
