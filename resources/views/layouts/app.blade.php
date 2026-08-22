@@ -119,9 +119,11 @@
                 <div class="topbar-right">
                     <button type="button" class="top-icon-btn" aria-label="Messages">
                         <i class="fa fa-envelope" aria-hidden="true"></i>
+                        <span class="top-icon-badge" aria-hidden="true"></span>
                     </button>
                     <button type="button" class="top-icon-btn" aria-label="Notifications">
                         <i class="fa fa-bell" aria-hidden="true"></i>
+                        <span class="top-icon-badge" aria-hidden="true"></span>
                     </button>
                     <div class="user-menu" data-user-menu>
                         <button type="button" class="user-chip user-chip-button" data-user-menu-toggle aria-expanded="false" aria-haspopup="true">
