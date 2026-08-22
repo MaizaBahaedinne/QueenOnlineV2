@@ -22,7 +22,7 @@
             </div>
 
             @foreach ($modules as $module)
-                <div class="panel" style="box-shadow:none;">
+                <div class="panel" style="box-shadow:none;" id="module-{{ $module->slug }}">
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
                         <div>
                             <h3 class="panel-title" style="margin:0;">{{ $module->name }}</h3>
