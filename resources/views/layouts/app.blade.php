@@ -33,29 +33,6 @@
                 <li><a class="{{ str_starts_with((string) $current, 'permissions.') ? 'active' : '' }}" href="{{ route('permissions.matrix') }}">Matrice roles</a></li>
             </ul>
 
-            @php
-                $sidebarModules = collect();
-                if (\Illuminate\Support\Facades\Schema::hasTable('modules')) {
-                    $sidebarModules = \App\Models\Module::query()
-                        ->where('is_active', true)
-                        ->orderBy('sort_order')
-                        ->orderBy('id')
-                        ->get(['name', 'slug']);
-                }
-            @endphp
-
-            @if ($sidebarModules->isNotEmpty())
-                <div class="menu-title">Modules actifs</div>
-                <ul class="menu">
-                    @foreach ($sidebarModules as $sidebarModule)
-                        <li>
-                            <a href="{{ route('service-modules.show', $sidebarModule->slug) }}">
-                                {{ $sidebarModule->name }}
-                            </a>
-                        </li>
-                    @endforeach
-                </ul>
-            @endif
         </aside>
 
         <main class="main">
