@@ -1,27 +1,48 @@
-*.log
-.DS_Store
-.env
-.env.backup
-.env.production
-.phpactor.json
-.phpunit.result.cache
-/.codex
-/.cursor/
-/.idea
-/.nova
 /.phpunit.cache
-/.vscode
-/.zed
-/auth.json
 /node_modules
 /public/build
-/public/fonts-manifest.dev.json
 /public/hot
-/public/storage
 /storage/*.key
 /storage/pail
 /vendor
-_ide_helper.php
-Homestead.json
-Homestead.yaml
-Thumbs.db
+
+# Laravel caches/logs generated locally
+/bootstrap/cache/*.php
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+
+# Keep framework directories but ignore generated files
+!/storage/framework/cache/.gitignore
+!/storage/framework/sessions/.gitignore
+!/storage/framework/testing/.gitignore
+!/storage/framework/views/.gitignore
+!/storage/logs/.gitignore
+
+# Environment and secrets
+/.env
+/.env.*
+!/.env.example
+
+# IDE / OS
+/.idea
+/.vscode/*
+!/.vscode/settings.json
+!/.vscode/tasks.json
+!/.vscode/launch.json
+!/.vscode/extensions.json
+*.swp
+*.swo
+.DS_Store
+
+# Test artifacts
+/.phpunit.result.cache
+
+# Frontend tool artifacts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+

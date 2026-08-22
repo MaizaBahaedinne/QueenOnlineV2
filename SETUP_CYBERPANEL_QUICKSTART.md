@@ -6,7 +6,7 @@ Objectif: deploy rapide en mode production sur un VPS avec CyberPanel deja insta
 
 Dans ton terminal SSH:
 
-export DOMAIN="ton-domaine.tld"
+export DOMAIN="queenpark.tn"
 export SITE_USER="siteuser"
 export REPO_URL="https://github.com/owner/repo.git"
 export APP_PATH="/home/$SITE_USER/public_html"
