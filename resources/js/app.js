@@ -40,8 +40,21 @@ function ensureModalFieldLabels() {
 			return;
 		}
 
+		if (field.id) {
+			const safeId = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+				? CSS.escape(field.id)
+				: field.id.replace(/"/g, '\\"');
+			const existingLabel = document.querySelector(`label[for="${safeId}"]`);
+			if (existingLabel) {
+				return;
+			}
+		}
+
 		const previous = field.previousElementSibling;
-		if (previous && previous.classList.contains('auto-field-label')) {
+		if (previous && (
+			previous.classList.contains('auto-field-label')
+			|| previous.tagName.toLowerCase() === 'label'
+		)) {
 			return;
 		}
 
