@@ -28,6 +28,7 @@ class SalleController extends MatrixAwareController
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'salle_type' => ['required', Rule::in(['couvert', 'plein-air'])],
             'capacity' => ['required', 'integer', 'min:1'],
             'price_per_day' => ['required', 'numeric', 'min:0'],
         ]);
@@ -43,6 +44,7 @@ class SalleController extends MatrixAwareController
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'salle_type' => ['required', Rule::in(['couvert', 'plein-air'])],
             'capacity' => ['required', 'integer', 'min:1'],
             'price_per_day' => ['required', 'numeric', 'min:0'],
             'status' => ['nullable', Rule::in(['active', 'inactive'])],

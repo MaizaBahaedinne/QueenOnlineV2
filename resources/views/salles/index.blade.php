@@ -36,6 +36,7 @@
                     <tr>
                         <th>ID</th>
                         <th>Nom</th>
+                        <th>Type</th>
                         <th>Capacite</th>
                         <th>Prix/Jour</th>
                         <th>Statut</th>
@@ -47,6 +48,7 @@
                         <tr>
                             <td>{{ $salle->id }}</td>
                             <td>{{ $salle->name }}</td>
+                            <td>{{ $salle->salle_type === 'plein-air' ? 'En plein air' : 'Couvert' }}</td>
                             <td>{{ $salle->capacity }}</td>
                             <td>{{ number_format((float) $salle->price_per_day, 2, '.', ' ') }}</td>
                             <td>{{ $salle->status ?? 'active' }}</td>
@@ -55,6 +57,7 @@
                                     <button type="button" class="btn" data-open-modal="salle-edit-modal"
                                         data-salle-id="{{ $salle->id }}"
                                         data-salle-name="{{ $salle->name }}"
+                                        data-salle-type="{{ $salle->salle_type ?? 'couvert' }}"
                                         data-salle-capacity="{{ $salle->capacity }}"
                                         data-salle-price="{{ $salle->price_per_day }}"
                                         data-salle-status="{{ $salle->status ?? 'active' }}"
@@ -71,7 +74,7 @@
                             </div></td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="muted">Aucune salle.</td></tr>
+                        <tr><td colspan="7" class="muted">Aucune salle.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -82,6 +85,10 @@
         <div class="modal-overlay" id="salle-create-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Ajouter salle</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
             <form method="POST" action="{{ route('salles.store') }}" style="display:grid; gap:10px;">@csrf
                 <input class="search" style="max-width:none;" type="text" name="name" placeholder="Nom" required>
+                <select class="search" style="max-width:none;" name="salle_type" required>
+                    <option value="couvert">Couvert</option>
+                    <option value="plein-air">En plein air</option>
+                </select>
                 <input class="search" style="max-width:none;" type="number" min="1" name="capacity" placeholder="Capacite" required>
                 <input class="search" style="max-width:none;" type="number" step="0.01" min="0" name="price_per_day" placeholder="Prix par jour" required>
                 <button type="submit" class="btn btn-primary">Enregistrer</button>
@@ -92,6 +99,10 @@
         <div class="modal-overlay" id="salle-edit-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Modifier salle</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
             <form method="POST" id="salle-edit-form" action="#" style="display:grid; gap:10px;">@csrf @method('PATCH')
                 <input class="search" style="max-width:none;" type="text" name="name" id="salle-edit-name" required>
+                <select class="search" style="max-width:none;" name="salle_type" id="salle-edit-type" required>
+                    <option value="couvert">Couvert</option>
+                    <option value="plein-air">En plein air</option>
+                </select>
                 <input class="search" style="max-width:none;" type="number" min="1" name="capacity" id="salle-edit-capacity" required>
                 <input class="search" style="max-width:none;" type="number" step="0.01" min="0" name="price_per_day" id="salle-edit-price" required>
                 <select class="search" style="max-width:none;" name="status" id="salle-edit-status"><option value="active">Actif</option><option value="inactive">Inactif</option></select>
@@ -121,6 +132,7 @@
                 if (modalId === 'salle-edit-modal') {
                     document.getElementById('salle-edit-form').action = `{{ url('salles') }}/${button.dataset.salleId}`;
                     document.getElementById('salle-edit-name').value = button.dataset.salleName ?? '';
+                    document.getElementById('salle-edit-type').value = button.dataset.salleType ?? 'couvert';
                     document.getElementById('salle-edit-capacity').value = button.dataset.salleCapacity ?? '';
                     document.getElementById('salle-edit-price').value = button.dataset.sallePrice ?? '';
                     document.getElementById('salle-edit-status').value = button.dataset.salleStatus ?? 'active';

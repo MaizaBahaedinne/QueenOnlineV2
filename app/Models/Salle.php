@@ -8,6 +8,7 @@ class Salle extends Model
 {
     protected $fillable = [
         'name',
+        'salle_type',
         'capacity',
         'price_per_day',
         'status',
