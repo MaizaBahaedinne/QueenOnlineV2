@@ -34,6 +34,8 @@
         .reservation-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
         .reservation-quick-box { display: none; margin-top: 10px; border: 1px solid #decfba; background: #fff9f0; border-radius: 12px; padding: 10px; }
         .reservation-quick-title { margin: 0 0 6px; font-weight: 700; font-size: 13px; color: #6a4715; }
+        .company-fields { display: none; }
+        .company-fields.show { display: contents; }
 
         @media (max-width: 860px) {
             .reservation-inline-grid,
@@ -172,37 +174,142 @@
 
                     <p class="reservation-hint" id="reservation-client-search-status">Recherche un client apres la selection de la salle.</p>
                     <div class="reservation-field" style="margin-top:10px;">
-                        <label for="reservation-create-client-id">Client trouve</label>
-                        <select class="search" style="max-width:none;" name="client_id" id="reservation-create-client-id" required disabled>
+                        <label for="reservation-create-client-id">Client trouve (optionnel)</label>
+                        <select class="search" style="max-width:none;" name="client_id" id="reservation-create-client-id">
                             <option value="">Client selectionne</option>
                         </select>
                     </div>
 
-                    <div id="reservation-quick-client-box" class="reservation-quick-box">
-                        <p class="reservation-quick-title">Client introuvable: ajoute rapidement un nouveau client</p>
+                    <div class="reservation-hint" style="margin-top:10px;">La fiche client est toujours editable: si client existe, les champs sont pre-remplis; sinon ils restent vides pour un nouvel ajout.</div>
+
+                    <div class="reservation-inline-grid-2" style="margin-top:10px;">
+                        <div class="reservation-field">
+                            <label for="reservation-client-type">Type client</label>
+                            <select class="search" style="max-width:none;" name="client_type" id="reservation-client-type" required>
+                                <option value="personne-physique">Personne physique</option>
+                                <option value="societe">Societe</option>
+                            </select>
+                        </div>
+                        <div class="reservation-field">
+                            <label for="reservation-client-status">Statut client</label>
+                            <select class="search" style="max-width:none;" name="status" id="reservation-client-status" required>
+                                <option value="active">Actif</option>
+                                <option value="inactive">Inactif</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="company-fields" data-company-fields="reservation-client-type" style="margin-top:10px;">
                         <div class="reservation-inline-grid-2">
                             <div class="reservation-field">
-                                <label for="quick-client-first-name">Prenom</label>
-                                <input class="search" style="max-width:none;" type="text" id="quick-client-first-name" placeholder="Prenom">
+                                <label for="reservation-client-fiscal-number">Matricule fiscale</label>
+                                <input class="search" style="max-width:none;" type="text" name="fiscal_number" id="reservation-client-fiscal-number" placeholder="Matricule fiscale">
                             </div>
                             <div class="reservation-field">
-                                <label for="quick-client-name">Nom</label>
-                                <input class="search" style="max-width:none;" type="text" id="quick-client-name" placeholder="Nom" required>
+                                <label for="reservation-client-company-name">Raison sociale</label>
+                                <input class="search" style="max-width:none;" type="text" name="company_name" id="reservation-client-company-name" placeholder="Raison sociale">
                             </div>
                         </div>
-                        <div class="reservation-inline-grid-2" style="margin-top:10px;">
-                            <div class="reservation-field">
-                                <label for="quick-client-phone">Telephone</label>
-                                <input class="search" style="max-width:none;" type="text" id="quick-client-phone" placeholder="Telephone">
-                            </div>
-                            <div class="reservation-field">
-                                <label for="quick-client-cin">CIN</label>
-                                <input class="search" style="max-width:none;" type="text" id="quick-client-cin" placeholder="CIN">
-                            </div>
+                    </div>
+
+                    <div class="reservation-inline-grid-2" style="margin-top:10px;">
+                        <div class="reservation-field">
+                            <label for="reservation-client-first-name">Prenom</label>
+                            <input class="search" style="max-width:none;" type="text" name="first_name" id="reservation-client-first-name" required>
                         </div>
-                        <div class="reservation-actions">
-                            <button type="button" class="btn" id="reservation-quick-client-btn">Ajouter ce client</button>
+                        <div class="reservation-field">
+                            <label for="reservation-client-name">Nom</label>
+                            <input class="search" style="max-width:none;" type="text" name="name" id="reservation-client-name" required>
                         </div>
+                    </div>
+
+                    <div class="reservation-inline-grid-2" style="margin-top:10px;">
+                        <div class="reservation-field">
+                            <label for="reservation-client-gender">Sexe</label>
+                            <select class="search" style="max-width:none;" name="gender" id="reservation-client-gender" required>
+                                <option value="homme">Homme</option>
+                                <option value="femme">Femme</option>
+                            </select>
+                        </div>
+                        <div class="reservation-field">
+                            <label for="reservation-client-birth-date">Date naissance</label>
+                            <input class="search" style="max-width:none;" type="date" name="birth_date" id="reservation-client-birth-date">
+                        </div>
+                    </div>
+
+                    <div class="reservation-inline-grid-2" style="margin-top:10px;">
+                        <div class="reservation-field">
+                            <label for="reservation-client-cin">CIN</label>
+                            <input class="search" style="max-width:none;" type="text" name="cin" id="reservation-client-cin" required>
+                        </div>
+                        <div class="reservation-field">
+                            <label for="reservation-client-email">Email</label>
+                            <input class="search" style="max-width:none;" type="email" name="email" id="reservation-client-email">
+                        </div>
+                    </div>
+
+                    <div class="reservation-inline-grid-2" style="margin-top:10px;">
+                        <div class="reservation-field">
+                            <label for="reservation-client-address-number">N adresse</label>
+                            <input class="search" style="max-width:none;" type="text" name="address_number" id="reservation-client-address-number">
+                        </div>
+                        <div class="reservation-field">
+                            <label for="reservation-client-address-street">Rue</label>
+                            <input class="search" style="max-width:none;" type="text" name="address_street" id="reservation-client-address-street">
+                        </div>
+                    </div>
+
+                    <div class="reservation-inline-grid-2" style="margin-top:10px;">
+                        <div class="reservation-field">
+                            <label for="reservation-client-city">Ville</label>
+                            <input class="search" style="max-width:none;" type="text" name="city" id="reservation-client-city">
+                        </div>
+                        <div class="reservation-field">
+                            <label for="reservation-client-governorate">Gouvernorat</label>
+                            <select class="search" style="max-width:none;" name="governorate" id="reservation-client-governorate" required>
+                                <option value="">Gouvernorat</option>
+                                @foreach ($governorates as $governorate)
+                                    <option value="{{ $governorate }}">{{ $governorate }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="reservation-inline-grid-2" style="margin-top:10px;">
+                        <div class="reservation-field">
+                            <label for="reservation-client-phone">Mobile 1</label>
+                            <input class="search" style="max-width:none;" type="text" name="phone" id="reservation-client-phone">
+                        </div>
+                        <div class="reservation-field">
+                            <label for="reservation-client-phone-label-1">Label mobile 1</label>
+                            <input class="search" style="max-width:none;" type="text" name="phone_label_1" id="reservation-client-phone-label-1">
+                        </div>
+                    </div>
+
+                    <div class="reservation-inline-grid-2" style="margin-top:10px;">
+                        <div class="reservation-field">
+                            <label for="reservation-client-phone-2">Mobile 2</label>
+                            <input class="search" style="max-width:none;" type="text" name="phone_2" id="reservation-client-phone-2">
+                        </div>
+                        <div class="reservation-field">
+                            <label for="reservation-client-phone-label-2">Label mobile 2</label>
+                            <input class="search" style="max-width:none;" type="text" name="phone_label_2" id="reservation-client-phone-label-2">
+                        </div>
+                    </div>
+
+                    <div class="reservation-field" style="margin-top:10px;">
+                        <label for="reservation-client-source">Source</label>
+                        <select class="search" style="max-width:none;" name="source" id="reservation-client-source" required>
+                            <option value="">Source</option>
+                            @foreach ($sources as $source)
+                                <option value="{{ $source }}">{{ $source }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="reservation-field" style="margin-top:10px;">
+                        <label for="reservation-client-note">Note</label>
+                        <textarea class="search" style="max-width:none; min-height:72px;" name="note" id="reservation-client-note" placeholder="Note client"></textarea>
                     </div>
                 </div>
 
@@ -245,8 +352,6 @@
     <script>
         const availabilityUrl = "{{ route('reservations.availability') }}";
         const clientSearchUrl = "{{ route('reservations.clients.search') }}";
-        const quickClientStoreUrl = "{{ route('reservations.clients.quick-store') }}";
-        const csrfToken = document.querySelector('#reservation-create-form input[name="_token"]')?.value || '';
 
         const availabilityButton = document.getElementById('reservation-check-availability');
         const availabilityStatus = document.getElementById('reservation-availability-status');
@@ -261,12 +366,26 @@
         const clientSearchButton = document.getElementById('reservation-client-search-btn');
         const clientSearchStatus = document.getElementById('reservation-client-search-status');
         const clientSelect = document.getElementById('reservation-create-client-id');
-        const quickClientBox = document.getElementById('reservation-quick-client-box');
-        const quickClientButton = document.getElementById('reservation-quick-client-btn');
-        const quickClientFirstNameInput = document.getElementById('quick-client-first-name');
-        const quickClientNameInput = document.getElementById('quick-client-name');
-        const quickClientPhoneInput = document.getElementById('quick-client-phone');
-        const quickClientCinInput = document.getElementById('quick-client-cin');
+        const reservationClientType = document.getElementById('reservation-client-type');
+        const reservationClientStatus = document.getElementById('reservation-client-status');
+        const reservationClientFiscalNumber = document.getElementById('reservation-client-fiscal-number');
+        const reservationClientCompanyName = document.getElementById('reservation-client-company-name');
+        const reservationClientFirstName = document.getElementById('reservation-client-first-name');
+        const reservationClientName = document.getElementById('reservation-client-name');
+        const reservationClientGender = document.getElementById('reservation-client-gender');
+        const reservationClientBirthDate = document.getElementById('reservation-client-birth-date');
+        const reservationClientCin = document.getElementById('reservation-client-cin');
+        const reservationClientEmail = document.getElementById('reservation-client-email');
+        const reservationClientAddressNumber = document.getElementById('reservation-client-address-number');
+        const reservationClientAddressStreet = document.getElementById('reservation-client-address-street');
+        const reservationClientCity = document.getElementById('reservation-client-city');
+        const reservationClientGovernorate = document.getElementById('reservation-client-governorate');
+        const reservationClientPhone = document.getElementById('reservation-client-phone');
+        const reservationClientPhoneLabel1 = document.getElementById('reservation-client-phone-label-1');
+        const reservationClientPhone2 = document.getElementById('reservation-client-phone-2');
+        const reservationClientPhoneLabel2 = document.getElementById('reservation-client-phone-label-2');
+        const reservationClientSource = document.getElementById('reservation-client-source');
+        const reservationClientNote = document.getElementById('reservation-client-note');
         const editStartTimeInput = document.getElementById('reservation-edit-start-time');
         const editEndTimeInput = document.getElementById('reservation-edit-end-time');
 
@@ -292,6 +411,67 @@
             }
 
             return fallbackMessage;
+        };
+
+        const toggleCompanyFields = (typeSelectId) => {
+            const select = document.getElementById(typeSelectId);
+            if (!select) return;
+            const isCompany = select.value === 'societe';
+            document.querySelectorAll(`[data-company-fields="${typeSelectId}"]`).forEach((container) => {
+                container.classList.toggle('show', isCompany);
+            });
+        };
+
+        const clientFormDefaults = {
+            client_type: 'personne-physique',
+            status: 'active',
+            fiscal_number: '',
+            company_name: '',
+            first_name: '',
+            name: '',
+            gender: 'homme',
+            birth_date: '',
+            cin: '',
+            email: '',
+            address_number: '',
+            address_street: '',
+            city: '',
+            governorate: '',
+            phone: '',
+            phone_label_1: '',
+            phone_2: '',
+            phone_label_2: '',
+            source: 'passager',
+            note: '',
+        };
+
+        let searchedClientsMap = {};
+
+        const applyClientFormData = (data = {}) => {
+            const payload = { ...clientFormDefaults, ...data };
+
+            reservationClientType.value = payload.client_type || 'personne-physique';
+            reservationClientStatus.value = payload.status || 'active';
+            reservationClientFiscalNumber.value = payload.fiscal_number || '';
+            reservationClientCompanyName.value = payload.company_name || '';
+            reservationClientFirstName.value = payload.first_name || '';
+            reservationClientName.value = payload.name || '';
+            reservationClientGender.value = payload.gender || 'homme';
+            reservationClientBirthDate.value = payload.birth_date || '';
+            reservationClientCin.value = payload.cin || '';
+            reservationClientEmail.value = payload.email || '';
+            reservationClientAddressNumber.value = payload.address_number || '';
+            reservationClientAddressStreet.value = payload.address_street || '';
+            reservationClientCity.value = payload.city || '';
+            reservationClientGovernorate.value = payload.governorate || '';
+            reservationClientPhone.value = payload.phone || '';
+            reservationClientPhoneLabel1.value = payload.phone_label_1 || '';
+            reservationClientPhone2.value = payload.phone_2 || '';
+            reservationClientPhoneLabel2.value = payload.phone_label_2 || '';
+            reservationClientSource.value = payload.source || 'passager';
+            reservationClientNote.value = payload.note || '';
+
+            toggleCompanyFields('reservation-client-type');
         };
 
         const toMinutes = (timeValue) => {
@@ -389,7 +569,8 @@
             if (!clientSelect) return;
             clientSelect.innerHTML = '<option value="">Client selectionne</option>';
             clientSelect.value = '';
-            clientSelect.disabled = true;
+            clientSelect.disabled = false;
+            searchedClientsMap = {};
         };
 
         const fillClientSelect = (clients) => {
@@ -400,14 +581,35 @@
                 option.value = String(client.id);
                 option.textContent = client.label;
                 clientSelect.appendChild(option);
-            });
 
-            clientSelect.disabled = clients.length === 0;
+                searchedClientsMap[String(client.id)] = client.data || {};
+            });
 
             if (clients.length > 0) {
                 clientSelect.selectedIndex = 1;
+                const firstSelectedId = clientSelect.value;
+                applyClientFormData(searchedClientsMap[firstSelectedId] || {});
             }
         };
+
+        if (clientSelect) {
+            clientSelect.addEventListener('change', () => {
+                const selectedId = clientSelect.value || '';
+                if (!selectedId || !searchedClientsMap[selectedId]) {
+                    applyClientFormData();
+                    setStatusMessage(clientSearchStatus, 'Aucun client selectionne: fiche vide pour nouvel ajout.');
+                    return;
+                }
+
+                applyClientFormData(searchedClientsMap[selectedId]);
+                setStatusMessage(clientSearchStatus, 'Client existant charge: tu peux modifier ses champs.');
+            });
+        }
+
+        if (reservationClientType) {
+            reservationClientType.addEventListener('change', () => toggleCompanyFields('reservation-client-type'));
+            toggleCompanyFields('reservation-client-type');
+        }
 
         if (availabilityButton) {
             availabilityButton.addEventListener('click', async () => {
@@ -417,7 +619,7 @@
 
                 resetSalleSelection();
                 resetClientSelect();
-                quickClientBox.style.display = 'none';
+                applyClientFormData();
 
                 if (!eventDate || !startTime || !endTime) {
                     setStatusMessage(availabilityStatus, 'Renseigne date, heure debut et heure fin.', 'error');
@@ -497,7 +699,6 @@
 
                 const keyword = (clientSearchInput?.value || '').trim();
 
-                quickClientBox.style.display = 'none';
                 resetClientSelect();
 
                 if (keyword.length < 2) {
@@ -522,11 +723,9 @@
                     const foundClients = payload.clients ?? [];
 
                     if (foundClients.length === 0) {
-                        setStatusMessage(clientSearchStatus, 'Aucun client trouve. Tu peux l ajouter rapidement ci-dessous.');
-                        quickClientBox.style.display = 'block';
-                        if (quickClientNameInput && !quickClientNameInput.value) {
-                            quickClientNameInput.value = keyword;
-                        }
+                        setStatusMessage(clientSearchStatus, 'Aucun client trouve. Remplis la fiche client pour creer un nouveau client.');
+                        resetClientSelect();
+                        applyClientFormData();
                         return;
                     }
 
@@ -534,53 +733,6 @@
                     setStatusMessage(clientSearchStatus, `${foundClients.length} client(s) trouve(s).`);
                 } catch (error) {
                     setStatusMessage(clientSearchStatus, error instanceof Error ? error.message : 'Impossible de rechercher les clients pour le moment.', 'error');
-                }
-            });
-        }
-
-        if (quickClientButton) {
-            quickClientButton.addEventListener('click', async () => {
-                const name = (quickClientNameInput?.value || '').trim();
-                const firstName = (quickClientFirstNameInput?.value || '').trim();
-                const phone = (quickClientPhoneInput?.value || '').trim();
-                const cin = (quickClientCinInput?.value || '').trim();
-
-                if (!name) {
-                    setStatusMessage(clientSearchStatus, 'Le nom du client est obligatoire pour l ajout rapide.', 'error');
-                    return;
-                }
-
-                setStatusMessage(clientSearchStatus, 'Ajout rapide client en cours...');
-
-                try {
-                    const body = new URLSearchParams({
-                        name,
-                        first_name: firstName,
-                        phone,
-                        cin,
-                    });
-
-                    const response = await fetch(quickClientStoreUrl, {
-                        method: 'POST',
-                        headers: {
-                            Accept: 'application/json',
-                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                            'X-CSRF-TOKEN': csrfToken,
-                        },
-                        body: body.toString(),
-                    });
-
-                    const payload = await response.json();
-
-                    if (!response.ok || !payload.client) {
-                        throw new Error(extractErrorMessage(payload, 'Erreur ajout client'));
-                    }
-
-                    fillClientSelect([payload.client]);
-                    setStatusMessage(clientSearchStatus, payload.message || 'Client ajoute avec succes.');
-                    quickClientBox.style.display = 'none';
-                } catch (error) {
-                    setStatusMessage(clientSearchStatus, error instanceof Error ? error.message : 'Ajout client impossible. Verifie les donnees (ex: CIN deja utilise).', 'error');
                 }
             });
         }
@@ -624,9 +776,9 @@
                 if (modalId === 'reservation-create-modal') {
                     resetSalleSelection();
                     resetClientSelect();
+                    applyClientFormData();
                     setStatusMessage(availabilityStatus, 'Selectionne la date et les horaires, puis clique sur verifier.');
                     setStatusMessage(clientSearchStatus, 'Recherche un client apres la selection de la salle.');
-                    quickClientBox.style.display = 'none';
                     endDateInput.value = '';
                 }
             });

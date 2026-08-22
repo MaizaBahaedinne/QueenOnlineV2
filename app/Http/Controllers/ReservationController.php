@@ -10,9 +10,24 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ReservationController extends MatrixAwareController
 {
+    private const GOVERNORATES = [
+        'Ariana', 'Beja', 'Ben Arous', 'Bizerte', 'Gabes', 'Gafsa', 'Jendouba', 'Kairouan',
+        'Kasserine', 'Kebili', 'Le Kef', 'Mahdia', 'La Manouba', 'Medenine', 'Monastir',
+        'Nabeul', 'Sfax', 'Sidi Bouzid', 'Siliana', 'Sousse', 'Tataouine', 'Tozeur', 'Tunis', 'Zaghouan',
+    ];
+
+    private const SOURCES = [
+        'passager',
+        'reseaux-sociaux-web',
+        'presence-event',
+        'recommandation',
+        'connaissance-queenpark',
+    ];
+
     public function index()
     {
         $this->enforcePermission('reservations', 'list', 'view');
@@ -22,6 +37,8 @@ class ReservationController extends MatrixAwareController
             'reservations' => Reservation::query()->with(['client', 'salle'])->latest()->get(),
             'clients' => Client::query()->orderBy('name')->get(),
             'salles' => Salle::query()->orderBy('name')->get(),
+            'governorates' => self::GOVERNORATES,
+            'sources' => self::SOURCES,
         ]);
     }
 
@@ -34,8 +51,9 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'create', 'create');
 
+        $resolvedClientId = $this->resolveReservationClient($request);
+
         $validated = $request->validate([
-            'client_id' => ['required', 'exists:clients,id'],
             'salle_id' => ['required', 'exists:salles,id'],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date', 'after_or_equal:today'],
@@ -56,6 +74,8 @@ class ReservationController extends MatrixAwareController
             ],
             'total_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        $validated['client_id'] = $resolvedClientId;
 
         Reservation::create($validated);
 
@@ -223,6 +243,28 @@ class ReservationController extends MatrixAwareController
             return [
                 'id' => $client->id,
                 'label' => $display,
+                'data' => [
+                    'client_type' => $client->client_type ?? 'personne-physique',
+                    'status' => $client->status ?? 'active',
+                    'fiscal_number' => $client->fiscal_number,
+                    'company_name' => $client->company_name,
+                    'first_name' => $client->first_name,
+                    'name' => $client->name,
+                    'gender' => $client->gender ?? 'homme',
+                    'birth_date' => $client->birth_date,
+                    'cin' => $client->cin,
+                    'email' => $client->email,
+                    'address_number' => $client->address_number,
+                    'address_street' => $client->address_street,
+                    'city' => $client->city,
+                    'governorate' => $client->governorate,
+                    'phone' => $client->phone,
+                    'phone_label_1' => $client->phone_label_1,
+                    'phone_2' => $client->phone_2,
+                    'phone_label_2' => $client->phone_label_2,
+                    'source' => $client->source,
+                    'note' => $client->note,
+                ],
             ];
         })->values();
 
@@ -287,5 +329,80 @@ class ReservationController extends MatrixAwareController
             ],
             'message' => 'Client ajoute avec succes.',
         ]);
+    }
+
+    private function resolveReservationClient(Request $request): int
+    {
+        $clientIdInput = $request->input('client_id');
+        $existingClient = null;
+
+        if (! empty($clientIdInput)) {
+            $existingClient = Client::query()->find($clientIdInput);
+            if (! $existingClient) {
+                throw ValidationException::withMessages([
+                    'client_id' => ['Client selectionne introuvable.'],
+                ]);
+            }
+        }
+
+        $hasExtendedColumns = Schema::hasColumn('clients', 'client_type')
+            && Schema::hasColumn('clients', 'first_name')
+            && Schema::hasColumn('clients', 'gender');
+
+        if (! $hasExtendedColumns) {
+            $basicRules = [
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['nullable', 'email'],
+                'phone' => ['nullable', 'string', 'max:50'],
+                'cin' => ['nullable', 'string', 'max:50', Rule::unique('clients', 'cin')->ignore($existingClient?->id)],
+                'city' => ['nullable', 'string', 'max:255'],
+                'status' => ['nullable', Rule::in(['active', 'inactive'])],
+            ];
+
+            $basicValidated = $request->validate($basicRules);
+            if ($existingClient) {
+                $existingClient->update($basicValidated);
+                return $existingClient->id;
+            }
+
+            $createdClient = Client::query()->create($basicValidated);
+            return $createdClient->id;
+        }
+
+        $extendedValidated = $request->validate([
+            'client_type' => ['required', Rule::in(['personne-physique', 'societe'])],
+            'status' => ['nullable', Rule::in(['active', 'inactive'])],
+            'fiscal_number' => ['nullable', 'string', 'max:100', 'required_if:client_type,societe'],
+            'company_name' => ['nullable', 'string', 'max:255', 'required_if:client_type,societe'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'gender' => ['required', Rule::in(['homme', 'femme'])],
+            'birth_date' => ['nullable', 'date'],
+            'cin' => ['required', 'string', 'max:50', Rule::unique('clients', 'cin')->ignore($existingClient?->id)],
+            'email' => ['nullable', 'email'],
+            'address_number' => ['nullable', 'string', 'max:50'],
+            'address_street' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'governorate' => ['required', Rule::in(self::GOVERNORATES)],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'phone_label_1' => ['nullable', 'string', 'max:100'],
+            'phone_2' => ['nullable', 'string', 'max:50'],
+            'phone_label_2' => ['nullable', 'string', 'max:100'],
+            'source' => ['required', Rule::in(self::SOURCES)],
+            'note' => ['nullable', 'string'],
+        ]);
+
+        if (($extendedValidated['client_type'] ?? null) === 'personne-physique') {
+            $extendedValidated['fiscal_number'] = null;
+            $extendedValidated['company_name'] = null;
+        }
+
+        if ($existingClient) {
+            $existingClient->update($extendedValidated);
+            return $existingClient->id;
+        }
+
+        $createdClient = Client::query()->create($extendedValidated);
+        return $createdClient->id;
     }
 }
