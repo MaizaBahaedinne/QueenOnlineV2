@@ -17,14 +17,14 @@
         $currentModuleSlug = request()->route('module');
         $isPilotage = $current === 'dashboard';
         $isExploitation = str_starts_with((string) $current, 'clients.')
-            || str_starts_with((string) $current, 'salles.')
             || str_starts_with((string) $current, 'reservations.')
             || str_starts_with((string) $current, 'payments.');
         $isAdministration = str_starts_with((string) $current, 'users.')
             || str_starts_with((string) $current, 'roles.')
             || str_starts_with((string) $current, 'modules.')
             || str_starts_with((string) $current, 'permissions.');
-        $isServices = in_array((string) $currentModuleSlug, ['troupe-musicale', 'photographe', 'chanteur', 'notaire', 'animation', 'voiture'], true);
+        $isServices = str_starts_with((string) $current, 'salles.')
+            || in_array((string) $currentModuleSlug, ['troupe-musicale', 'photographe', 'chanteur', 'notaire', 'animation', 'voiture'], true);
     @endphp
 
     <div class="app-shell">
@@ -54,7 +54,6 @@
                 <div class="menu-section-content">
                     <ul class="menu">
                         <li><a class="{{ str_starts_with((string) $current, 'clients.') ? 'active' : '' }}" href="{{ route('clients.index') }}"><i class="fa fa-users menu-icon" aria-hidden="true"></i><span>Clients</span></a></li>
-                        <li><a class="{{ str_starts_with((string) $current, 'salles.') ? 'active' : '' }}" href="{{ route('salles.index') }}"><i class="fa fa-building menu-icon" aria-hidden="true"></i><span>Salles</span></a></li>
                         <li><a class="{{ str_starts_with((string) $current, 'reservations.') ? 'active' : '' }}" href="{{ route('reservations.index') }}"><i class="fa fa-calendar menu-icon" aria-hidden="true"></i><span>Reservations</span></a></li>
                         <li><a class="{{ str_starts_with((string) $current, 'payments.') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa fa-credit-card menu-icon" aria-hidden="true"></i><span>Paiements</span></a></li>
                     </ul>
@@ -94,6 +93,9 @@
 
                     <div class="menu-subtitle">Services standards</div>
                     <ul class="menu">
+                        @if (auth()->user()?->canFeature('salles', 'list', 'view'))
+                            <li><a class="{{ str_starts_with((string) $current, 'salles.') ? 'active' : '' }}" href="{{ route('salles.index') }}"><i class="fa fa-building menu-icon" aria-hidden="true"></i><span>Salles</span></a></li>
+                        @endif
                         @if (auth()->user()?->canFeature('chanteur', 'list', 'view'))
                             <li><a class="{{ $currentModuleSlug === 'chanteur' ? 'active' : '' }}" href="{{ route('service-modules.show', 'chanteur') }}"><i class="fa fa-microphone menu-icon" aria-hidden="true"></i><span>Chanteur</span></a></li>
                         @endif
