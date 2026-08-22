@@ -1,4 +1,5 @@
 const toggleButton = document.querySelector('[data-sidebar-toggle]');
+const sectionToggles = document.querySelectorAll('[data-menu-toggle]');
 
 if (toggleButton) {
 	toggleButton.addEventListener('click', () => {
@@ -14,3 +15,14 @@ if (toggleButton) {
 		}
 	});
 }
+
+sectionToggles.forEach((toggle) => {
+	toggle.addEventListener('click', () => {
+		const section = toggle.closest('[data-menu-section]');
+		if (!section) {
+			return;
+		}
+
+		section.classList.toggle('is-open');
+	});
+});
