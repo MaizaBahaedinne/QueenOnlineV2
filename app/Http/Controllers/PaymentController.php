@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
+use App\Models\Reservation;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -13,7 +14,9 @@ class PaymentController extends MatrixAwareController
         $this->enforcePermission('payments', 'list', 'view');
 
         return view('payments.index', [
+            'title' => 'Paiements',
             'payments' => Payment::query()->with(['reservation', 'user'])->latest()->get(),
+            'reservations' => Reservation::query()->orderByDesc('id')->get(),
         ]);
     }
 

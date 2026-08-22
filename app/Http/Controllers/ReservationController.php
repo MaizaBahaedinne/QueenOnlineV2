@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Client;
 use App\Models\Reservation;
+use App\Models\Salle;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -13,7 +15,10 @@ class ReservationController extends MatrixAwareController
         $this->enforcePermission('reservations', 'list', 'view');
 
         return view('reservations.index', [
+            'title' => 'Reservations',
             'reservations' => Reservation::query()->with(['client', 'salle'])->latest()->get(),
+            'clients' => Client::query()->orderBy('name')->get(),
+            'salles' => Salle::query()->orderBy('name')->get(),
         ]);
     }
 
