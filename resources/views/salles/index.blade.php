@@ -14,6 +14,7 @@
         .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
         .modal-title { margin: 0; font-size: 18px; }
         .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .salle-color-chip { width: 24px; height: 24px; border-radius: 8px; border: 1px solid #cbd5e1; display: inline-block; vertical-align: middle; }
     </style>
 
     <section class="panel">
@@ -37,6 +38,7 @@
                         <th>ID</th>
                         <th>Nom</th>
                         <th>Type</th>
+                        <th>Couleur</th>
                         <th>Capacite</th>
                         <th>Prix/Jour</th>
                         <th>Statut</th>
@@ -49,6 +51,7 @@
                             <td>{{ $salle->id }}</td>
                             <td>{{ $salle->name }}</td>
                             <td>{{ $salle->salle_type === 'plein-air' ? 'En plein air' : 'Couvert' }}</td>
+                            <td><span class="salle-color-chip" data-color="{{ $salle->color_code ?? '#3b82f6' }}"></span> {{ $salle->color_code ?? '#3b82f6' }}</td>
                             <td>{{ $salle->capacity }}</td>
                             <td>{{ number_format((float) $salle->price_per_day, 2, '.', ' ') }}</td>
                             <td>{{ $salle->status ?? 'active' }}</td>
@@ -58,6 +61,7 @@
                                         data-salle-id="{{ $salle->id }}"
                                         data-salle-name="{{ $salle->name }}"
                                         data-salle-type="{{ $salle->salle_type ?? 'couvert' }}"
+                                        data-salle-color-code="{{ $salle->color_code ?? '#3b82f6' }}"
                                         data-salle-capacity="{{ $salle->capacity }}"
                                         data-salle-price="{{ $salle->price_per_day }}"
                                         data-salle-status="{{ $salle->status ?? 'active' }}"
@@ -74,7 +78,7 @@
                             </div></td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="muted">Aucune salle.</td></tr>
+                        <tr><td colspan="8" class="muted">Aucune salle.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -89,6 +93,7 @@
                     <option value="couvert">Couvert</option>
                     <option value="plein-air">En plein air</option>
                 </select>
+                <input class="search" style="max-width:none;" type="color" name="color_code" value="#3b82f6" required>
                 <input class="search" style="max-width:none;" type="number" min="1" name="capacity" placeholder="Capacite" required>
                 <input class="search" style="max-width:none;" type="number" step="0.01" min="0" name="price_per_day" placeholder="Prix par jour" required>
                 <button type="submit" class="btn btn-primary">Enregistrer</button>
@@ -103,6 +108,7 @@
                     <option value="couvert">Couvert</option>
                     <option value="plein-air">En plein air</option>
                 </select>
+                <input class="search" style="max-width:none;" type="color" name="color_code" id="salle-edit-color-code" required>
                 <input class="search" style="max-width:none;" type="number" min="1" name="capacity" id="salle-edit-capacity" required>
                 <input class="search" style="max-width:none;" type="number" step="0.01" min="0" name="price_per_day" id="salle-edit-price" required>
                 <select class="search" style="max-width:none;" name="status" id="salle-edit-status"><option value="active">Actif</option><option value="inactive">Inactif</option></select>
@@ -133,6 +139,7 @@
                     document.getElementById('salle-edit-form').action = `{{ url('salles') }}/${button.dataset.salleId}`;
                     document.getElementById('salle-edit-name').value = button.dataset.salleName ?? '';
                     document.getElementById('salle-edit-type').value = button.dataset.salleType ?? 'couvert';
+                    document.getElementById('salle-edit-color-code').value = button.dataset.salleColorCode ?? '#3b82f6';
                     document.getElementById('salle-edit-capacity').value = button.dataset.salleCapacity ?? '';
                     document.getElementById('salle-edit-price').value = button.dataset.sallePrice ?? '';
                     document.getElementById('salle-edit-status').value = button.dataset.salleStatus ?? 'active';
@@ -147,5 +154,10 @@
         });
         closeModalButtons.forEach((button) => button.addEventListener('click', () => { const modal = button.closest('.modal-overlay'); if (modal) closeModal(modal); }));
         document.querySelectorAll('.modal-overlay').forEach((modal) => modal.addEventListener('click', (event) => { if (event.target === modal) closeModal(modal); }));
+
+        document.querySelectorAll('.salle-color-chip[data-color]').forEach((chip) => {
+            const color = chip.getAttribute('data-color') || '#3b82f6';
+            chip.style.background = color;
+        });
     </script>
 @endsection

@@ -42,7 +42,7 @@
         .reservation-day-cell.is-selected { border-color: #173f69; box-shadow: 0 0 0 2px rgba(23, 63, 105, .20); }
         .reservation-day-number { font-size: 12px; font-weight: 700; color: #234869; }
         .reservation-day-events { margin-top: 4px; display: grid; gap: 3px; }
-        .reservation-day-event { font-size: 10px; line-height: 1.2; padding: 2px 4px; border-radius: 6px; background: #eef5fc; color: #244f77; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .reservation-day-event { font-size: 10px; line-height: 1.2; padding: 2px 4px; border-radius: 6px; background: #eef5fc; color: #244f77; border-left: 3px solid #3b82f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .salle-cards-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
         .salle-card { border: 1px solid #d7dee8; border-radius: 12px; padding: 11px; cursor: pointer; background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%); transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; text-align: left; }
         .salle-card:hover { border-color: #8ca6c1; box-shadow: 0 6px 14px rgba(8, 24, 48, 0.08); transform: translateY(-1px); }
@@ -316,6 +316,7 @@
             'title' => $reservation->title,
             'client' => $reservation->client?->name ?? '-',
             'salle' => $reservation->salle?->name ?? '-',
+            'salle_color' => $reservation->salle?->color_code ?? '#3b82f6',
             'start_date' => $reservation->start_date,
             'end_date' => $reservation->end_date,
             'start_time' => $reservation->start_time,
@@ -476,6 +477,11 @@
             return new Date(year, month - 1, day);
         };
 
+        const normalizeHexColor = (value, fallback = '#3b82f6') => {
+            const candidate = String(value || '').trim();
+            return /^#[0-9A-Fa-f]{6}$/.test(candidate) ? candidate : fallback;
+        };
+
         const buildReservationsByDay = () => {
             const map = {};
 
@@ -535,7 +541,8 @@
                 const eventSnippets = events.slice(0, 3).map((event) => {
                     const hour = event.start_time || '--:--';
                     const label = event.title || event.client || `Reservation #${event.id}`;
-                    return `<div class="reservation-day-event">${hour} · ${label}</div>`;
+                    const color = normalizeHexColor(event.salle_color);
+                    return `<div class="reservation-day-event" style="border-left-color:${color};">${hour} · ${label}</div>`;
                 }).join('');
 
                 const cell = document.createElement('button');

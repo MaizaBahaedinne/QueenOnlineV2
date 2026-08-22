@@ -9,6 +9,7 @@ class Salle extends Model
     protected $fillable = [
         'name',
         'salle_type',
+        'color_code',
         'capacity',
         'price_per_day',
         'status',
