@@ -173,12 +173,7 @@
                     </div>
 
                     <p class="reservation-hint" id="reservation-client-search-status">Recherche un client apres la selection de la salle.</p>
-                    <div class="reservation-field" style="margin-top:10px;">
-                        <label for="reservation-create-client-id">Client trouve (optionnel)</label>
-                        <select class="search" style="max-width:none;" name="client_id" id="reservation-create-client-id">
-                            <option value="">Client selectionne</option>
-                        </select>
-                    </div>
+                    <input type="hidden" name="client_id" id="reservation-create-client-id">
 
                     <div class="reservation-hint" style="margin-top:10px;">La fiche client est toujours editable: si client existe, les champs sont pre-remplis; sinon ils restent vides pour un nouvel ajout.</div>
 
@@ -365,7 +360,7 @@
         const clientSearchInput = document.getElementById('reservation-client-search-input');
         const clientSearchButton = document.getElementById('reservation-client-search-btn');
         const clientSearchStatus = document.getElementById('reservation-client-search-status');
-        const clientSelect = document.getElementById('reservation-create-client-id');
+        const clientIdInput = document.getElementById('reservation-create-client-id');
         const reservationClientType = document.getElementById('reservation-client-type');
         const reservationClientStatus = document.getElementById('reservation-client-status');
         const reservationClientFiscalNumber = document.getElementById('reservation-client-fiscal-number');
@@ -444,8 +439,6 @@
             source: 'passager',
             note: '',
         };
-
-        let searchedClientsMap = {};
 
         const applyClientFormData = (data = {}) => {
             const payload = { ...clientFormDefaults, ...data };
@@ -566,45 +559,24 @@
         };
 
         const resetClientSelect = () => {
-            if (!clientSelect) return;
-            clientSelect.innerHTML = '<option value="">Client selectionne</option>';
-            clientSelect.value = '';
-            clientSelect.disabled = false;
-            searchedClientsMap = {};
+            if (!clientIdInput) return;
+            clientIdInput.value = '';
         };
 
         const fillClientSelect = (clients) => {
             resetClientSelect();
-
-            clients.forEach((client) => {
-                const option = document.createElement('option');
-                option.value = String(client.id);
-                option.textContent = client.label;
-                clientSelect.appendChild(option);
-
-                searchedClientsMap[String(client.id)] = client.data || {};
-            });
-
-            if (clients.length > 0) {
-                clientSelect.selectedIndex = 1;
-                const firstSelectedId = clientSelect.value;
-                applyClientFormData(searchedClientsMap[firstSelectedId] || {});
+            if (!Array.isArray(clients) || clients.length === 0) {
+                applyClientFormData();
+                return;
             }
+
+            const firstClient = clients[0];
+            if (clientIdInput) {
+                clientIdInput.value = String(firstClient.id);
+            }
+
+            applyClientFormData(firstClient.data || {});
         };
-
-        if (clientSelect) {
-            clientSelect.addEventListener('change', () => {
-                const selectedId = clientSelect.value || '';
-                if (!selectedId || !searchedClientsMap[selectedId]) {
-                    applyClientFormData();
-                    setStatusMessage(clientSearchStatus, 'Aucun client selectionne: fiche vide pour nouvel ajout.');
-                    return;
-                }
-
-                applyClientFormData(searchedClientsMap[selectedId]);
-                setStatusMessage(clientSearchStatus, 'Client existant charge: tu peux modifier ses champs.');
-            });
-        }
 
         if (reservationClientType) {
             reservationClientType.addEventListener('change', () => toggleCompanyFields('reservation-client-type'));
@@ -730,7 +702,7 @@
                     }
 
                     fillClientSelect(foundClients);
-                    setStatusMessage(clientSearchStatus, `${foundClients.length} client(s) trouve(s).`);
+                    setStatusMessage(clientSearchStatus, `Client trouve et charge automatiquement (${foundClients.length} resultat(s)).`);
                 } catch (error) {
                     setStatusMessage(clientSearchStatus, error instanceof Error ? error.message : 'Impossible de rechercher les clients pour le moment.', 'error');
                 }
