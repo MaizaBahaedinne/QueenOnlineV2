@@ -19,10 +19,17 @@
         .reservation-inline-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
         .reservation-inline-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .reservation-hint { margin: 8px 0 0; font-size: 12px; color: #5f6b7a; }
+        .salle-cards-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+        .salle-card { border: 1px solid #d7dee8; border-radius: 10px; padding: 10px; cursor: pointer; background: #fff; transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+        .salle-card:hover { border-color: #9fb2c8; box-shadow: 0 4px 10px rgba(8, 24, 48, 0.07); transform: translateY(-1px); }
+        .salle-card.is-selected { border-color: #245b97; box-shadow: 0 0 0 2px rgba(36, 91, 151, 0.18); }
+        .salle-card-name { font-weight: 700; margin-bottom: 4px; }
+        .salle-card-meta { font-size: 12px; color: #5f6b7a; }
 
         @media (max-width: 860px) {
             .reservation-inline-grid,
-            .reservation-inline-grid-2 { grid-template-columns: 1fr; }
+            .reservation-inline-grid-2,
+            .salle-cards-grid { grid-template-columns: 1fr; }
         }
     </style>
 
@@ -108,9 +115,8 @@
                     <input type="hidden" name="end_date" id="reservation-create-end-date">
                     <button type="button" class="btn" id="reservation-check-availability" style="margin-top:10px;">Verifier disponibilite</button>
                     <p class="reservation-hint" id="reservation-availability-status">Selectionne la date et les horaires, puis clique sur verifier.</p>
-                    <select class="search" style="max-width:none; margin-top:10px;" name="salle_id" id="reservation-create-salle-id" required disabled>
-                        <option value="">Salle disponible</option>
-                    </select>
+                    <input type="hidden" name="salle_id" id="reservation-create-salle-id" required>
+                    <div id="reservation-salle-cards" class="salle-cards-grid"></div>
                 </div>
 
                 <div class="reservation-helper-box">
@@ -179,7 +185,8 @@
         const startTimeInput = document.getElementById('reservation-create-start-time');
         const endTimeInput = document.getElementById('reservation-create-end-time');
         const endDateInput = document.getElementById('reservation-create-end-date');
-        const salleSelect = document.getElementById('reservation-create-salle-id');
+        const selectedSalleInput = document.getElementById('reservation-create-salle-id');
+        const salleCardsContainer = document.getElementById('reservation-salle-cards');
 
         const clientSearchInput = document.getElementById('reservation-client-search-input');
         const clientSearchButton = document.getElementById('reservation-client-search-btn');
@@ -192,11 +199,48 @@
         const quickClientPhoneInput = document.getElementById('quick-client-phone');
         const quickClientCinInput = document.getElementById('quick-client-cin');
 
-        const resetSalleSelect = () => {
-            if (!salleSelect) return;
-            salleSelect.innerHTML = '<option value="">Salle disponible</option>';
-            salleSelect.value = '';
-            salleSelect.disabled = true;
+        const resetSalleSelection = () => {
+            if (selectedSalleInput) {
+                selectedSalleInput.value = '';
+            }
+
+            if (salleCardsContainer) {
+                salleCardsContainer.innerHTML = '';
+            }
+        };
+
+        const hasSelectedSalle = () => {
+            return Boolean(selectedSalleInput && selectedSalleInput.value);
+        };
+
+        const renderSalleCards = (salles) => {
+            if (!salleCardsContainer || !selectedSalleInput) return;
+
+            salleCardsContainer.innerHTML = '';
+
+            if (salles.length === 0) {
+                return;
+            }
+
+            salles.forEach((salle) => {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'salle-card';
+                card.dataset.salleId = String(salle.id);
+                card.innerHTML = `
+                    <div class="salle-card-name">${salle.name}</div>
+                    <div class="salle-card-meta">Type: ${salle.salle_type ?? 'standard'} | Capacite: ${salle.capacity ?? '-'} | Prix/jour: ${salle.price_per_day ?? '-'}</div>
+                `;
+
+                card.addEventListener('click', () => {
+                    salleCardsContainer.querySelectorAll('.salle-card').forEach((node) => node.classList.remove('is-selected'));
+                    card.classList.add('is-selected');
+                    selectedSalleInput.value = String(salle.id);
+                    clientSearchStatus.textContent = 'Salle selectionnee. Tu peux maintenant rechercher un client.';
+                });
+
+                salleCardsContainer.appendChild(card);
+            });
         };
 
         const resetClientSelect = () => {
@@ -229,7 +273,7 @@
                 const startTime = startTimeInput?.value ?? '';
                 const endTime = endTimeInput?.value ?? '';
 
-                resetSalleSelect();
+                resetSalleSelection();
                 resetClientSelect();
                 quickClientBox.style.display = 'none';
 
@@ -266,14 +310,7 @@
                     const payload = await response.json();
                     const availableSalles = payload.salles ?? [];
 
-                    availableSalles.forEach((salle) => {
-                        const option = document.createElement('option');
-                        option.value = String(salle.id);
-                        option.textContent = `${salle.name} (${salle.salle_type ?? 'standard'})`;
-                        salleSelect.appendChild(option);
-                    });
-
-                    salleSelect.disabled = availableSalles.length === 0;
+                    renderSalleCards(availableSalles);
 
                     if (availableSalles.length === 0) {
                         availabilityStatus.textContent = 'Aucune salle disponible pour ce creneau.';
@@ -289,7 +326,7 @@
 
         if (clientSearchButton) {
             clientSearchButton.addEventListener('click', async () => {
-                if (salleSelect?.disabled || !salleSelect?.value) {
+                if (!hasSelectedSalle()) {
                     clientSearchStatus.textContent = 'Selectionne d abord une salle disponible.';
                     return;
                 }
@@ -409,7 +446,7 @@
                 }
 
                 if (modalId === 'reservation-create-modal') {
-                    resetSalleSelect();
+                    resetSalleSelection();
                     resetClientSelect();
                     availabilityStatus.textContent = 'Selectionne la date et les horaires, puis clique sur verifier.';
                     clientSearchStatus.textContent = 'Recherche un client apres la selection de la salle.';
