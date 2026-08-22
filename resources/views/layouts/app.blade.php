@@ -39,6 +39,7 @@
                 <button type="button" class="btn sidebar-toggle" data-sidebar-toggle>Menu</button>
                 <div class="search">Workspace: QueenOnlineV2</div>
                 <div style="display:flex; align-items:center; gap:8px;">
+                    <a href="{{ route('profile.password.edit') }}" class="btn">Mot de passe</a>
                     <div class="profile">Production panel • {{ now()->format('d/m/Y H:i') }}</div>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf

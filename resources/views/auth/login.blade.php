@@ -119,6 +119,7 @@
 
                 <div class="auth-foot">
                     <button type="submit" class="btn btn-primary">Se connecter</button>
+                    <a href="{{ route('password.request') }}">Mot de passe oublie ?</a>
                 </div>
             </form>
 
