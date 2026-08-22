@@ -1,0 +1,1 @@
+var e=document.querySelector(`[data-sidebar-toggle]`);e&&(e.addEventListener(`click`,()=>{document.body.classList.toggle(`is-sidebar-open`)}),document.addEventListener(`click`,e=>{let t=e.target.closest(`.sidebar`),n=e.target.closest(`[data-sidebar-toggle]`);!t&&!n&&document.body.classList.remove(`is-sidebar-open`)}));
