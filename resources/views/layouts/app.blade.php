@@ -35,12 +35,24 @@
 
             <div class="menu-title">Services</div>
             <ul class="menu">
-                <li><a href="{{ route('service-modules.show', 'troupe-musicale') }}">Troupe musicale</a></li>
-                <li><a href="{{ route('service-modules.show', 'photographe') }}">Photographe</a></li>
-                <li><a href="{{ route('service-modules.show', 'chanteur') }}">Chanteur</a></li>
-                <li><a href="{{ route('service-modules.show', 'notaire') }}">Notaire</a></li>
-                <li><a href="{{ route('service-modules.show', 'animation') }}">Animation</a></li>
-                <li><a href="{{ route('service-modules.show', 'voiture') }}">Voiture</a></li>
+                @if (auth()->user()?->canFeature('troupe-musicale', 'list', 'view'))
+                    <li><a href="{{ route('service-modules.show', 'troupe-musicale') }}">Troupe musicale</a></li>
+                @endif
+                @if (auth()->user()?->canFeature('photographe', 'list', 'view'))
+                    <li><a href="{{ route('service-modules.show', 'photographe') }}">Photographe</a></li>
+                @endif
+                @if (auth()->user()?->canFeature('chanteur', 'list', 'view'))
+                    <li><a href="{{ route('service-modules.show', 'chanteur') }}">Chanteur</a></li>
+                @endif
+                @if (auth()->user()?->canFeature('notaire', 'list', 'view'))
+                    <li><a href="{{ route('service-modules.show', 'notaire') }}">Notaire</a></li>
+                @endif
+                @if (auth()->user()?->canFeature('animation', 'list', 'view'))
+                    <li><a href="{{ route('service-modules.show', 'animation') }}">Animation</a></li>
+                @endif
+                @if (auth()->user()?->canFeature('voiture', 'list', 'view'))
+                    <li><a href="{{ route('service-modules.show', 'voiture') }}">Voiture</a></li>
+                @endif
             </ul>
 
         </aside>

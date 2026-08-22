@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 
-class UserController extends Controller
+class UserController extends MatrixAwareController
 {
     public function index()
     {
+        $this->enforcePermission('users', 'list', 'view');
+
         return view('users.index', [
             'users' => User::query()->latest()->get(),
         ]);
@@ -16,11 +18,15 @@ class UserController extends Controller
 
     public function create()
     {
+        $this->enforcePermission('users', 'create', 'create');
+
         return view('users.create');
     }
 
     public function store(Request $request)
     {
+        $this->enforcePermission('users', 'create', 'create');
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],

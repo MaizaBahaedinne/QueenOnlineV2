@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
-class ServiceModuleController extends Controller
+class ServiceModuleController extends MatrixAwareController
 {
     private const MODULES = [
         'troupe-musicale' => ['name' => 'Troupe musicale', 'packs' => true],
@@ -22,6 +22,7 @@ class ServiceModuleController extends Controller
     public function show(string $module)
     {
         $meta = $this->moduleMeta($module);
+        $this->enforcePermission($module, 'list', 'view');
 
         if (! Schema::hasTable('service_module_items') || ! Schema::hasTable('service_module_packs')) {
             return view('service-modules/not-ready', [
@@ -47,6 +48,7 @@ class ServiceModuleController extends Controller
     {
         $meta = $this->moduleMeta($module);
         abort_unless($meta['packs'], 404);
+        $this->enforcePermission($module, 'list-pack', 'view');
 
         if (! Schema::hasTable('service_module_items') || ! Schema::hasTable('service_module_packs')) {
             return view('service-modules/not-ready', [
@@ -78,6 +80,7 @@ class ServiceModuleController extends Controller
     public function storeItem(Request $request, string $module)
     {
         $this->moduleMeta($module);
+        $this->enforcePermission($module, 'create', 'create');
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -102,6 +105,7 @@ class ServiceModuleController extends Controller
     public function updateItem(Request $request, string $module, ServiceModuleItem $item)
     {
         $this->assertItemInModule($module, $item);
+        $this->enforcePermission($module, 'update', 'update');
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -119,6 +123,7 @@ class ServiceModuleController extends Controller
     public function destroyItem(string $module, ServiceModuleItem $item)
     {
         $this->assertItemInModule($module, $item);
+        $this->enforcePermission($module, 'delete', 'delete');
 
         $item->delete();
 
@@ -129,6 +134,7 @@ class ServiceModuleController extends Controller
     {
         $meta = $this->moduleMeta($module);
         abort_unless($meta['packs'], 404);
+        $this->enforcePermission($module, 'create-pack', 'create');
 
         $validated = $request->validate([
             'service_module_item_id' => ['nullable', 'exists:service_module_items,id'],
@@ -153,6 +159,7 @@ class ServiceModuleController extends Controller
     public function updatePack(Request $request, string $module, ServiceModulePack $pack)
     {
         $this->assertPackInModule($module, $pack);
+        $this->enforcePermission($module, 'update-pack', 'update');
 
         $validated = $request->validate([
             'service_module_item_id' => ['nullable', 'exists:service_module_items,id'],
@@ -170,6 +177,7 @@ class ServiceModuleController extends Controller
     public function destroyPack(string $module, ServiceModulePack $pack)
     {
         $this->assertPackInModule($module, $pack);
+        $this->enforcePermission($module, 'delete-pack', 'delete');
 
         $pack->delete();
 

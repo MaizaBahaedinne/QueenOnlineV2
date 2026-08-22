@@ -1,6 +1,13 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $canCreate = auth()->user()?->canFeature($moduleSlug, 'create', 'create') ?? false;
+        $canUpdate = auth()->user()?->canFeature($moduleSlug, 'update', 'update') ?? false;
+        $canDelete = auth()->user()?->canFeature($moduleSlug, 'delete', 'delete') ?? false;
+        $canViewPacks = $moduleMeta['packs'] ? (auth()->user()?->canFeature($moduleSlug, 'list-pack', 'view') ?? false) : false;
+    @endphp
+
     <style>
         .modal-overlay {
             position: fixed;
@@ -52,7 +59,7 @@
         <h1 class="panel-title">{{ $moduleMeta['name'] }}</h1>
         <p class="panel-sub">Module metier operationnel (donnees + CRUD).</p>
 
-        @if ($moduleMeta['packs'])
+        @if ($moduleMeta['packs'] && $canViewPacks)
             <div style="margin-top:12px; display:flex; justify-content:flex-end;">
                 <a class="btn" href="{{ route('service-modules.packs.index', $moduleSlug) }}">Gerer les packs</a>
             </div>
@@ -66,7 +73,9 @@
             <div class="panel" style="box-shadow:none;">
                 <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
                     <h2 class="panel-title" style="margin:0;">Elements</h2>
-                    <button type="button" class="btn btn-primary" data-open-modal="item-create-modal">Ajouter element</button>
+                    @if ($canCreate)
+                        <button type="button" class="btn btn-primary" data-open-modal="item-create-modal">Ajouter element</button>
+                    @endif
                 </div>
                 <div style="overflow-x:auto; margin-top:10px;">
                     <table>
@@ -90,28 +99,32 @@
                                     <td>{{ $item->notes ?? '-' }}</td>
                                     <td>
                                         <div class="action-row">
-                                            <button
-                                                type="button"
-                                                class="btn"
-                                                data-open-modal="item-edit-modal"
-                                                data-item-id="{{ $item->id }}"
-                                                data-item-name="{{ $item->name }}"
-                                                data-item-phone="{{ $item->phone }}"
-                                                data-item-price="{{ $item->base_price }}"
-                                                data-item-status="{{ $item->status }}"
-                                                data-item-notes="{{ $item->notes }}"
-                                            >
-                                                Modifier
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class="btn"
-                                                data-open-modal="item-delete-modal"
-                                                data-item-id="{{ $item->id }}"
-                                                data-item-name="{{ $item->name }}"
-                                            >
-                                                Supprimer
-                                            </button>
+                                            @if ($canUpdate)
+                                                <button
+                                                    type="button"
+                                                    class="btn"
+                                                    data-open-modal="item-edit-modal"
+                                                    data-item-id="{{ $item->id }}"
+                                                    data-item-name="{{ $item->name }}"
+                                                    data-item-phone="{{ $item->phone }}"
+                                                    data-item-price="{{ $item->base_price }}"
+                                                    data-item-status="{{ $item->status }}"
+                                                    data-item-notes="{{ $item->notes }}"
+                                                >
+                                                    Modifier
+                                                </button>
+                                            @endif
+                                            @if ($canDelete)
+                                                <button
+                                                    type="button"
+                                                    class="btn"
+                                                    data-open-modal="item-delete-modal"
+                                                    data-item-id="{{ $item->id }}"
+                                                    data-item-name="{{ $item->name }}"
+                                                >
+                                                    Supprimer
+                                                </button>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
@@ -128,63 +141,69 @@
         </div>
     </section>
 
-    <div class="modal-overlay" id="item-create-modal">
-        <div class="modal-card">
-            <div class="modal-head">
-                <h3 class="modal-title">Ajouter un element</h3>
-                <button type="button" class="btn" data-close-modal>Fermer</button>
+    @if ($canCreate)
+        <div class="modal-overlay" id="item-create-modal">
+            <div class="modal-card">
+                <div class="modal-head">
+                    <h3 class="modal-title">Ajouter un element</h3>
+                    <button type="button" class="btn" data-close-modal>Fermer</button>
+                </div>
+                <form method="POST" action="{{ route('service-modules.items.store', $moduleSlug) }}" style="display:grid; gap:10px;">
+                    @csrf
+                    <input class="search" style="max-width:none;" type="text" name="name" placeholder="Nom" required>
+                    <input class="search" style="max-width:none;" type="text" name="phone" placeholder="Telephone">
+                    <input class="search" style="max-width:none;" type="number" step="0.01" min="0" name="base_price" placeholder="Prix de base">
+                    <select class="search" style="max-width:none;" name="status" required>
+                        <option value="active">Actif</option>
+                        <option value="inactive">Inactif</option>
+                    </select>
+                    <input class="search" style="max-width:none;" type="text" name="notes" placeholder="Notes">
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </form>
             </div>
-            <form method="POST" action="{{ route('service-modules.items.store', $moduleSlug) }}" style="display:grid; gap:10px;">
-                @csrf
-                <input class="search" style="max-width:none;" type="text" name="name" placeholder="Nom" required>
-                <input class="search" style="max-width:none;" type="text" name="phone" placeholder="Telephone">
-                <input class="search" style="max-width:none;" type="number" step="0.01" min="0" name="base_price" placeholder="Prix de base">
-                <select class="search" style="max-width:none;" name="status" required>
-                    <option value="active">Actif</option>
-                    <option value="inactive">Inactif</option>
-                </select>
-                <input class="search" style="max-width:none;" type="text" name="notes" placeholder="Notes">
-                <button type="submit" class="btn btn-primary">Enregistrer</button>
-            </form>
         </div>
-    </div>
+    @endif
 
-    <div class="modal-overlay" id="item-edit-modal">
-        <div class="modal-card">
-            <div class="modal-head">
-                <h3 class="modal-title">Modifier element</h3>
-                <button type="button" class="btn" data-close-modal>Fermer</button>
+    @if ($canUpdate)
+        <div class="modal-overlay" id="item-edit-modal">
+            <div class="modal-card">
+                <div class="modal-head">
+                    <h3 class="modal-title">Modifier element</h3>
+                    <button type="button" class="btn" data-close-modal>Fermer</button>
+                </div>
+                <form method="POST" id="item-edit-form" action="#" style="display:grid; gap:10px;">
+                    @csrf
+                    @method('PATCH')
+                    <input class="search" style="max-width:none;" type="text" name="name" id="item-edit-name" required>
+                    <input class="search" style="max-width:none;" type="text" name="phone" id="item-edit-phone">
+                    <input class="search" style="max-width:none;" type="number" step="0.01" min="0" name="base_price" id="item-edit-price">
+                    <select class="search" style="max-width:none;" name="status" id="item-edit-status" required>
+                        <option value="active">Actif</option>
+                        <option value="inactive">Inactif</option>
+                    </select>
+                    <input class="search" style="max-width:none;" type="text" name="notes" id="item-edit-notes">
+                    <button type="submit" class="btn btn-primary">Mettre a jour</button>
+                </form>
             </div>
-            <form method="POST" id="item-edit-form" action="#" style="display:grid; gap:10px;">
-                @csrf
-                @method('PATCH')
-                <input class="search" style="max-width:none;" type="text" name="name" id="item-edit-name" required>
-                <input class="search" style="max-width:none;" type="text" name="phone" id="item-edit-phone">
-                <input class="search" style="max-width:none;" type="number" step="0.01" min="0" name="base_price" id="item-edit-price">
-                <select class="search" style="max-width:none;" name="status" id="item-edit-status" required>
-                    <option value="active">Actif</option>
-                    <option value="inactive">Inactif</option>
-                </select>
-                <input class="search" style="max-width:none;" type="text" name="notes" id="item-edit-notes">
-                <button type="submit" class="btn btn-primary">Mettre a jour</button>
-            </form>
         </div>
-    </div>
+    @endif
 
-    <div class="modal-overlay" id="item-delete-modal">
-        <div class="modal-card">
-            <div class="modal-head">
-                <h3 class="modal-title">Supprimer element</h3>
-                <button type="button" class="btn" data-close-modal>Fermer</button>
+    @if ($canDelete)
+        <div class="modal-overlay" id="item-delete-modal">
+            <div class="modal-card">
+                <div class="modal-head">
+                    <h3 class="modal-title">Supprimer element</h3>
+                    <button type="button" class="btn" data-close-modal>Fermer</button>
+                </div>
+                <p id="item-delete-text" class="panel-sub"></p>
+                <form method="POST" id="item-delete-form" action="#" style="margin-top:10px;">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn">Confirmer suppression</button>
+                </form>
             </div>
-            <p id="item-delete-text" class="panel-sub"></p>
-            <form method="POST" id="item-delete-form" action="#" style="margin-top:10px;">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="btn">Confirmer suppression</button>
-            </form>
         </div>
-    </div>
+    @endif
 
     <script>
         const openModalButtons = document.querySelectorAll('[data-open-modal]');

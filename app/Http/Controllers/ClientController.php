@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Client;
 use Illuminate\Http\Request;
 
-class ClientController extends Controller
+class ClientController extends MatrixAwareController
 {
     public function index()
     {
+        $this->enforcePermission('clients', 'list', 'view');
+
         return view('clients.index', [
             'clients' => Client::query()->latest()->get(),
         ]);
@@ -16,11 +18,15 @@ class ClientController extends Controller
 
     public function create()
     {
+        $this->enforcePermission('clients', 'create', 'create');
+
         return view('clients.create');
     }
 
     public function store(Request $request)
     {
+        $this->enforcePermission('clients', 'create', 'create');
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email'],
