@@ -4,6 +4,67 @@ const mediaQueryMobile = window.matchMedia('(max-width: 900px)');
 const userMenu = document.querySelector('[data-user-menu]');
 const userMenuToggle = document.querySelector('[data-user-menu-toggle]');
 
+function humanizeFieldName(fieldName) {
+	if (!fieldName) {
+		return 'Champ';
+	}
+
+	const normalized = fieldName
+		.replace(/[_-]+/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
+
+	if (!normalized) {
+		return 'Champ';
+	}
+
+	return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function ensureModalFieldLabels() {
+	const fields = document.querySelectorAll('.modal-card form input, .modal-card form select, .modal-card form textarea');
+
+	fields.forEach((field, index) => {
+		const tagName = field.tagName.toLowerCase();
+		const type = (field.getAttribute('type') || '').toLowerCase();
+
+		if (tagName === 'input' && ['hidden', 'submit', 'button', 'reset'].includes(type)) {
+			return;
+		}
+
+		if (tagName === 'button') {
+			return;
+		}
+
+		if (field.closest('label')) {
+			return;
+		}
+
+		const previous = field.previousElementSibling;
+		if (previous && previous.classList.contains('auto-field-label')) {
+			return;
+		}
+
+		if (!field.id) {
+			const fallbackName = field.getAttribute('name') || `${tagName}-${index}`;
+			field.id = `modal-field-${fallbackName.replace(/[^a-zA-Z0-9_-]/g, '-')}-${index}`;
+		}
+
+		let labelText = field.getAttribute('data-label') || field.getAttribute('placeholder') || humanizeFieldName(field.getAttribute('name') || '');
+
+		if (tagName === 'select' && (!labelText || labelText.toLowerCase() === 'champ')) {
+			labelText = humanizeFieldName(field.getAttribute('name') || 'Selection');
+		}
+
+		const label = document.createElement('label');
+		label.className = 'auto-field-label';
+		label.setAttribute('for', field.id);
+		label.textContent = labelText;
+
+		field.parentNode.insertBefore(label, field);
+	});
+}
+
 function syncAccordionStateForViewport() {
 	const isMobile = mediaQueryMobile.matches;
 	sectionToggles.forEach((toggle) => {
@@ -70,6 +131,7 @@ sectionToggles.forEach((toggle) => {
 });
 
 syncAccordionStateForViewport();
+ensureModalFieldLabels();
 
 if (typeof mediaQueryMobile.addEventListener === 'function') {
 	mediaQueryMobile.addEventListener('change', syncAccordionStateForViewport);

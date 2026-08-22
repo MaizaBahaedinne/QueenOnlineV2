@@ -131,7 +131,10 @@
                         </button>
 
                         <div class="user-menu-dropdown" data-user-menu-dropdown>
-                            <div class="user-menu-header">Production panel • {{ now()->format('d/m/Y H:i') }}</div>
+                            <div class="user-menu-header">
+                                <strong>{{ auth()->user()?->name ?? 'Utilisateur' }}</strong>
+                                <span>Production • {{ now()->format('d/m/Y H:i') }}</span>
+                            </div>
                             <a href="{{ route('profile.password.edit') }}" class="user-menu-item">
                                 <i class="fa fa-key" aria-hidden="true"></i>
                                 <span>Mot de passe</span>
@@ -140,7 +143,7 @@
                                 @csrf
                                 <button type="submit" class="user-menu-item user-menu-item-danger">
                                     <i class="fa fa-sign-out" aria-hidden="true"></i>
-                                    <span>Logout</span>
+                                    <span>Deconnexion</span>
                                 </button>
                             </form>
                         </div>
