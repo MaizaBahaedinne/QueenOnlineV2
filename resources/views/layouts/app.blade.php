@@ -49,7 +49,7 @@
                 <ul class="menu">
                     @foreach ($sidebarModules as $sidebarModule)
                         <li>
-                            <a href="{{ route('modules.index') }}#module-{{ $sidebarModule->slug }}">
+                            <a href="{{ route('service-modules.show', $sidebarModule->slug) }}">
                                 {{ $sidebarModule->name }}
                             </a>
                         </li>

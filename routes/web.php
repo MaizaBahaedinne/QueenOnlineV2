@@ -8,6 +8,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\ServiceModuleController;
 use App\Http\Controllers\SalleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ModuleController;
@@ -46,4 +47,13 @@ Route::middleware('auth')->group(function () {
 
 	Route::get('permissions/matrix', [RolePermissionController::class, 'index'])->name('permissions.matrix');
 	Route::post('permissions/matrix', [RolePermissionController::class, 'update'])->name('permissions.matrix.update');
+
+	Route::get('service-modules/{module}', [ServiceModuleController::class, 'show'])->name('service-modules.show');
+	Route::post('service-modules/{module}/items', [ServiceModuleController::class, 'storeItem'])->name('service-modules.items.store');
+	Route::patch('service-modules/{module}/items/{item}', [ServiceModuleController::class, 'updateItem'])->name('service-modules.items.update');
+	Route::delete('service-modules/{module}/items/{item}', [ServiceModuleController::class, 'destroyItem'])->name('service-modules.items.destroy');
+
+	Route::post('service-modules/{module}/packs', [ServiceModuleController::class, 'storePack'])->name('service-modules.packs.store');
+	Route::patch('service-modules/{module}/packs/{pack}', [ServiceModuleController::class, 'updatePack'])->name('service-modules.packs.update');
+	Route::delete('service-modules/{module}/packs/{pack}', [ServiceModuleController::class, 'destroyPack'])->name('service-modules.packs.destroy');
 });
