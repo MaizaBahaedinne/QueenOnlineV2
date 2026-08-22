@@ -10,21 +10,29 @@
     <style>
         .modal-overlay { position: fixed; inset: 0; background: rgba(15, 19, 26, 0.56); display: none; align-items: center; justify-content: center; padding: 18px; z-index: 80; }
         .modal-overlay.show { display: flex; }
-        .modal-card { width: min(760px, 100%); max-height: 88vh; overflow: auto; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); }
-        .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-        .modal-title { margin: 0; font-size: 18px; }
+        .modal-card { width: min(860px, 100%); max-height: 90vh; overflow: auto; background: linear-gradient(180deg, #f7fbff 0%, #ffffff 40%); border: 1px solid #d6e0ec; border-radius: 18px; padding: 18px; box-shadow: 0 14px 30px rgba(14, 39, 69, 0.16); }
+        .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+        .modal-title { margin: 0; font-size: 21px; letter-spacing: .2px; color: #17324f; }
         .action-row { display: flex; gap: 8px; flex-wrap: wrap; }
-        .reservation-helper-box { border: 1px dashed var(--line); border-radius: 10px; padding: 12px; margin-top: 8px; }
-        .reservation-helper-title { margin: 0 0 8px; font-size: 14px; font-weight: 700; }
+        .reservation-intro { background: linear-gradient(135deg, #eaf5ff 0%, #f6fbff 100%); border: 1px solid #cfe2f5; border-radius: 12px; padding: 10px 12px; font-size: 13px; color: #21476f; margin-bottom: 12px; }
+        .reservation-helper-box { border: 1px solid #d6e2ee; border-radius: 14px; padding: 14px; margin-top: 8px; background: #ffffff; }
+        .reservation-step-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .reservation-step-badge { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 999px; background: #173f69; color: #fff; font-size: 12px; font-weight: 700; }
+        .reservation-helper-title { margin: 0; font-size: 15px; font-weight: 700; color: #14304d; }
         .reservation-inline-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
         .reservation-inline-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-        .reservation-hint { margin: 8px 0 0; font-size: 12px; color: #5f6b7a; }
+        .reservation-field { display: flex; flex-direction: column; gap: 5px; }
+        .reservation-field label { font-size: 12px; font-weight: 700; color: #3e536b; }
+        .reservation-hint { margin: 8px 0 0; font-size: 12px; color: #5f6b7a; background: #f4f8fc; border: 1px solid #d7e4f2; border-radius: 9px; padding: 8px 9px; }
         .salle-cards-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
-        .salle-card { border: 1px solid #d7dee8; border-radius: 10px; padding: 10px; cursor: pointer; background: #fff; transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
-        .salle-card:hover { border-color: #9fb2c8; box-shadow: 0 4px 10px rgba(8, 24, 48, 0.07); transform: translateY(-1px); }
-        .salle-card.is-selected { border-color: #245b97; box-shadow: 0 0 0 2px rgba(36, 91, 151, 0.18); }
-        .salle-card-name { font-weight: 700; margin-bottom: 4px; }
+        .salle-card { border: 1px solid #d7dee8; border-radius: 12px; padding: 11px; cursor: pointer; background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%); transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; text-align: left; }
+        .salle-card:hover { border-color: #8ca6c1; box-shadow: 0 6px 14px rgba(8, 24, 48, 0.08); transform: translateY(-1px); }
+        .salle-card.is-selected { border-color: #1f5d9f; box-shadow: 0 0 0 2px rgba(31, 93, 159, 0.2); }
+        .salle-card-name { font-weight: 700; margin-bottom: 4px; color: #153452; }
         .salle-card-meta { font-size: 12px; color: #5f6b7a; }
+        .reservation-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+        .reservation-quick-box { display: none; margin-top: 10px; border: 1px solid #decfba; background: #fff9f0; border-radius: 12px; padding: 10px; }
+        .reservation-quick-title { margin: 0 0 6px; font-weight: 700; font-size: 13px; color: #6a4715; }
 
         @media (max-width: 860px) {
             .reservation-inline-grid,
@@ -105,48 +113,97 @@
     @if ($canCreate)
         <div class="modal-overlay" id="reservation-create-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Ajouter reservation</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
             <form method="POST" action="{{ route('reservations.store') }}" id="reservation-create-form" style="display:grid; gap:10px;">@csrf
+                <div class="reservation-intro">Planifie un evenement en 2 etapes: verification du creneau puis choix ou creation du client.</div>
+
                 <div class="reservation-helper-box">
-                    <p class="reservation-helper-title">1) Recherche disponibilite salle</p>
+                    <div class="reservation-step-head">
+                        <span class="reservation-step-badge">1</span>
+                        <p class="reservation-helper-title">Disponibilite des salles</p>
+                    </div>
                     <div class="reservation-inline-grid">
-                        <input class="search" style="max-width:none;" type="date" name="start_date" id="reservation-create-event-date" min="{{ now()->toDateString() }}" required>
-                        <input class="search" style="max-width:none;" type="time" name="start_time" id="reservation-create-start-time" min="08:00" max="23:59" required>
-                        <input class="search" style="max-width:none;" type="time" name="end_time" id="reservation-create-end-time" min="09:00" max="23:59" required>
+                        <div class="reservation-field">
+                            <label for="reservation-create-event-date">Date event</label>
+                            <input class="search" style="max-width:none;" type="date" name="start_date" id="reservation-create-event-date" min="{{ now()->toDateString() }}" required>
+                        </div>
+                        <div class="reservation-field">
+                            <label for="reservation-create-start-time">Heure debut</label>
+                            <input class="search" style="max-width:none;" type="time" name="start_time" id="reservation-create-start-time" min="08:00" max="23:59" required>
+                        </div>
+                        <div class="reservation-field">
+                            <label for="reservation-create-end-time">Heure fin</label>
+                            <input class="search" style="max-width:none;" type="time" name="end_time" id="reservation-create-end-time" min="09:00" max="23:59" required>
+                        </div>
                     </div>
                     <input type="hidden" name="end_date" id="reservation-create-end-date">
-                    <button type="button" class="btn" id="reservation-check-availability" style="margin-top:10px;">Verifier disponibilite</button>
+                    <div class="reservation-actions">
+                        <button type="button" class="btn btn-primary" id="reservation-check-availability">Verifier disponibilite</button>
+                    </div>
                     <p class="reservation-hint" id="reservation-availability-status">Selectionne la date et les horaires, puis clique sur verifier.</p>
                     <input type="hidden" name="salle_id" id="reservation-create-salle-id" required>
                     <div id="reservation-salle-cards" class="salle-cards-grid"></div>
                 </div>
 
                 <div class="reservation-helper-box">
-                    <p class="reservation-helper-title">2) Recherche client</p>
+                    <div class="reservation-step-head">
+                        <span class="reservation-step-badge">2</span>
+                        <p class="reservation-helper-title">Recherche client</p>
+                    </div>
                     <div class="reservation-inline-grid-2">
-                        <input class="search" style="max-width:none;" type="text" id="reservation-client-search-input" placeholder="Nom, prenom, CIN ou telephone">
-                        <button type="button" class="btn" id="reservation-client-search-btn">Rechercher client</button>
+                        <div class="reservation-field">
+                            <label for="reservation-client-search-input">Nom, prenom, CIN ou telephone</label>
+                            <input class="search" style="max-width:none;" type="text" id="reservation-client-search-input" placeholder="Ex: Sami, 07209911, 12345678">
+                        </div>
+                        <div class="reservation-actions" style="align-items:flex-end; justify-content:flex-start; margin-top:0;">
+                            <button type="button" class="btn" id="reservation-client-search-btn">Rechercher client</button>
+                        </div>
                     </div>
 
                     <p class="reservation-hint" id="reservation-client-search-status">Recherche un client apres la selection de la salle.</p>
-                    <select class="search" style="max-width:none; margin-top:10px;" name="client_id" id="reservation-create-client-id" required disabled>
-                        <option value="">Client selectionne</option>
-                    </select>
+                    <div class="reservation-field" style="margin-top:10px;">
+                        <label for="reservation-create-client-id">Client trouve</label>
+                        <select class="search" style="max-width:none;" name="client_id" id="reservation-create-client-id" required disabled>
+                            <option value="">Client selectionne</option>
+                        </select>
+                    </div>
 
-                    <div id="reservation-quick-client-box" style="display:none; margin-top:10px;">
-                        <p class="reservation-helper-title" style="margin-bottom:6px;">Client non trouve: ajout rapide</p>
+                    <div id="reservation-quick-client-box" class="reservation-quick-box">
+                        <p class="reservation-quick-title">Client introuvable: ajoute rapidement un nouveau client</p>
                         <div class="reservation-inline-grid-2">
-                            <input class="search" style="max-width:none;" type="text" id="quick-client-first-name" placeholder="Prenom">
-                            <input class="search" style="max-width:none;" type="text" id="quick-client-name" placeholder="Nom" required>
+                            <div class="reservation-field">
+                                <label for="quick-client-first-name">Prenom</label>
+                                <input class="search" style="max-width:none;" type="text" id="quick-client-first-name" placeholder="Prenom">
+                            </div>
+                            <div class="reservation-field">
+                                <label for="quick-client-name">Nom</label>
+                                <input class="search" style="max-width:none;" type="text" id="quick-client-name" placeholder="Nom" required>
+                            </div>
                         </div>
                         <div class="reservation-inline-grid-2" style="margin-top:10px;">
-                            <input class="search" style="max-width:none;" type="text" id="quick-client-phone" placeholder="Telephone">
-                            <input class="search" style="max-width:none;" type="text" id="quick-client-cin" placeholder="CIN">
+                            <div class="reservation-field">
+                                <label for="quick-client-phone">Telephone</label>
+                                <input class="search" style="max-width:none;" type="text" id="quick-client-phone" placeholder="Telephone">
+                            </div>
+                            <div class="reservation-field">
+                                <label for="quick-client-cin">CIN</label>
+                                <input class="search" style="max-width:none;" type="text" id="quick-client-cin" placeholder="CIN">
+                            </div>
                         </div>
-                        <button type="button" class="btn" id="reservation-quick-client-btn" style="margin-top:10px;">Ajouter ce client</button>
+                        <div class="reservation-actions">
+                            <button type="button" class="btn" id="reservation-quick-client-btn">Ajouter ce client</button>
+                        </div>
                     </div>
                 </div>
 
-                <input class="search" style="max-width:none;" type="number" step="0.01" min="0" name="total_amount" placeholder="Montant total">
-                <button type="submit" class="btn btn-primary">Enregistrer</button>
+                <div class="reservation-helper-box" style="padding-top:12px; padding-bottom:12px;">
+                    <div class="reservation-field">
+                        <label for="reservation-total-amount">Montant total</label>
+                        <input class="search" id="reservation-total-amount" style="max-width:none;" type="number" step="0.01" min="0" name="total_amount" placeholder="Ex: 2500.000">
+                    </div>
+                </div>
+
+                <div class="reservation-actions">
+                    <button type="submit" class="btn btn-primary">Enregistrer reservation</button>
+                </div>
             </form></div></div>
     @endif
 
