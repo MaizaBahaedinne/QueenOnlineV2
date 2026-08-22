@@ -128,10 +128,6 @@ if (userMenu && userMenuToggle) {
 
 sectionToggles.forEach((toggle) => {
 	toggle.addEventListener('click', () => {
-		if (!mediaQueryMobile.matches) {
-			return;
-		}
-
 		const section = toggle.closest('[data-menu-section]');
 		if (!section) {
 			return;

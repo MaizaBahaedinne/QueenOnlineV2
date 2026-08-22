@@ -56,29 +56,30 @@
                     <ul class="menu">
                         <li><a class="{{ str_starts_with((string) $current, 'clients.') ? 'active' : '' }}" href="{{ route('clients.index') }}"><i class="fa fa-users menu-icon" aria-hidden="true"></i><span>Clients</span></a></li>
                         <li>
-                            <a class="{{ str_starts_with((string) $current, 'reservations.') && $reservationService === '' ? 'active' : '' }}" href="{{ route('reservations.index') }}"><i class="fa fa-calendar menu-icon" aria-hidden="true"></i><span>Reservations</span></a>
+                            <a class="{{ str_starts_with((string) $current, 'reservations.') ? 'active' : '' }}" href="{{ route('reservations.index') }}"><i class="fa fa-calendar menu-icon" aria-hidden="true"></i><span>Reservations</span></a>
                             @if (str_starts_with((string) $current, 'reservations.'))
                                 <ul class="menu-submenu">
+                                    <li><a class="{{ $reservationService === '' ? 'active' : '' }}" href="{{ route('reservations.index') }}">Toutes</a></li>
                                     @if (auth()->user()?->canFeature('salles', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'salles' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'salles']) }}">Reservation salles</a></li>
+                                        <li><a class="{{ $reservationService === 'salles' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'salles']) }}">Salles</a></li>
                                     @endif
                                     @if (auth()->user()?->canFeature('troupe-musicale', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'troupe-musicale' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'troupe-musicale']) }}">Reservation troupe musicale</a></li>
+                                        <li><a class="{{ $reservationService === 'troupe-musicale' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'troupe-musicale']) }}">Troupe musicale</a></li>
                                     @endif
                                     @if (auth()->user()?->canFeature('photographe', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'photographe' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'photographe']) }}">Reservation photographe</a></li>
+                                        <li><a class="{{ $reservationService === 'photographe' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'photographe']) }}">Photographe</a></li>
                                     @endif
                                     @if (auth()->user()?->canFeature('chanteur', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'chanteur' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'chanteur']) }}">Reservation chanteur</a></li>
+                                        <li><a class="{{ $reservationService === 'chanteur' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'chanteur']) }}">Chanteur</a></li>
                                     @endif
                                     @if (auth()->user()?->canFeature('notaire', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'notaire' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'notaire']) }}">Reservation notaire</a></li>
+                                        <li><a class="{{ $reservationService === 'notaire' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'notaire']) }}">Notaire</a></li>
                                     @endif
                                     @if (auth()->user()?->canFeature('animation', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'animation' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'animation']) }}">Reservation animation</a></li>
+                                        <li><a class="{{ $reservationService === 'animation' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'animation']) }}">Animation</a></li>
                                     @endif
                                     @if (auth()->user()?->canFeature('voiture', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'voiture' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'voiture']) }}">Reservation voiture</a></li>
+                                        <li><a class="{{ $reservationService === 'voiture' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'voiture']) }}">Voiture</a></li>
                                     @endif
                                 </ul>
                             @endif
