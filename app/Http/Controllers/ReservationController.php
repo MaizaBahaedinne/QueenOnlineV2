@@ -14,6 +14,16 @@ use Illuminate\Validation\ValidationException;
 
 class ReservationController extends MatrixAwareController
 {
+    private const RESERVATION_SERVICES = [
+        'salles' => 'Salles',
+        'troupe-musicale' => 'Troupe musicale',
+        'photographe' => 'Photographe',
+        'chanteur' => 'Chanteur',
+        'notaire' => 'Notaire',
+        'animation' => 'Animation',
+        'voiture' => 'Voiture',
+    ];
+
     private const GOVERNORATES = [
         'Ariana', 'Beja', 'Ben Arous', 'Bizerte', 'Gabes', 'Gafsa', 'Jendouba', 'Kairouan',
         'Kasserine', 'Kebili', 'Le Kef', 'Mahdia', 'La Manouba', 'Medenine', 'Monastir',
@@ -32,6 +42,11 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'list', 'view');
 
+        $service = trim((string) request()->query('service', ''));
+        if ($service !== '' && ! array_key_exists($service, self::RESERVATION_SERVICES)) {
+            $service = '';
+        }
+
         return view('reservations.index', [
             'title' => 'Reservations',
             'reservations' => Reservation::query()->with(['client', 'salle'])->latest()->get(),
@@ -39,6 +54,8 @@ class ReservationController extends MatrixAwareController
             'salles' => Salle::query()->orderBy('name')->get(),
             'governorates' => self::GOVERNORATES,
             'sources' => self::SOURCES,
+            'reservationService' => $service,
+            'reservationServiceLabel' => $service !== '' ? self::RESERVATION_SERVICES[$service] : null,
         ]);
     }
 

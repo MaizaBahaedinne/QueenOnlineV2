@@ -48,7 +48,12 @@
 
     <section class="panel">
         <h1 class="panel-title">Reservations</h1>
-        <p class="panel-sub">Liste par defaut. CRUD en modales.</p>
+        <p class="panel-sub">
+            Liste par defaut. CRUD en modales.
+            @if (! empty($reservationServiceLabel))
+                Filtre service: <strong>{{ $reservationServiceLabel }}</strong>
+            @endif
+        </p>
 
         @if (session('success'))
             <p class="badge badge-success" style="margin-top:10px;">{{ session('success') }}</p>
