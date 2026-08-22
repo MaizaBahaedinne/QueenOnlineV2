@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Reservation;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ReservationController extends MatrixAwareController
 {
@@ -18,9 +19,7 @@ class ReservationController extends MatrixAwareController
 
     public function create()
     {
-        $this->enforcePermission('reservations', 'create', 'create');
-
-        return view('reservations.create');
+        return redirect()->route('reservations.index');
     }
 
     public function store(Request $request)
@@ -37,6 +36,33 @@ class ReservationController extends MatrixAwareController
 
         Reservation::create($validated);
 
-        return redirect()->route('reservations.index')->with('success', 'Réservation créée.');
+        return redirect()->route('reservations.index')->with('success', 'Reservation creee.');
+    }
+
+    public function update(Request $request, Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        $validated = $request->validate([
+            'client_id' => ['required', 'exists:clients,id'],
+            'salle_id' => ['required', 'exists:salles,id'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'status' => ['nullable', Rule::in(['pending', 'confirmed', 'cancelled', 'completed'])],
+            'total_amount' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $reservation->update($validated);
+
+        return redirect()->route('reservations.index')->with('success', 'Reservation mise a jour.');
+    }
+
+    public function destroy(Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'delete', 'delete');
+
+        $reservation->delete();
+
+        return redirect()->route('reservations.index')->with('success', 'Reservation supprimee.');
     }
 }

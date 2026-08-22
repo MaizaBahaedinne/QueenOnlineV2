@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Role;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -14,7 +13,6 @@ class RoleController extends Controller
         return view('roles.index', [
             'title' => 'Roles utilisateurs',
             'roles' => Role::query()->withCount('users')->orderBy('id')->get(),
-            'users' => User::query()->with('role')->latest()->get(),
         ]);
     }
 
@@ -55,16 +53,4 @@ class RoleController extends Controller
         return redirect()->route('roles.index')->with('success', 'Role supprime.');
     }
 
-    public function updateUserRole(Request $request, User $user)
-    {
-        $validated = $request->validate([
-            'role_id' => ['nullable', 'exists:roles,id'],
-        ]);
-
-        $user->update([
-            'role_id' => $validated['role_id'] ?? null,
-        ]);
-
-        return redirect()->route('roles.index')->with('success', 'Role utilisateur mis a jour.');
-    }
 }
