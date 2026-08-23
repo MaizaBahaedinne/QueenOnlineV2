@@ -38,7 +38,7 @@
     font-family: "Segoe UI", "Trebuchet MS", Arial, sans-serif;
 }
 
-.app-shell { min-height: 100vh; display: grid; grid-template-columns: 280px 1fr; }
+.app-shell { min-height: 100vh; display: grid; grid-template-columns: 280px 1fr; transition: grid-template-columns .22s ease; }
 
 .sidebar {
     background: linear-gradient(180deg, #0f172a 0%, #111c36 100%);
@@ -49,6 +49,7 @@
     height: 100vh;
     overflow-y: auto;
     overscroll-behavior: contain;
+    transition: padding .22s ease;
 }
 
 .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; padding: 6px 8px; }
@@ -127,6 +128,50 @@
     font-size: 11px;
     letter-spacing: 0.6px;
     text-transform: uppercase;
+}
+
+.is-sidebar-collapsed .app-shell {
+    grid-template-columns: 92px 1fr;
+}
+
+.is-sidebar-collapsed .sidebar {
+    padding: 18px 10px;
+}
+
+.is-sidebar-collapsed .brand {
+    justify-content: center;
+    margin-bottom: 16px;
+    padding: 4px 0;
+}
+
+.is-sidebar-collapsed .brand-text,
+.is-sidebar-collapsed .menu-title,
+.is-sidebar-collapsed .menu-chevron,
+.is-sidebar-collapsed .menu-subtitle,
+.is-sidebar-collapsed .menu a span,
+.is-sidebar-collapsed .menu-submenu {
+    display: none !important;
+}
+
+.is-sidebar-collapsed .menu-section {
+    margin: 0 0 8px;
+    padding: 8px 0;
+    border: 0;
+    background: transparent;
+}
+
+.is-sidebar-collapsed .menu-section-toggle {
+    display: none;
+}
+
+.is-sidebar-collapsed .menu a {
+    justify-content: center;
+    padding: 10px 6px;
+    margin: 4px 0;
+}
+
+.is-sidebar-collapsed .menu a:hover {
+    transform: none;
 }
 
 .menu { list-style: none; margin: 0; padding: 0; }
@@ -421,7 +466,7 @@ tr:last-child td { border-bottom: none; }
 
 .btn-primary { background: linear-gradient(120deg, var(--primary), #3b82f6); color: #fff; border-color: var(--primary-dark); }
 .muted { color: var(--muted); }
-.sidebar-toggle { display: none; }
+.sidebar-toggle { display: inline-block; }
 
 .btn-primary:hover {
     background: linear-gradient(120deg, var(--primary-dark), var(--primary));
@@ -472,6 +517,10 @@ a:focus-visible {
     .menu-section .menu-section-content {
         max-height: 0;
         opacity: 0;
+    }
+
+    .is-sidebar-collapsed .app-shell {
+        grid-template-columns: 1fr;
     }
 }
 
