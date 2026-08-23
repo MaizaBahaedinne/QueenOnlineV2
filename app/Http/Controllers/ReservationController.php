@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
+use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Salle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -92,7 +94,173 @@ class ReservationController extends MatrixAwareController
         return view('reservations.show', [
             'title' => 'Detail reservation',
             'reservation' => $reservation,
+            'clients' => Client::query()->orderBy('name')->get(['id', 'name', 'first_name', 'cin']),
         ]);
+    }
+
+    public function updateClient(Request $request, Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        $validated = $request->validate([
+            'client_id' => ['required', 'exists:clients,id'],
+        ]);
+
+        $reservation->update([
+            'client_id' => $validated['client_id'],
+        ]);
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Client de la reservation mis a jour.');
+    }
+
+    public function availableSallesForReservation(Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        $salles = Salle::query()
+            ->where('status', 'active')
+            ->whereDoesntHave('reservations', function ($query) use ($reservation) {
+                $query
+                    ->where('id', '!=', $reservation->id)
+                    ->where('status', '!=', 'cancelled')
+                    ->whereDate('start_date', '<=', $reservation->end_date)
+                    ->whereDate('end_date', '>=', $reservation->start_date)
+                    ->where(function ($timeQuery) use ($reservation) {
+                        $timeQuery
+                            ->whereNull('start_time')
+                            ->orWhereNull('end_time')
+                            ->orWhere(function ($overlapQuery) use ($reservation) {
+                                $overlapQuery
+                                    ->where('start_time', '<', $reservation->end_time)
+                                    ->where('end_time', '>', $reservation->start_time);
+                            });
+                    });
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'capacity', 'price_per_day', 'salle_type', 'color_code']);
+
+        return response()->json([
+            'salles' => $salles,
+        ]);
+    }
+
+    public function updateSalle(Request $request, Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        $validated = $request->validate([
+            'salle_id' => ['required', 'exists:salles,id'],
+        ]);
+
+        $salleId = (int) $validated['salle_id'];
+
+        if ($reservation->salle_id !== $salleId) {
+            $hasConflict = Reservation::query()
+                ->where('id', '!=', $reservation->id)
+                ->where('salle_id', $salleId)
+                ->where('status', '!=', 'cancelled')
+                ->whereDate('start_date', '<=', $reservation->end_date)
+                ->whereDate('end_date', '>=', $reservation->start_date)
+                ->where(function ($timeQuery) use ($reservation) {
+                    $timeQuery
+                        ->whereNull('start_time')
+                        ->orWhereNull('end_time')
+                        ->orWhere(function ($overlapQuery) use ($reservation) {
+                            $overlapQuery
+                                ->where('start_time', '<', $reservation->end_time)
+                                ->where('end_time', '>', $reservation->start_time);
+                        });
+                })
+                ->exists();
+
+            if ($hasConflict) {
+                return redirect()
+                    ->route('reservations.show', $reservation)
+                    ->withErrors(['salle_id' => 'Cette salle n est pas disponible sur ce creneau.'])
+                    ->withInput();
+            }
+        }
+
+        $reservation->update([
+            'salle_id' => $salleId,
+        ]);
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Salle de la reservation mise a jour.');
+    }
+
+    public function storePayment(Request $request, Reservation $reservation)
+    {
+        $this->enforcePermission('payments', 'create', 'create');
+
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'method' => ['required', 'string', 'max:50'],
+            'phase' => ['required', Rule::in(['avance', 'partie-1', 'partie-2', 'partie-3', 'reste'])],
+            'paid_at' => ['nullable', 'date'],
+            'note' => ['nullable', 'string'],
+        ]);
+
+        $totalAmount = (float) ($reservation->total_amount ?? 0);
+        if ($totalAmount <= 0) {
+            return redirect()
+                ->route('reservations.show', $reservation)
+                ->withErrors(['amount' => 'Definis d abord un montant total sur la reservation.'])
+                ->withInput();
+        }
+
+        $alreadyPaid = (float) $reservation->payments()->sum('amount');
+        $remaining = max($totalAmount - $alreadyPaid, 0);
+        $amount = (float) $validated['amount'];
+        $paymentCount = (int) $reservation->payments()->count();
+
+        if ($remaining <= 0) {
+            return redirect()
+                ->route('reservations.show', $reservation)
+                ->withErrors(['amount' => 'Cette reservation est deja soldee.'])
+                ->withInput();
+        }
+
+        if ($amount > $remaining) {
+            return redirect()
+                ->route('reservations.show', $reservation)
+                ->withErrors(['amount' => 'Le montant depasse le reste a payer.'])
+                ->withInput();
+        }
+
+        if ($paymentCount === 0 && $validated['phase'] !== 'avance') {
+            return redirect()
+                ->route('reservations.show', $reservation)
+                ->withErrors(['phase' => 'Le premier paiement doit etre une avance.'])
+                ->withInput();
+        }
+
+        if ($validated['phase'] === 'reste' && abs($amount - $remaining) > 0.009) {
+            return redirect()
+                ->route('reservations.show', $reservation)
+                ->withErrors(['amount' => 'Pour la phase "reste", le montant doit couvrir exactement le solde.'])
+                ->withInput();
+        }
+
+        $phaseLabel = match ($validated['phase']) {
+            'avance' => 'Avance',
+            'partie-1' => 'Partie 1',
+            'partie-2' => 'Partie 2',
+            'partie-3' => 'Partie 3',
+            default => 'Reste',
+        };
+
+        Payment::query()->create([
+            'reservation_id' => $reservation->id,
+            'user_id' => Auth::id(),
+            'amount' => $amount,
+            'method' => $validated['method'],
+            'reference' => $phaseLabel,
+            'status' => 'paid',
+            'paid_at' => $validated['paid_at'] ?? now(),
+            'note' => $validated['note'] ?? null,
+        ]);
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Paiement ajoute a la reservation.');
     }
 
     public function store(Request $request)

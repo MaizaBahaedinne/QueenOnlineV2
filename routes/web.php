@@ -32,8 +32,12 @@ Route::middleware('auth')->group(function () {
 	Route::resource('clients', ClientController::class);
 	Route::resource('salles', SalleController::class);
 	Route::get('reservations/availability', [ReservationController::class, 'availableSalles'])->name('reservations.availability');
+	Route::get('reservations/{reservation}/available-salles', [ReservationController::class, 'availableSallesForReservation'])->name('reservations.available-salles');
 	Route::get('reservations/clients/search', [ReservationController::class, 'searchClients'])->name('reservations.clients.search');
 	Route::post('reservations/clients/quick-store', [ReservationController::class, 'quickStoreClient'])->name('reservations.clients.quick-store');
+	Route::patch('reservations/{reservation}/client', [ReservationController::class, 'updateClient'])->name('reservations.client.update');
+	Route::patch('reservations/{reservation}/salle', [ReservationController::class, 'updateSalle'])->name('reservations.salle.update');
+	Route::post('reservations/{reservation}/payments', [ReservationController::class, 'storePayment'])->name('reservations.payments.store');
 	Route::resource('reservations', ReservationController::class);
 	Route::resource('payments', PaymentController::class);
 
