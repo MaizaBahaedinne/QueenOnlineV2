@@ -32,10 +32,21 @@
         .reservation-calendar-card { border: 1px solid #d6e2ee; border-radius: 14px; background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%); padding: 12px; }
         .reservation-calendar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
         .reservation-calendar-title { margin: 0; font-size: 16px; font-weight: 700; color: #183a5b; }
+        .reservation-calendar-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
         .reservation-calendar-nav { display: inline-flex; gap: 6px; }
+        .reservation-view-toggle { display: inline-flex; gap: 6px; padding: 4px; border: 1px solid #d6e2ee; border-radius: 999px; background: #fff; }
+        .reservation-view-toggle button { border: 0; background: transparent; color: #4b6480; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .reservation-view-toggle button.is-active { background: #173f69; color: #fff; }
         .reservation-calendar-weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
         .reservation-calendar-weekday { font-size: 11px; text-transform: uppercase; color: #6b7f97; text-align: center; font-weight: 700; letter-spacing: .3px; }
         .reservation-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+        .reservation-calendar-grid.is-week { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+        .reservation-calendar-grid.is-year { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+        .reservation-year-month { border: 1px solid #d9e3ef; border-radius: 12px; background: #fff; padding: 10px; display: grid; gap: 8px; }
+        .reservation-year-month-title { margin: 0; font-size: 13px; font-weight: 700; color: #173f69; }
+        .reservation-year-mini-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+        .reservation-year-mini-day { min-height: 28px; border-radius: 6px; border: 1px solid #e0e8f2; background: #f9fcff; font-size: 10px; color: #33516e; display: flex; align-items: center; justify-content: center; }
+        .reservation-year-mini-day.has-events { background: #eaf4ff; border-color: #bfd6ee; font-weight: 700; }
         .reservation-day-cell { min-height: 72px; border: 1px solid #d9e3ef; border-radius: 10px; background: #fff; padding: 6px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; transition: .15s ease; }
         .reservation-day-cell:hover { border-color: #94b2d1; transform: translateY(-1px); }
         .reservation-day-cell.is-muted { opacity: .42; background: #f8fbff; }
@@ -103,9 +114,16 @@
             <div class="reservation-calendar-card">
                 <div class="reservation-calendar-head">
                     <h3 class="reservation-calendar-title" id="reservation-calendar-title">Calendrier</h3>
-                    <div class="reservation-calendar-nav">
+                    <div class="reservation-calendar-controls">
+                        <div class="reservation-view-toggle" role="tablist" aria-label="Vue calendrier">
+                            <button type="button" id="reservation-view-month" class="is-active">Mois</button>
+                            <button type="button" id="reservation-view-week">Semaine</button>
+                            <button type="button" id="reservation-view-year">Annee</button>
+                        </div>
+                        <div class="reservation-calendar-nav">
                         <button type="button" class="btn" id="reservation-calendar-prev">Mois prec.</button>
                         <button type="button" class="btn" id="reservation-calendar-next">Mois suiv.</button>
+                        </div>
                     </div>
                 </div>
                 <div class="reservation-calendar-weekdays">
@@ -351,6 +369,9 @@
         const reservationCalendarGrid = document.getElementById('reservation-calendar-grid');
         const reservationCalendarPrev = document.getElementById('reservation-calendar-prev');
         const reservationCalendarNext = document.getElementById('reservation-calendar-next');
+        const reservationViewMonth = document.getElementById('reservation-view-month');
+        const reservationViewWeek = document.getElementById('reservation-view-week');
+        const reservationViewYear = document.getElementById('reservation-view-year');
 
         const availabilityButton = document.getElementById('reservation-check-availability');
         const availabilityStatus = document.getElementById('reservation-availability-status');
@@ -387,6 +408,8 @@
         const minimumStartTime = '08:00';
         const maximumTime = '23:59';
         const monthLabelFormatter = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' });
+        const weekLabelFormatter = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+        const shortDayFormatter = new Intl.DateTimeFormat('fr-FR', { weekday: 'short' });
         let lockedCreateDateValue = null;
         let calendarCursor = new Date();
         calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), 1);
@@ -526,6 +549,7 @@
                     if (!map[key]) {
                         map[key] = [];
                     }
+
                     map[key].push(reservation);
                     cursor.setDate(cursor.getDate() + 1);
                 }
@@ -534,59 +558,183 @@
             return map;
         };
 
+        const getWeekStart = (date) => {
+            const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            const day = (copy.getDay() + 6) % 7;
+            copy.setDate(copy.getDate() - day);
+            return copy;
+        };
+
+        const getMonthDates = (date) => {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const firstWeekday = (firstDay.getDay() + 6) % 7;
+            const start = new Date(year, month, 1 - firstWeekday);
+            const dates = [];
+
+            for (let index = 0; index < 42; index += 1) {
+                const current = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
+                dates.push({
+                    date: current,
+                    isCurrentMonth: current.getMonth() === month,
+                });
+            }
+
+            return dates;
+        };
+
+        const getEventSnippetsForDate = (iso, limit = 3) => {
+            const events = reservationsByDay[iso] || [];
+
+            return events.slice(0, limit).map((event) => {
+                const hour = event.start_time || '--:--';
+                const label = event.title || event.client || `Reservation #${event.id}`;
+                const color = normalizeHexColor(event.salle_color);
+                const link = `${reservationShowBaseUrl}/${event.id}`;
+                return `<a class="reservation-day-event-link" href="${link}"><div class="reservation-day-event" style="border-left-color:${color};">${escapeHtml(hour)} · ${escapeHtml(label)}</div></a>`;
+            }).join('');
+        };
+
         const reservationsByDay = buildReservationsByDay();
+        let calendarViewMode = 'month';
+
+        const syncViewButtons = () => {
+            [reservationViewMonth, reservationViewWeek, reservationViewYear].forEach((button) => {
+                if (button) {
+                    button.classList.remove('is-active');
+                }
+            });
+
+            const activeButton = document.getElementById(`reservation-view-${calendarViewMode}`);
+            if (activeButton) {
+                activeButton.classList.add('is-active');
+            }
+        };
 
         const renderCalendar = () => {
             if (!reservationCalendarTitle || !reservationCalendarGrid) {
                 return;
             }
 
-            reservationCalendarTitle.textContent = `Calendrier - ${monthLabelFormatter.format(calendarCursor)}`;
-
-            const year = calendarCursor.getFullYear();
-            const month = calendarCursor.getMonth();
-            const firstDay = new Date(year, month, 1);
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const firstWeekday = (firstDay.getDay() + 6) % 7;
-
+            const todayIso = toIsoDate(new Date());
             reservationCalendarGrid.innerHTML = '';
+            reservationCalendarGrid.classList.remove('is-week', 'is-year');
 
-            for (let i = 0; i < firstWeekday; i += 1) {
-                const ghost = document.createElement('div');
-                ghost.className = 'reservation-day-cell is-muted';
-                reservationCalendarGrid.appendChild(ghost);
+            if (calendarViewMode === 'year') {
+                reservationCalendarTitle.textContent = `Calendrier - ${calendarCursor.getFullYear()}`;
+                reservationCalendarGrid.classList.add('is-year');
+
+                for (let monthIndex = 0; monthIndex < 12; monthIndex += 1) {
+                    const monthDate = new Date(calendarCursor.getFullYear(), monthIndex, 1);
+                    const monthCell = document.createElement('button');
+                    monthCell.type = 'button';
+                    monthCell.className = 'reservation-year-month';
+                    monthCell.innerHTML = `
+                        <p class="reservation-year-month-title">${monthLabelFormatter.format(monthDate)}</p>
+                        <div class="reservation-year-mini-grid"></div>
+                    `;
+
+                    const miniGrid = monthCell.querySelector('.reservation-year-mini-grid');
+                    const firstDay = new Date(calendarCursor.getFullYear(), monthIndex, 1);
+                    const firstWeekday = (firstDay.getDay() + 6) % 7;
+
+                    for (let i = 0; i < firstWeekday; i += 1) {
+                        const empty = document.createElement('div');
+                        empty.className = 'reservation-year-mini-day';
+                        miniGrid.appendChild(empty);
+                    }
+
+                    const daysInMonth = new Date(calendarCursor.getFullYear(), monthIndex + 1, 0).getDate();
+                    for (let day = 1; day <= daysInMonth; day += 1) {
+                        const date = new Date(calendarCursor.getFullYear(), monthIndex, day);
+                        const iso = toIsoDate(date);
+                        const dayNode = document.createElement('div');
+                        dayNode.className = 'reservation-year-mini-day';
+                        if ((reservationsByDay[iso] || []).length > 0) {
+                            dayNode.classList.add('has-events');
+                        }
+                        dayNode.textContent = String(day);
+                        miniGrid.appendChild(dayNode);
+                    }
+
+                    monthCell.addEventListener('click', () => {
+                        calendarCursor = new Date(calendarCursor.getFullYear(), monthIndex, 1);
+                        calendarViewMode = 'month';
+                        syncViewButtons();
+                        renderCalendar();
+                    });
+
+                    reservationCalendarGrid.appendChild(monthCell);
+                }
+
+                return;
             }
 
-            const todayIso = toIsoDate(new Date());
+            if (calendarViewMode === 'week') {
+                const weekStart = getWeekStart(calendarCursor);
+                reservationCalendarTitle.textContent = `Semaine du ${weekLabelFormatter.format(weekStart)}`;
+                reservationCalendarGrid.classList.add('is-week');
 
-            for (let day = 1; day <= daysInMonth; day += 1) {
-                const date = new Date(year, month, day);
-                const iso = toIsoDate(date);
-                const events = reservationsByDay[iso] || [];
-                const eventSnippets = events.slice(0, 3).map((event) => {
-                    const hour = event.start_time || '--:--';
-                    const label = event.title || event.client || `Reservation #${event.id}`;
-                    const color = normalizeHexColor(event.salle_color);
-                    const link = `${reservationShowBaseUrl}/${event.id}`;
-                    return `<a class="reservation-day-event-link" href="${link}"><div class="reservation-day-event" style="border-left-color:${color};">${escapeHtml(hour)} · ${escapeHtml(label)}</div></a>`;
-                }).join('');
+                for (let offset = 0; offset < 7; offset += 1) {
+                    const date = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + offset);
+                    const iso = toIsoDate(date);
+                    const cell = document.createElement('button');
+                    cell.type = 'button';
+                    cell.className = 'reservation-day-cell';
+                    if (iso < todayIso) {
+                        cell.classList.add('is-past');
+                    }
+                    if (iso === todayIso) {
+                        cell.classList.add('is-today');
+                    }
+                    cell.innerHTML = `
+                        <span class="reservation-day-number">${shortDayFormatter.format(date)} ${String(date.getDate()).padStart(2, '0')}</span>
+                        ${getEventSnippetsForDate(iso)}
+                    `;
+                    cell.addEventListener('click', (event) => {
+                        if (event.target.closest('.reservation-day-event-link') || iso < todayIso) {
+                            return;
+                        }
 
+                        const createModal = document.getElementById('reservation-create-modal');
+                        if (!createModal || !eventDateInput) {
+                            return;
+                        }
+
+                        prepareCreateReservationModal(iso, true);
+                        createModal.classList.add('show');
+                    });
+                    reservationCalendarGrid.appendChild(cell);
+                }
+
+                return;
+            }
+
+            reservationCalendarTitle.textContent = `Calendrier - ${monthLabelFormatter.format(calendarCursor)}`;
+            getMonthDates(calendarCursor).forEach((entry) => {
+                const iso = toIsoDate(entry.date);
                 const cell = document.createElement('button');
                 cell.type = 'button';
                 cell.className = 'reservation-day-cell';
+
+                if (!entry.isCurrentMonth) {
+                    cell.classList.add('is-muted');
+                }
                 if (iso < todayIso) {
                     cell.classList.add('is-past');
                 }
                 if (iso === todayIso) {
                     cell.classList.add('is-today');
                 }
+
                 cell.innerHTML = `
-                    <span class="reservation-day-number">${day}</span>
-                    ${eventSnippets ? `<div class="reservation-day-events">${eventSnippets}</div>` : ''}
+                    <span class="reservation-day-number">${entry.date.getDate()}</span>
+                    ${getEventSnippetsForDate(iso)}
                 `;
 
                 cell.addEventListener('click', (event) => {
-                    if (event.target.closest('.reservation-day-event-link')) {
+                    if (event.target.closest('.reservation-day-event-link') || iso < todayIso) {
                         return;
                     }
 
@@ -595,32 +743,67 @@
                         return;
                     }
 
-                    if (iso < todayIso) {
-                        return;
-                    }
-
                     prepareCreateReservationModal(iso, true);
                     createModal.classList.add('show');
                 });
 
                 reservationCalendarGrid.appendChild(cell);
-            }
+            });
         };
+
+        if (reservationViewMonth) {
+            reservationViewMonth.addEventListener('click', () => {
+                calendarViewMode = 'month';
+                syncViewButtons();
+                renderCalendar();
+            });
+        }
+
+        if (reservationViewWeek) {
+            reservationViewWeek.addEventListener('click', () => {
+                calendarViewMode = 'week';
+                syncViewButtons();
+                renderCalendar();
+            });
+        }
+
+        if (reservationViewYear) {
+            reservationViewYear.addEventListener('click', () => {
+                calendarViewMode = 'year';
+                syncViewButtons();
+                renderCalendar();
+            });
+        }
 
         if (reservationCalendarPrev) {
             reservationCalendarPrev.addEventListener('click', () => {
-                calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() - 1, 1);
+                if (calendarViewMode === 'year') {
+                    calendarCursor = new Date(calendarCursor.getFullYear() - 1, 0, 1);
+                } else if (calendarViewMode === 'week') {
+                    calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), calendarCursor.getDate() - 7);
+                } else {
+                    calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() - 1, 1);
+                }
+
                 renderCalendar();
             });
         }
 
         if (reservationCalendarNext) {
             reservationCalendarNext.addEventListener('click', () => {
-                calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 1);
+                if (calendarViewMode === 'year') {
+                    calendarCursor = new Date(calendarCursor.getFullYear() + 1, 0, 1);
+                } else if (calendarViewMode === 'week') {
+                    calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), calendarCursor.getDate() + 7);
+                } else {
+                    calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 1);
+                }
+
                 renderCalendar();
             });
         }
 
+        syncViewButtons();
         renderCalendar();
 
         const minutesToTime = (totalMinutes) => {

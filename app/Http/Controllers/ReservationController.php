@@ -57,15 +57,19 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'list', 'view');
 
-        $service = trim((string) request()->query('service', ''));
-        if ($service !== '' && ! array_key_exists($service, self::RESERVATION_SERVICES)) {
-            $service = '';
+        $service = trim((string) request()->query('service', 'salles'));
+        if ($service === '') {
+            $service = 'salles';
+        }
+
+        if ($service !== 'all' && ! array_key_exists($service, self::RESERVATION_SERVICES)) {
+            $service = 'salles';
         }
 
         $reservationsQuery = Reservation::query()->with(['client', 'salle']);
         $hasServiceSlugColumn = Schema::hasColumn('reservations', 'service_slug');
 
-        if ($service !== '') {
+        if ($service !== 'all') {
             if ($hasServiceSlugColumn) {
                 if ($service === 'salles') {
                     $reservationsQuery->where(function ($query) {
@@ -89,7 +93,7 @@ class ReservationController extends MatrixAwareController
             'governorates' => self::GOVERNORATES,
             'sources' => self::SOURCES,
             'reservationService' => $service,
-            'reservationServiceLabel' => $service !== '' ? self::RESERVATION_SERVICES[$service] : null,
+            'reservationServiceLabel' => $service !== 'all' ? self::RESERVATION_SERVICES[$service] : 'Toutes',
         ]);
     }
 

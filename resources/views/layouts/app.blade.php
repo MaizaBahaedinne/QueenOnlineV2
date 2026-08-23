@@ -55,13 +55,14 @@
                 <div class="menu-section-content">
                     <ul class="menu">
                         <li><a class="{{ str_starts_with((string) $current, 'clients.') ? 'active' : '' }}" href="{{ route('clients.index') }}"><i class="fa fa-users menu-icon" aria-hidden="true"></i><span>Clients</span></a></li>
+                        <li><a class="{{ str_starts_with((string) $current, 'payments.') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa fa-credit-card menu-icon" aria-hidden="true"></i><span>Paiements</span></a></li>
                         <li>
                             <a class="{{ str_starts_with((string) $current, 'reservations.') ? 'active' : '' }}" href="{{ route('reservations.index') }}"><i class="fa fa-calendar menu-icon" aria-hidden="true"></i><span>Reservations</span></a>
                             @if (str_starts_with((string) $current, 'reservations.'))
                                 <ul class="menu-submenu">
-                                    <li><a class="{{ $reservationService === '' ? 'active' : '' }}" href="{{ route('reservations.index') }}">Toutes</a></li>
+                                    <li><a class="{{ $reservationService === 'salles' ? 'active' : '' }}" href="{{ route('reservations.index') }}">Salles</a></li>
                                     @if (auth()->user()?->canFeature('salles', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'salles' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'salles']) }}">Salles</a></li>
+                                        <li><a class="{{ $reservationService === 'all' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'all']) }}">Toutes</a></li>
                                     @endif
                                     @if (auth()->user()?->canFeature('troupe-musicale', 'list', 'view'))
                                         <li><a class="{{ $reservationService === 'troupe-musicale' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'troupe-musicale']) }}">Troupe musicale</a></li>
@@ -84,7 +85,6 @@
                                 </ul>
                             @endif
                         </li>
-                        <li><a class="{{ str_starts_with((string) $current, 'payments.') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa fa-credit-card menu-icon" aria-hidden="true"></i><span>Paiements</span></a></li>
                     </ul>
                 </div>
             </div>

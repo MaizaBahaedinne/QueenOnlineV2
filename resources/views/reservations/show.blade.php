@@ -625,11 +625,11 @@
                                             </div>
                                             @if ($canUpdateReservation)
                                                 <div class="additional-service-item-right">
-                                                    <form method="POST" action="{{ route('reservations.additional-services.destroy', [$reservation, $row]) }}" onsubmit="return confirm('Retirer ce service ?');">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn">Retirer</button>
-                                                    </form>
+                                                    @if ($row->linkedReservation)
+                                                        <a href="{{ route('reservations.show', $row->linkedReservation) }}" class="btn">Afficher</a>
+                                                    @else
+                                                        <button type="button" class="btn" disabled>Afficher</button>
+                                                    @endif
                                                 </div>
                                             @endif
                                         </div>
