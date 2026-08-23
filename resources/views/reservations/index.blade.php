@@ -43,6 +43,7 @@
         .reservation-day-number { font-size: 12px; font-weight: 700; color: #234869; }
         .reservation-day-events { margin-top: 4px; display: grid; gap: 3px; }
         .reservation-day-event { font-size: 10px; line-height: 1.2; padding: 2px 4px; border-radius: 6px; background: #eef5fc; color: #244f77; border-left: 3px solid #3b82f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .reservation-day-event-link { text-decoration: none; display: block; }
         .salle-cards-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
         .salle-card { border: 1px solid #d7dee8; border-radius: 12px; padding: 11px; cursor: pointer; background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%); transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; text-align: left; }
         .salle-card:hover { border-color: #8ca6c1; box-shadow: 0 6px 14px rgba(8, 24, 48, 0.08); transform: translateY(-1px); }
@@ -330,6 +331,7 @@
         const clientSearchUrl = "{{ route('reservations.clients.search') }}";
         const calendarDataNode = document.getElementById('reservation-calendar-data');
         const reservationCalendarData = calendarDataNode ? JSON.parse(calendarDataNode.textContent || '[]') : [];
+        const reservationShowBaseUrl = "{{ url('reservations') }}";
         const reservationCalendarTitle = document.getElementById('reservation-calendar-title');
         const reservationCalendarGrid = document.getElementById('reservation-calendar-grid');
         const reservationCalendarPrev = document.getElementById('reservation-calendar-prev');
@@ -482,6 +484,13 @@
             return /^#[0-9A-Fa-f]{6}$/.test(candidate) ? candidate : fallback;
         };
 
+        const escapeHtml = (value) => String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+
         const buildReservationsByDay = () => {
             const map = {};
 
@@ -542,7 +551,8 @@
                     const hour = event.start_time || '--:--';
                     const label = event.title || event.client || `Reservation #${event.id}`;
                     const color = normalizeHexColor(event.salle_color);
-                    return `<div class="reservation-day-event" style="border-left-color:${color};">${hour} · ${label}</div>`;
+                    const link = `${reservationShowBaseUrl}/${event.id}`;
+                    return `<a class="reservation-day-event-link" href="${link}"><div class="reservation-day-event" style="border-left-color:${color};">${escapeHtml(hour)} · ${escapeHtml(label)}</div></a>`;
                 }).join('');
 
                 const cell = document.createElement('button');

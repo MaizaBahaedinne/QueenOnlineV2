@@ -64,6 +64,18 @@ class ReservationController extends MatrixAwareController
         return redirect()->route('reservations.index');
     }
 
+    public function show(Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'list', 'view');
+
+        $reservation->load(['client', 'salle', 'user', 'payments']);
+
+        return view('reservations.show', [
+            'title' => 'Detail reservation',
+            'reservation' => $reservation,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $this->enforcePermission('reservations', 'create', 'create');
