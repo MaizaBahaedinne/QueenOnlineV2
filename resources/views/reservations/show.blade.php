@@ -601,7 +601,7 @@
                                     </div>
                                     <div class="reservation-payment-meta">
                                         <span>Date</span>
-                                        <strong>{{ $payment->paid_at ? \Illuminate\Support\Carbon::parse($payment->paid_at)->format('d/m/Y') : '-' }}</strong>
+                                        <strong>{{ $payment->paid_at ? \Illuminate\Support\Carbon::parse($payment->paid_at)->format('d/m/Y H:i:s') : '-' }}</strong>
                                     </div>
                                     <div class="reservation-payment-meta">
                                         <span>Methode</span>
@@ -767,8 +767,8 @@
                             </select>
                         </div>
                         <div>
-                            <label for="payment-paid-at">Date paiement</label>
-                            <input id="payment-paid-at" type="date" name="paid_at" value="{{ old('paid_at', now()->toDateString()) }}">
+                            <label for="payment-paid-at-display">Date paiement (auto)</label>
+                            <input id="payment-paid-at-display" type="text" value="{{ now()->format('d/m/Y H:i:s') }}" readonly>
                         </div>
                     </div>
 
@@ -863,7 +863,7 @@
                 syncPaymentControls();
             }
 
-            const hasPaymentErrors = "{{ $errors->has('amount') || $errors->has('phase') || $errors->has('method') || $errors->has('paid_at') || $errors->has('note') ? '1' : '0' }}" === '1';
+            const hasPaymentErrors = "{{ $errors->has('amount') || $errors->has('phase') || $errors->has('method') || $errors->has('note') ? '1' : '0' }}" === '1';
             const hasClientErrors = "{{ $errors->has('client_type') || $errors->has('first_name') || $errors->has('name') || $errors->has('phone') ? '1' : '0' }}" === '1';
 
             if (hasPaymentErrors) {

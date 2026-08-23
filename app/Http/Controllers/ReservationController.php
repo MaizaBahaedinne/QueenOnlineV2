@@ -292,7 +292,6 @@ class ReservationController extends MatrixAwareController
             'amount' => ['required', 'numeric', 'gt:0'],
             'method' => ['required', 'string', 'max:50'],
             'phase' => ['required', Rule::in(['avance', 'partie-1', 'partie-2', 'partie-3', 'reste'])],
-            'paid_at' => ['nullable', 'date'],
             'note' => ['nullable', 'string'],
         ]);
 
@@ -352,7 +351,7 @@ class ReservationController extends MatrixAwareController
             'method' => $validated['method'],
             'reference' => $phaseLabel,
             'status' => 'paid',
-            'paid_at' => $validated['paid_at'] ?? now(),
+            'paid_at' => now()->format('Y-m-d H:i:s'),
             'note' => $validated['note'] ?? null,
         ]);
 
