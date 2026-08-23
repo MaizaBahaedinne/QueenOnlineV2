@@ -47,7 +47,7 @@
         .reservation-year-mini-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
         .reservation-year-mini-day { min-height: 28px; border-radius: 6px; border: 1px solid #e0e8f2; background: #f9fcff; font-size: 10px; color: #33516e; display: flex; align-items: center; justify-content: center; }
         .reservation-year-mini-day.has-events { background: #eaf4ff; border-color: #bfd6ee; font-weight: 700; }
-        .reservation-day-cell { min-height: 72px; border: 1px solid #d9e3ef; border-radius: 10px; background: #fff; padding: 6px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; transition: .15s ease; }
+        .reservation-day-cell { min-height: 104px; border: 1px solid #d9e3ef; border-radius: 10px; background: #fff; padding: 10px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; transition: .15s ease; }
         .reservation-day-cell:hover { border-color: #94b2d1; transform: translateY(-1px); }
         .reservation-day-cell.is-muted { opacity: .42; background: #f8fbff; }
         .reservation-day-cell.is-past { background: #f3f5f8; border-color: #d6dce5; opacity: .72; }
