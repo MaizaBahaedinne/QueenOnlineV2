@@ -863,8 +863,8 @@
                 syncPaymentControls();
             }
 
-            const hasPaymentErrors = {{ $errors->has('amount') || $errors->has('phase') || $errors->has('method') || $errors->has('paid_at') || $errors->has('note') ? 'true' : 'false' }};
-            const hasClientErrors = {{ $errors->has('client_type') || $errors->has('first_name') || $errors->has('name') || $errors->has('phone') ? 'true' : 'false' }};
+            const hasPaymentErrors = "{{ $errors->has('amount') || $errors->has('phase') || $errors->has('method') || $errors->has('paid_at') || $errors->has('note') ? '1' : '0' }}" === '1';
+            const hasClientErrors = "{{ $errors->has('client_type') || $errors->has('first_name') || $errors->has('name') || $errors->has('phone') ? '1' : '0' }}" === '1';
 
             if (hasPaymentErrors) {
                 openModal('payment-modal');
