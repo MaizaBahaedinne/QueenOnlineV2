@@ -919,6 +919,8 @@
         </div>
     @endif
 
+    <script type="application/json" id="additional-service-options-data">{!! json_encode($serviceOptionsByModule ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}</script>
+
     <script>
         (function () {
             const overlays = document.querySelectorAll('.modal-overlay');
@@ -995,7 +997,15 @@
                 syncPaymentControls();
             }
 
-            const serviceOptionsByModule = JSON.parse('{{ json_encode($serviceOptionsByModule ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}');
+            const additionalServiceOptionsData = document.getElementById('additional-service-options-data');
+            let serviceOptionsByModule = {};
+            if (additionalServiceOptionsData) {
+                try {
+                    serviceOptionsByModule = JSON.parse(additionalServiceOptionsData.textContent || '{}');
+                } catch (error) {
+                    serviceOptionsByModule = {};
+                }
+            }
             const additionalServiceModule = document.getElementById('additional-service-module');
             const additionalServiceRef = document.getElementById('additional-service-ref');
             const additionalServiceAmount = document.getElementById('additional-service-amount');
