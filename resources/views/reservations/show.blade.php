@@ -255,6 +255,21 @@
             font-weight: 600;
         }
 
+        .reservation-nearby {
+            border: 1px solid #f2ddba;
+            background: #fff8eb;
+            border-radius: 10px;
+            padding: 8px 9px;
+            font-size: 12px;
+            color: #8a5b0d;
+            display: grid;
+            gap: 4px;
+        }
+
+        .reservation-nearby strong {
+            font-size: 12px;
+        }
+
         .reservation-actions-row {
             display: flex;
             justify-content: flex-end;
@@ -392,6 +407,41 @@
             font-size: 18px;
         }
 
+        .client-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .client-form-grid .full {
+            grid-column: 1 / -1;
+        }
+
+        .client-form-grid label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #45617c;
+        }
+
+        .client-form-grid input,
+        .client-form-grid select,
+        .client-form-grid textarea {
+            width: 100%;
+            border: 1px solid #d3deea;
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 13px;
+            background: #fff;
+            color: #183a5b;
+        }
+
+        .client-form-grid input[readonly] {
+            background: #eef3f8;
+            color: #5b6b7d;
+        }
+
         .salle-available-list {
             display: grid;
             gap: 8px;
@@ -431,6 +481,7 @@
             .reservation-show-grid { grid-template-columns: 1fr; }
             .reservation-objects-grid { grid-template-columns: 1fr; }
             .payment-form-row { grid-template-columns: 1fr; }
+            .client-form-grid { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 640px) {
@@ -473,28 +524,41 @@
                 <div class="reservation-object-head">
                     <h3 class="reservation-object-title">Client</h3>
                     @if ($canUpdateReservation)
-                        <button type="button" class="btn" data-open-modal="client-modal">Modifier</button>
+                        <button type="button" class="btn" data-open-modal="client-modal">Modifier donnees client</button>
                     @endif
                 </div>
                 <div class="reservation-object-body">
                     <div class="reservation-kv"><span class="reservation-kv-key">Nom complet</span><span class="reservation-kv-value">{{ $clientFullName }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">CIN</span><span class="reservation-kv-value">{{ $reservation->client?->cin ?? '-' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Telephone</span><span class="reservation-kv-value">{{ $reservation->client?->phone ?? '-' }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Mobile 1</span><span class="reservation-kv-value">{{ $reservation->client?->phone ?? '-' }}{{ $reservation->client?->phone_label_1 ? ' (' . $reservation->client->phone_label_1 . ')' : '' }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Mobile 2</span><span class="reservation-kv-value">{{ $reservation->client?->phone_2 ?? '-' }}{{ $reservation->client?->phone_label_2 ? ' (' . $reservation->client->phone_label_2 . ')' : '' }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Adresse</span><span class="reservation-kv-value">{{ $clientAddress }}</span></div>
                 </div>
             </article>
 
             <article class="reservation-card">
                 <div class="reservation-object-head">
                     <h3 class="reservation-object-title">Salle</h3>
-                    @if ($canUpdateReservation)
-                        <button type="button" class="btn" data-open-modal="salle-modal">Verifier et changer</button>
-                    @endif
                 </div>
                 <div class="reservation-object-body">
                     <div class="reservation-kv"><span class="reservation-kv-key">Salle actuelle</span><span class="reservation-kv-value">{{ $reservation->salle?->name ?? '-' }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Capacite</span><span class="reservation-kv-value">{{ $reservation->salle?->capacity ?? '-' }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Type</span><span class="reservation-kv-value">{{ $reservation->salle?->salle_type ?? '-' }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Creneau</span><span class="reservation-kv-value">{{ $reservation->start_date }} {{ $reservation->start_time ?? '--:--' }} -> {{ $reservation->end_date }} {{ $reservation->end_time ?? '--:--' }}</span></div>
+                    @if (($nearbyCreneaux ?? collect())->isNotEmpty())
+                        <div class="reservation-nearby">
+                            <strong>Reservations proches (+/- 1h30)</strong>
+                            @foreach ($nearbyCreneaux as $nearby)
+                                <span>
+                                    {{ $nearby['position'] === 'before' ? 'Avant' : 'Apres' }} ({{ $nearby['gap_minutes'] }} min):
+                                    {{ $nearby['title'] }}
+                                    @if (! empty($nearby['client']))
+                                        - {{ $nearby['client'] }}
+                                    @endif
+                                </span>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             </article>
 
@@ -506,53 +570,12 @@
 
                 <div class="reservation-object-body">
                     @if ($canCreatePayment)
-                        <form method="POST" action="{{ route('reservations.payments.store', $reservation) }}" class="payment-form" id="reservation-payment-form">
-                            @csrf
-                            <div class="payment-form-row">
-                                <div>
-                                    <label for="payment-phase">Type paiement</label>
-                                    <select id="payment-phase" name="phase" required>
-                                        <option value="avance" {{ old('phase', $nextPhase) === 'avance' ? 'selected' : '' }}>Avance</option>
-                                        <option value="partie-1" {{ old('phase', $nextPhase) === 'partie-1' ? 'selected' : '' }}>Partie 1</option>
-                                        <option value="partie-2" {{ old('phase', $nextPhase) === 'partie-2' ? 'selected' : '' }}>Partie 2</option>
-                                        <option value="partie-3" {{ old('phase', $nextPhase) === 'partie-3' ? 'selected' : '' }}>Partie 3</option>
-                                        <option value="reste" {{ old('phase', $nextPhase) === 'reste' ? 'selected' : '' }}>Reste</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="payment-amount">Montant</label>
-                                    <input id="payment-amount" type="number" step="0.01" min="0.01" name="amount" value="{{ old('amount') }}" required>
-                                </div>
-                            </div>
-
-                            <div class="payment-form-row">
-                                <div>
-                                    <label for="payment-method">Methode</label>
-                                    <select id="payment-method" name="method" required>
-                                        <option value="cash" {{ old('method') === 'cash' ? 'selected' : '' }}>Cash</option>
-                                        <option value="virement" {{ old('method') === 'virement' ? 'selected' : '' }}>Virement</option>
-                                        <option value="carte" {{ old('method') === 'carte' ? 'selected' : '' }}>Carte</option>
-                                        <option value="cheque" {{ old('method') === 'cheque' ? 'selected' : '' }}>Cheque</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="payment-paid-at">Date paiement</label>
-                                    <input id="payment-paid-at" type="date" name="paid_at" value="{{ old('paid_at', now()->toDateString()) }}">
-                                </div>
-                            </div>
-
-                            <div>
-                                <label for="payment-note">Note</label>
-                                <textarea id="payment-note" name="note" rows="2" placeholder="Note optionnelle">{{ old('note') }}</textarea>
-                            </div>
-
-                            <p class="payment-form-help" id="payment-form-help">Controle: le premier paiement doit etre "Avance". Reste actuel: {{ number_format($remainingAmount, 2, '.', ' ') }}.</p>
-
-                            <div class="reservation-actions-row">
-                                <button type="submit" class="btn btn-primary" {{ $remainingAmount <= 0 ? 'disabled' : '' }}>Ajouter paiement</button>
-                            </div>
-                        </form>
+                        <button type="button" class="btn btn-primary" data-open-modal="payment-modal" {{ $remainingAmount <= 0 ? 'disabled' : '' }}>Ajouter paiement</button>
                     @endif
+
+                    <div class="reservation-kv"><span class="reservation-kv-key">Total reservation</span><span class="reservation-kv-value">{{ number_format($totalAmount, 2, '.', ' ') }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Total paye</span><span class="reservation-kv-value">{{ number_format($totalPaid, 2, '.', ' ') }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Reste</span><span class="reservation-kv-value">{{ number_format($remainingAmount, 2, '.', ' ') }}</span></div>
 
                     @if ($reservation->payments->isEmpty())
                         <p class="reservation-empty">Aucun paiement lie a cette reservation.</p>
@@ -597,52 +620,167 @@
         <div class="modal-overlay" id="client-modal">
             <div class="modal-card">
                 <div class="modal-head">
-                    <h3 class="modal-title">Modifier client de la reservation</h3>
+                    <h3 class="modal-title">Mettre a jour les donnees client</h3>
                     <button type="button" class="btn" data-close-modal>Fermer</button>
                 </div>
 
                 <form method="POST" action="{{ route('reservations.client.update', $reservation) }}" style="display:grid; gap:10px;">
                     @csrf
                     @method('PATCH')
-                    <label for="reservation-client-id">Client</label>
-                    <select id="reservation-client-id" name="client_id" class="search" style="max-width:none;" required>
-                        @foreach ($clients as $client)
-                            @php
-                                $optionName = trim((string) (($client->first_name ?? '') . ' ' . ($client->name ?? '')));
-                                $optionName = $optionName !== '' ? $optionName : ($client->name ?? 'Client');
-                            @endphp
-                            <option value="{{ $client->id }}" {{ (int) $reservation->client_id === (int) $client->id ? 'selected' : '' }}>{{ $optionName }}{{ $client->cin ? ' - CIN: ' . $client->cin : '' }}</option>
-                        @endforeach
-                    </select>
+                    <div class="client-form-grid">
+                        <div>
+                            <label for="client-type">Type client</label>
+                            <select id="client-type" name="client_type" required>
+                                <option value="personne-physique" {{ old('client_type', $reservation->client?->client_type) === 'personne-physique' ? 'selected' : '' }}>Personne physique</option>
+                                <option value="societe" {{ old('client_type', $reservation->client?->client_type) === 'societe' ? 'selected' : '' }}>Societe</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="client-cin">CIN (non modifiable)</label>
+                            <input id="client-cin" type="text" value="{{ $reservation->client?->cin ?? '-' }}" readonly>
+                        </div>
+
+                        <div>
+                            <label for="client-first-name">Prenom</label>
+                            <input id="client-first-name" name="first_name" type="text" value="{{ old('first_name', $reservation->client?->first_name) }}" required>
+                        </div>
+                        <div>
+                            <label for="client-name">Nom</label>
+                            <input id="client-name" name="name" type="text" value="{{ old('name', $reservation->client?->name) }}" required>
+                        </div>
+
+                        <div>
+                            <label for="client-fiscal">Matricule fiscale</label>
+                            <input id="client-fiscal" name="fiscal_number" type="text" value="{{ old('fiscal_number', $reservation->client?->fiscal_number) }}">
+                        </div>
+                        <div>
+                            <label for="client-company">Raison sociale</label>
+                            <input id="client-company" name="company_name" type="text" value="{{ old('company_name', $reservation->client?->company_name) }}">
+                        </div>
+
+                        <div>
+                            <label for="client-date-cin">Date delivrance CIN</label>
+                            <input id="client-date-cin" name="date_cin" type="date" value="{{ old('date_cin', $reservation->client?->date_cin) }}">
+                        </div>
+                        <div>
+                            <label for="client-email">Email</label>
+                            <input id="client-email" name="email" type="email" value="{{ old('email', $reservation->client?->email) }}">
+                        </div>
+
+                        <div>
+                            <label for="client-phone">Mobile 1</label>
+                            <input id="client-phone" name="phone" type="text" value="{{ old('phone', $reservation->client?->phone) }}" required>
+                        </div>
+                        <div>
+                            <label for="client-phone-label-1">Label mobile 1</label>
+                            <input id="client-phone-label-1" name="phone_label_1" type="text" value="{{ old('phone_label_1', $reservation->client?->phone_label_1) }}">
+                        </div>
+
+                        <div>
+                            <label for="client-phone-2">Mobile 2</label>
+                            <input id="client-phone-2" name="phone_2" type="text" value="{{ old('phone_2', $reservation->client?->phone_2) }}">
+                        </div>
+                        <div>
+                            <label for="client-phone-label-2">Label mobile 2</label>
+                            <input id="client-phone-label-2" name="phone_label_2" type="text" value="{{ old('phone_label_2', $reservation->client?->phone_label_2) }}">
+                        </div>
+
+                        <div>
+                            <label for="client-address-number">N adresse</label>
+                            <input id="client-address-number" name="address_number" type="text" value="{{ old('address_number', $reservation->client?->address_number) }}">
+                        </div>
+                        <div>
+                            <label for="client-address-street">Rue</label>
+                            <input id="client-address-street" name="address_street" type="text" value="{{ old('address_street', $reservation->client?->address_street) }}">
+                        </div>
+
+                        <div>
+                            <label for="client-city">Ville</label>
+                            <input id="client-city" name="city" type="text" value="{{ old('city', $reservation->client?->city) }}">
+                        </div>
+                        <div>
+                            <label for="client-governorate">Gouvernorat</label>
+                            <select id="client-governorate" name="governorate" required>
+                                @foreach ($governorates as $governorate)
+                                    <option value="{{ $governorate }}" {{ old('governorate', $reservation->client?->governorate) === $governorate ? 'selected' : '' }}>{{ $governorate }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="client-source">Source</label>
+                            <select id="client-source" name="source" required>
+                                @foreach ($sources as $source)
+                                    <option value="{{ $source }}" {{ old('source', $reservation->client?->source) === $source ? 'selected' : '' }}>{{ $source }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="full">
+                            <label for="client-note">Note</label>
+                            <textarea id="client-note" name="note" rows="3">{{ old('note', $reservation->client?->note) }}</textarea>
+                        </div>
+                    </div>
                     <div class="reservation-actions-row">
                         <button type="submit" class="btn btn-primary">Enregistrer client</button>
                     </div>
                 </form>
             </div>
         </div>
+    @endif
 
-        <div class="modal-overlay" id="salle-modal">
+    @if ($canCreatePayment)
+        <div class="modal-overlay" id="payment-modal">
             <div class="modal-card">
                 <div class="modal-head">
-                    <h3 class="modal-title">Changer salle apres verification</h3>
+                    <h3 class="modal-title">Ajouter paiement relatif</h3>
                     <button type="button" class="btn" data-close-modal>Fermer</button>
                 </div>
 
-                <p class="payment-form-help" id="salle-status">Clique sur verifier disponibilite pour charger les salles libres.</p>
-
-                <form method="POST" action="{{ route('reservations.salle.update', $reservation) }}" style="display:grid; gap:10px;">
+                <form method="POST" action="{{ route('reservations.payments.store', $reservation) }}" class="payment-form" id="reservation-payment-form">
                     @csrf
-                    @method('PATCH')
-                    <input type="hidden" name="salle_id" id="salle-selected-id" value="{{ $reservation->salle_id }}" required>
-
-                    <div class="reservation-actions-row" style="justify-content:flex-start;">
-                        <button type="button" class="btn" id="verify-salle-availability">Verifier disponibilite</button>
+                    <div class="payment-form-row">
+                        <div>
+                            <label for="payment-phase">Type paiement</label>
+                            <select id="payment-phase" name="phase" required>
+                                <option value="avance" {{ old('phase', $nextPhase) === 'avance' ? 'selected' : '' }}>Avance</option>
+                                <option value="partie-1" {{ old('phase', $nextPhase) === 'partie-1' ? 'selected' : '' }}>Partie 1</option>
+                                <option value="partie-2" {{ old('phase', $nextPhase) === 'partie-2' ? 'selected' : '' }}>Partie 2</option>
+                                <option value="partie-3" {{ old('phase', $nextPhase) === 'partie-3' ? 'selected' : '' }}>Partie 3</option>
+                                <option value="reste" {{ old('phase', $nextPhase) === 'reste' ? 'selected' : '' }}>Reste</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="payment-amount">Montant</label>
+                            <input id="payment-amount" type="number" step="0.01" min="0.01" name="amount" value="{{ old('amount') }}" required>
+                        </div>
                     </div>
 
-                    <div id="salle-available-list" class="salle-available-list"></div>
+                    <div class="payment-form-row">
+                        <div>
+                            <label for="payment-method">Methode</label>
+                            <select id="payment-method" name="method" required>
+                                <option value="cash" {{ old('method') === 'cash' ? 'selected' : '' }}>Cash</option>
+                                <option value="virement" {{ old('method') === 'virement' ? 'selected' : '' }}>Virement</option>
+                                <option value="carte" {{ old('method') === 'carte' ? 'selected' : '' }}>Carte</option>
+                                <option value="cheque" {{ old('method') === 'cheque' ? 'selected' : '' }}>Cheque</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="payment-paid-at">Date paiement</label>
+                            <input id="payment-paid-at" type="date" name="paid_at" value="{{ old('paid_at', now()->toDateString()) }}">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="payment-note">Note</label>
+                        <textarea id="payment-note" name="note" rows="2" placeholder="Note optionnelle">{{ old('note') }}</textarea>
+                    </div>
+
+                    <p class="payment-form-help" id="payment-form-help">Controle: le premier paiement doit etre "Avance". Reste actuel: {{ number_format($remainingAmount, 2, '.', ' ') }}.</p>
 
                     <div class="reservation-actions-row">
-                        <button type="submit" class="btn btn-primary">Enregistrer salle</button>
+                        <button type="submit" class="btn btn-primary" {{ $remainingAmount <= 0 ? 'disabled' : '' }}>Ajouter paiement</button>
                     </div>
                 </form>
             </div>
@@ -725,81 +863,13 @@
                 syncPaymentControls();
             }
 
-            const verifyButton = document.getElementById('verify-salle-availability');
-            const salleList = document.getElementById('salle-available-list');
-            const salleStatus = document.getElementById('salle-status');
-            const salleSelectedId = document.getElementById('salle-selected-id');
-            const availabilityRoute = "{{ route('reservations.available-salles', $reservation) }}";
+            const hasPaymentErrors = {{ $errors->has('amount') || $errors->has('phase') || $errors->has('method') || $errors->has('paid_at') || $errors->has('note') ? 'true' : 'false' }};
+            const hasClientErrors = {{ $errors->has('client_type') || $errors->has('first_name') || $errors->has('name') || $errors->has('phone') ? 'true' : 'false' }};
 
-            const renderSalles = (salles) => {
-                if (!salleList) {
-                    return;
-                }
-
-                salleList.innerHTML = '';
-
-                if (!Array.isArray(salles) || salles.length === 0) {
-                    salleList.innerHTML = '<p class="reservation-empty">Aucune salle disponible sur ce creneau.</p>';
-                    return;
-                }
-
-                salles.forEach((salle) => {
-                    const row = document.createElement('label');
-                    row.className = 'salle-option';
-                    row.innerHTML = `
-                        <span class="salle-option-main">
-                            <input type="radio" name="salle-choice" value="${String(salle.id)}" ${String(salle.id) === String(salleSelectedId?.value || '') ? 'checked' : ''}>
-                            <span class="salle-color-dot" style="background:${salle.color_code || '#3b82f6'};"></span>
-                            <strong>${salle.name}</strong>
-                        </span>
-                        <small>Cap: ${salle.capacity ?? '-'} | Prix: ${salle.price_per_day ?? '-'}</small>
-                    `;
-
-                    const radio = row.querySelector('input[type="radio"]');
-                    if (radio) {
-                        radio.addEventListener('change', () => {
-                            if (salleSelectedId) {
-                                salleSelectedId.value = radio.value;
-                            }
-                        });
-                    }
-
-                    salleList.appendChild(row);
-                });
-            };
-
-            if (verifyButton) {
-                verifyButton.addEventListener('click', async () => {
-                    if (salleStatus) {
-                        salleStatus.textContent = 'Verification des salles disponibles...';
-                    }
-
-                    try {
-                        const response = await fetch(availabilityRoute, {
-                            headers: {
-                                Accept: 'application/json',
-                            },
-                        });
-
-                        const payload = await response.json();
-                        if (!response.ok) {
-                            throw new Error(payload?.message || 'Erreur lors de la verification.');
-                        }
-
-                        renderSalles(payload.salles || []);
-
-                        if (salleStatus) {
-                            const count = Array.isArray(payload.salles) ? payload.salles.length : 0;
-                            salleStatus.textContent = count > 0
-                                ? `${count} salle(s) disponible(s). Choisis une salle puis enregistre.`
-                                : 'Aucune salle disponible sur ce creneau.';
-                        }
-                    } catch (error) {
-                        if (salleStatus) {
-                            salleStatus.textContent = error instanceof Error ? error.message : 'Erreur de verification de disponibilite.';
-                        }
-                    }
-                });
+            if (hasPaymentErrors) {
+                openModal('payment-modal');
+            } else if (hasClientErrors) {
+                openModal('client-modal');
             }
         })();
     </script>
