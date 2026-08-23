@@ -39,6 +39,10 @@
         .reservation-day-cell { min-height: 72px; border: 1px solid #d9e3ef; border-radius: 10px; background: #fff; padding: 6px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; transition: .15s ease; }
         .reservation-day-cell:hover { border-color: #94b2d1; transform: translateY(-1px); }
         .reservation-day-cell.is-muted { opacity: .42; background: #f8fbff; }
+        .reservation-day-cell.is-past { background: #f3f5f8; border-color: #d6dce5; opacity: .72; }
+        .reservation-day-cell.is-past .reservation-day-number { color: #7b8797; }
+        .reservation-day-cell.is-past .reservation-day-event { background: #eef1f5; color: #5d6877; }
+        .reservation-day-cell.is-past:hover { border-color: #d6dce5; transform: none; }
         .reservation-day-cell.is-today { border-color: #2d70b3; box-shadow: 0 0 0 2px rgba(45, 112, 179, .15); }
         .reservation-day-cell.is-selected { border-color: #173f69; box-shadow: 0 0 0 2px rgba(23, 63, 105, .20); }
         .reservation-day-number { font-size: 12px; font-weight: 700; color: #234869; }
@@ -570,6 +574,9 @@
                 const cell = document.createElement('button');
                 cell.type = 'button';
                 cell.className = 'reservation-day-cell';
+                if (iso < todayIso) {
+                    cell.classList.add('is-past');
+                }
                 if (iso === todayIso) {
                     cell.classList.add('is-today');
                 }
