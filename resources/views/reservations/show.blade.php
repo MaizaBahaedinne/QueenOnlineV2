@@ -548,7 +548,7 @@
             <div>
                 <p class="reservation-show-kicker">Reservation detail</p>
                 <h1 class="reservation-show-title">{{ $reservation->title ?: 'Reservation #' . $reservation->id }}</h1>
-                <p class="reservation-show-sub">Client: {{ $clientFullName }} | Salle: {{ $reservation->salle?->name ?? '-' }}</p>
+                <p class="reservation-show-sub">Client: {{ $clientFullName }} | Salle: {{ $reservation->salle?->name ?? '-' }} | Createur: {{ $reservation->user?->name ?? '-' }}</p>
                 <div class="reservation-show-chips">
                     <span class="reservation-chip {{ $statusTone }}">{{ $statusLabel }}</span>
                     <span class="reservation-chip">Du @frDate($reservation->start_date) au @frDate($reservation->end_date)</span>
@@ -584,7 +584,6 @@
                 </div>
                 <div class="reservation-object-body">
                     <div class="reservation-kv"><span class="reservation-kv-key">Salle de base</span><span class="reservation-kv-value">{{ $reservation->salle?->name ?? '-' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Createur event</span><span class="reservation-kv-value">{{ $reservation->user?->name ?? '-' }}</span></div>
                     @if (($nearbyCreneaux ?? collect())->isNotEmpty())
                         <div class="reservation-nearby">
                             <strong>Reservations proches (+/- 1h30)</strong>
@@ -613,9 +612,7 @@
                             @endphp
                             <div class="additional-service-category">
                                 <h4>{{ $moduleLabel }}</h4>
-                                @if ($rows->isEmpty())
-                                    <p class="reservation-empty" style="padding: 2px 0;">Aucun service rattache.</p>
-                                @else
+                                @if (! $rows->isEmpty())
                                     @foreach ($rows as $row)
                                         <div class="additional-service-item">
                                             <div>
