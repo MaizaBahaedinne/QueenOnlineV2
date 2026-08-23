@@ -31,6 +31,13 @@
             $paymentCount === 3 => 'partie-3',
             default => 'reste',
         };
+        $clientAddress = trim(collect([
+            $reservation->client?->address_number,
+            $reservation->client?->address_street,
+            $reservation->client?->city,
+            $reservation->client?->governorate,
+        ])->filter()->implode(', '));
+        $clientAddress = $clientAddress !== '' ? $clientAddress : '-';
     @endphp
 
     <style>
@@ -459,35 +466,6 @@
                 </div>
             </div>
             <a href="{{ route('reservations.index') }}" class="btn">Retour au calendrier</a>
-        </div>
-
-        <div class="reservation-show-grid">
-            <article class="reservation-card">
-                <div class="reservation-card-head">
-                    <h2 class="reservation-card-title">Informations reservation</h2>
-                </div>
-                <div class="reservation-detail-list">
-                    <div class="reservation-detail-row"><span class="reservation-detail-key">Titre event</span><span class="reservation-detail-value">{{ $reservation->title ?? '-' }}</span></div>
-                    <div class="reservation-detail-row"><span class="reservation-detail-key">Date debut</span><span class="reservation-detail-value">{{ $reservation->start_date }}</span></div>
-                    <div class="reservation-detail-row"><span class="reservation-detail-key">Date fin</span><span class="reservation-detail-value">{{ $reservation->end_date }}</span></div>
-                    <div class="reservation-detail-row"><span class="reservation-detail-key">Heure debut</span><span class="reservation-detail-value">{{ $reservation->start_time ?? '-' }}</span></div>
-                    <div class="reservation-detail-row"><span class="reservation-detail-key">Heure fin</span><span class="reservation-detail-value">{{ $reservation->end_time ?? '-' }}</span></div>
-                    <div class="reservation-detail-row"><span class="reservation-detail-key">Statut</span><span class="reservation-detail-value">{{ $statusLabel }}</span></div>
-                    <div class="reservation-detail-row"><span class="reservation-detail-key">Note admin</span><span class="reservation-detail-value">{{ $reservation->note_admin ?? '-' }}</span></div>
-                    <div class="reservation-detail-row"><span class="reservation-detail-key">Creee le</span><span class="reservation-detail-value">{{ $reservation->created_at?->format('d/m/Y H:i') }}</span></div>
-                </div>
-            </article>
-
-            <article class="reservation-card">
-                <div class="reservation-card-head">
-                    <h2 class="reservation-card-title">Synthese paiement</h2>
-                </div>
-                <div class="reservation-detail-list">
-                    <div class="reservation-detail-row"><span class="reservation-detail-key">Total reservation</span><span class="reservation-detail-value">{{ number_format($totalAmount, 2, '.', ' ') }}</span></div>
-                    <div class="reservation-detail-row"><span class="reservation-detail-key">Total paye</span><span class="reservation-detail-value">{{ number_format($totalPaid, 2, '.', ' ') }}</span></div>
-                    <div class="reservation-detail-row"><span class="reservation-detail-key">Reste</span><span class="reservation-detail-value">{{ number_format($remainingAmount, 2, '.', ' ') }}</span></div>
-                </div>
-            </article>
         </div>
 
         <div class="reservation-objects-grid">
