@@ -12,6 +12,7 @@ use App\Models\ServiceModulePack;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -101,7 +102,7 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'list', 'view');
 
-        $reservation->load(['client', 'salle', 'user', 'payments.user', 'additionalServices.item', 'additionalServices.pack']);
+        $reservation->load(['client', 'salle', 'user', 'payments.user', 'additionalServices.item', 'additionalServices.pack', 'additionalServices.linkedReservation.payments']);
 
         $currentStart = $this->reservationDateTime($reservation->start_date, $reservation->start_time);
         $currentEnd = $this->reservationDateTime($reservation->end_date, $reservation->end_time);
@@ -228,6 +229,12 @@ class ReservationController extends MatrixAwareController
             ]);
         }
 
+        if (! Schema::hasColumn('reservations', 'service_slug')) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'service' => 'Le systeme de categories de reservation n est pas disponible. Lance les migrations en attente.',
+            ]);
+        }
+
         $validated = $request->validate([
             'module_slug' => ['required', Rule::in(array_keys(self::ADDITIONAL_SERVICE_MODULES))],
             'service_ref' => ['required', 'string', 'max:80'],
@@ -286,17 +293,42 @@ class ReservationController extends MatrixAwareController
             $defaultAmount = (float) $pack->price;
         }
 
-        ReservationAdditionalService::query()->create([
-            'reservation_id' => $reservation->id,
-            'module_slug' => $validated['module_slug'],
-            'service_module_item_id' => $itemId,
-            'service_module_pack_id' => $packId,
-            'label' => $label,
-            'amount' => $validated['service_amount'] ?? $defaultAmount,
-            'note' => $validated['note'] ?? null,
-        ]);
+        $serviceAmount = isset($validated['service_amount']) ? (float) $validated['service_amount'] : $defaultAmount;
 
-        return redirect()->route('reservations.show', $reservation)->with('success', 'Service supplementaire ajoute.');
+        DB::transaction(function () use ($reservation, $validated, $itemId, $packId, $label, $serviceAmount): void {
+            $linkedTitle = trim(($reservation->title ?: ('Reservation #' . $reservation->id)) . ' - ' . $label);
+            if ($linkedTitle === '') {
+                $linkedTitle = 'Service supplementaire';
+            }
+
+            $linkedReservation = Reservation::query()->create([
+                'client_id' => $reservation->client_id,
+                'salle_id' => $reservation->salle_id,
+                'service_slug' => $validated['module_slug'],
+                'user_id' => Auth::id(),
+                'title' => mb_substr($linkedTitle, 0, 255),
+                'start_date' => $reservation->start_date,
+                'end_date' => $reservation->end_date,
+                'start_time' => $reservation->start_time,
+                'end_time' => $reservation->end_time,
+                'status' => 'pending',
+                'total_amount' => $serviceAmount,
+                'note_admin' => 'Reservation supplementaire liee a la reservation salle #' . $reservation->id,
+            ]);
+
+            ReservationAdditionalService::query()->create([
+                'reservation_id' => $reservation->id,
+                'linked_reservation_id' => $linkedReservation->id,
+                'module_slug' => $validated['module_slug'],
+                'service_module_item_id' => $itemId,
+                'service_module_pack_id' => $packId,
+                'label' => $label,
+                'amount' => $serviceAmount,
+                'note' => $validated['note'] ?? null,
+            ]);
+        });
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Service supplementaire ajoute avec reservation liee.');
     }
 
     public function destroyAdditionalService(Reservation $reservation, ReservationAdditionalService $additionalService)
@@ -305,7 +337,28 @@ class ReservationController extends MatrixAwareController
 
         abort_if((int) $additionalService->reservation_id !== (int) $reservation->id, 404);
 
-        $additionalService->delete();
+        $additionalService->load('linkedReservation.payments');
+
+        DB::transaction(function () use ($additionalService): void {
+            $linkedReservation = $additionalService->linkedReservation;
+
+            if ($linkedReservation) {
+                $hasPayments = $linkedReservation->payments->isNotEmpty();
+
+                if ($hasPayments) {
+                    $currentNote = trim((string) ($linkedReservation->note_admin ?? ''));
+                    $append = 'Reservation supplementaire retiree depuis la reservation parent.';
+                    $linkedReservation->update([
+                        'status' => 'cancelled',
+                        'note_admin' => $currentNote !== '' ? ($currentNote . ' | ' . $append) : $append,
+                    ]);
+                } else {
+                    $linkedReservation->delete();
+                }
+            }
+
+            $additionalService->delete();
+        });
 
         return redirect()->route('reservations.show', $reservation)->with('success', 'Service supplementaire retire.');
     }

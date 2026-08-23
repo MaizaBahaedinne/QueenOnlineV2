@@ -602,22 +602,26 @@
                     @if (! $isSalleReservation)
                         <p class="reservation-empty">Les services supplementaires sont disponibles uniquement pour les reservations de type salle.</p>
                     @else
-                        @php
-                            $hasAdditionalRows = false;
-                        @endphp
                         @foreach ($additionalServiceModules as $moduleSlug => $moduleLabel)
                             @php
                                 $rows = $additionalServicesByCategory[$moduleSlug]['rows'] ?? collect();
-                                $hasAdditionalRows = $hasAdditionalRows || $rows->isNotEmpty();
                             @endphp
-                            <div class="additional-service-category">
-                                <h4>{{ $moduleLabel }}</h4>
-                                @if (! $rows->isEmpty())
+                            @if (! $rows->isEmpty())
+                                <div class="additional-service-category">
+                                    <h4>{{ $moduleLabel }}</h4>
                                     @foreach ($rows as $row)
                                         <div class="additional-service-item">
                                             <div>
                                                 <strong>{{ $row->label }}</strong>
                                                 <small>{{ number_format((float) $row->amount, 2, '.', ' ') }} @if(!empty($row->note)) - {{ $row->note }} @endif</small>
+                                                @if ($row->linkedReservation)
+                                                    <small>
+                                                        Reservation liee:
+                                                        <a href="{{ route('reservations.show', $row->linkedReservation) }}">#{{ $row->linkedReservation->id }}</a>
+                                                        ({{ $row->linkedReservation->status ?? 'pending' }},
+                                                        {{ $row->linkedReservation->payments->count() }} paiement(s))
+                                                    </small>
+                                                @endif
                                             </div>
                                             @if ($canUpdateReservation)
                                                 <div class="additional-service-item-right">
@@ -630,13 +634,9 @@
                                             @endif
                                         </div>
                                     @endforeach
-                                @endif
-                            </div>
+                                </div>
+                            @endif
                         @endforeach
-
-                        @if (! $hasAdditionalRows)
-                            <p class="reservation-empty">Aucun service supplementaire rattache pour le moment.</p>
-                        @endif
                     @endif
                 </div>
             </article>

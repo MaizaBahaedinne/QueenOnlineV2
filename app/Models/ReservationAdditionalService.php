@@ -8,6 +8,7 @@ class ReservationAdditionalService extends Model
 {
     protected $fillable = [
         'reservation_id',
+        'linked_reservation_id',
         'module_slug',
         'service_module_item_id',
         'service_module_pack_id',
@@ -19,6 +20,11 @@ class ReservationAdditionalService extends Model
     public function reservation()
     {
         return $this->belongsTo(Reservation::class);
+    }
+
+    public function linkedReservation()
+    {
+        return $this->belongsTo(Reservation::class, 'linked_reservation_id');
     }
 
     public function item()
