@@ -104,6 +104,7 @@ class ReservationController extends MatrixAwareController
         $validated = $request->validate([
             'salle_id' => ['required', 'exists:salles,id'],
             'service_slug' => ['nullable', Rule::in(array_keys(self::RESERVATION_SERVICES))],
+            'title' => ['required', 'string', 'max:255'],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
@@ -145,6 +146,7 @@ class ReservationController extends MatrixAwareController
             'client_id' => ['required', 'exists:clients,id'],
             'salle_id' => ['required', 'exists:salles,id'],
             'service_slug' => ['nullable', Rule::in(array_keys(self::RESERVATION_SERVICES))],
+            'title' => ['required', 'string', 'max:255'],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],

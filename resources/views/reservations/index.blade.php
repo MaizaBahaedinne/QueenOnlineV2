@@ -123,6 +123,13 @@
                 <input type="hidden" name="service_slug" value="{{ $reservationService !== '' ? $reservationService : 'salles' }}">
                 <div class="reservation-intro">Planifie un evenement en 2 etapes: verification du creneau puis choix ou creation du client.</div>
 
+                <div class="reservation-helper-box" style="padding-top:12px; padding-bottom:12px;">
+                    <div class="reservation-field">
+                        <label for="reservation-create-title">Titre de l event</label>
+                        <input class="search" id="reservation-create-title" style="max-width:none;" type="text" name="title" maxlength="255" required>
+                    </div>
+                </div>
+
                 <div class="reservation-helper-box">
                     <div class="reservation-step-head">
                         <span class="reservation-step-badge">1</span>
@@ -292,6 +299,7 @@
     @if ($canUpdate)
         <div class="modal-overlay" id="reservation-edit-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Modifier reservation</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
             <form method="POST" id="reservation-edit-form" action="#" style="display:grid; gap:10px;">@csrf @method('PATCH')
+                <input class="search" style="max-width:none;" type="text" name="title" id="reservation-edit-title" maxlength="255" required placeholder="Titre de l event">
                 <select class="search" style="max-width:none;" name="client_id" id="reservation-edit-client-id" required><option value="">Client</option>@foreach ($clients as $client)<option value="{{ $client->id }}">{{ $client->name }}</option>@endforeach</select>
                 <select class="search" style="max-width:none;" name="salle_id" id="reservation-edit-salle-id" required><option value="">Salle</option>@foreach ($salles as $salle)<option value="{{ $salle->id }}">{{ $salle->name }}</option>@endforeach</select>
                 <input class="search" style="max-width:none;" type="date" name="start_date" id="reservation-edit-start-date" min="{{ now()->toDateString() }}" required>
@@ -845,6 +853,7 @@
                 openModal(modalId);
                 if (modalId === 'reservation-edit-modal') {
                     document.getElementById('reservation-edit-form').action = `{{ url('reservations') }}/${button.dataset.reservationId}`;
+                    document.getElementById('reservation-edit-title').value = button.dataset.reservationTitle ?? '';
                     document.getElementById('reservation-edit-client-id').value = button.dataset.reservationClientId ?? '';
                     document.getElementById('reservation-edit-salle-id').value = button.dataset.reservationSalleId ?? '';
                     document.getElementById('reservation-edit-start-date').value = button.dataset.reservationStartDate ?? '';

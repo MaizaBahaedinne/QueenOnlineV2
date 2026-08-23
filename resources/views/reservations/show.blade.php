@@ -15,6 +15,7 @@
                 <h2 class="panel-title" style="font-size:16px; margin-bottom:10px;">Informations reservation</h2>
                 <table>
                     <tbody>
+                        <tr><th style="width:220px;">Titre event</th><td>{{ $reservation->title ?? '-' }}</td></tr>
                         <tr><th style="width:220px;">Client</th><td>{{ $reservation->client?->first_name }} {{ $reservation->client?->name }}</td></tr>
                         <tr><th>Salle</th><td>{{ $reservation->salle?->name ?? '-' }}</td></tr>
                         <tr><th>Date debut</th><td>{{ $reservation->start_date }}</td></tr>
