@@ -91,10 +91,62 @@ class ReservationController extends MatrixAwareController
 
         $reservation->load(['client', 'salle', 'user', 'payments']);
 
+        $currentStart = $this->reservationDateTime($reservation->start_date, $reservation->start_time);
+        $currentEnd = $this->reservationDateTime($reservation->end_date, $reservation->end_time);
+        $nearbyCreneaux = collect();
+
+        if ($reservation->salle_id && $currentStart && $currentEnd) {
+            $candidateReservations = Reservation::query()
+                ->with('client:id,name,first_name')
+                ->where('salle_id', $reservation->salle_id)
+                ->where('id', '!=', $reservation->id)
+                ->where('status', '!=', 'cancelled')
+                ->whereDate('start_date', '<=', $currentEnd->toDateString())
+                ->whereDate('end_date', '>=', $currentStart->toDateString())
+                ->get();
+
+            $nearbyCreneaux = $candidateReservations
+                ->map(function (Reservation $other) use ($currentStart, $currentEnd) {
+                    $otherStart = $this->reservationDateTime($other->start_date, $other->start_time);
+                    $otherEnd = $this->reservationDateTime($other->end_date, $other->end_time);
+
+                    if (! $otherStart || ! $otherEnd) {
+                        return null;
+                    }
+
+                    $isBefore = $otherEnd->lessThanOrEqualTo($currentStart)
+                        && $otherEnd->diffInMinutes($currentStart) <= 90;
+
+                    $isAfter = $otherStart->greaterThanOrEqualTo($currentEnd)
+                        && $otherStart->diffInMinutes($currentEnd) <= 90;
+
+                    if (! $isBefore && ! $isAfter) {
+                        return null;
+                    }
+
+                    return [
+                        'id' => $other->id,
+                        'title' => $other->title ?: ('Reservation #' . $other->id),
+                        'client' => trim((string) (($other->client?->first_name ?? '') . ' ' . ($other->client?->name ?? ''))),
+                        'position' => $isBefore ? 'before' : 'after',
+                        'gap_minutes' => $isBefore
+                            ? $otherEnd->diffInMinutes($currentStart)
+                            : $currentEnd->diffInMinutes($otherStart),
+                        'start' => $otherStart->format('d/m/Y H:i'),
+                        'end' => $otherEnd->format('d/m/Y H:i'),
+                    ];
+                })
+                ->filter()
+                ->sortBy('gap_minutes')
+                ->values();
+        }
+
         return view('reservations.show', [
             'title' => 'Detail reservation',
             'reservation' => $reservation,
-            'clients' => Client::query()->orderBy('name')->get(['id', 'name', 'first_name', 'cin']),
+            'governorates' => self::GOVERNORATES,
+            'sources' => self::SOURCES,
+            'nearbyCreneaux' => $nearbyCreneaux,
         ]);
     }
 
@@ -102,15 +154,59 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'update', 'update');
 
+        $client = $reservation->client;
+        if (! $client) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'client' => 'Client lie a cette reservation introuvable.',
+            ]);
+        }
+
+        $hasExtendedColumns = Schema::hasColumn('clients', 'client_type')
+            && Schema::hasColumn('clients', 'first_name')
+            && Schema::hasColumn('clients', 'governorate');
+
+        if (! $hasExtendedColumns) {
+            $basicValidated = $request->validate([
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['nullable', 'email'],
+                'phone' => ['required', 'string', 'max:50'],
+                'date_cin' => ['nullable', 'date'],
+                'city' => ['nullable', 'string', 'max:255'],
+            ]);
+
+            $client->update($basicValidated);
+
+            return redirect()->route('reservations.show', $reservation)->with('success', 'Donnees client mises a jour.');
+        }
+
         $validated = $request->validate([
-            'client_id' => ['required', 'exists:clients,id'],
+            'client_type' => ['required', Rule::in(['personne-physique', 'societe'])],
+            'fiscal_number' => ['nullable', 'string', 'max:100', 'required_if:client_type,societe'],
+            'company_name' => ['nullable', 'string', 'max:255', 'required_if:client_type,societe'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'date_cin' => ['nullable', 'date'],
+            'email' => ['nullable', 'email'],
+            'address_number' => ['nullable', 'string', 'max:50'],
+            'address_street' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'governorate' => ['required', Rule::in(self::GOVERNORATES)],
+            'phone' => ['required', 'string', 'max:50'],
+            'phone_label_1' => ['nullable', 'string', 'max:100'],
+            'phone_2' => ['nullable', 'string', 'max:50'],
+            'phone_label_2' => ['nullable', 'string', 'max:100'],
+            'source' => ['required', Rule::in(self::SOURCES)],
+            'note' => ['nullable', 'string'],
         ]);
 
-        $reservation->update([
-            'client_id' => $validated['client_id'],
-        ]);
+        if (($validated['client_type'] ?? null) === 'personne-physique') {
+            $validated['fiscal_number'] = null;
+            $validated['company_name'] = null;
+        }
 
-        return redirect()->route('reservations.show', $reservation)->with('success', 'Client de la reservation mis a jour.');
+        $client->update($validated);
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Donnees client mises a jour.');
     }
 
     public function availableSallesForReservation(Reservation $reservation)
@@ -617,5 +713,18 @@ class ReservationController extends MatrixAwareController
         $extendedValidated['status'] = 'active';
         $createdClient = Client::query()->create($extendedValidated);
         return $createdClient->id;
+    }
+
+    private function reservationDateTime(?string $dateValue, ?string $timeValue): ?Carbon
+    {
+        if (empty($dateValue) || empty($timeValue)) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($dateValue . ' ' . $timeValue);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }
