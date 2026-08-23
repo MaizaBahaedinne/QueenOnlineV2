@@ -5,7 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Reservation;
+use App\Models\ReservationAdditionalService;
 use App\Models\Salle;
+use App\Models\ServiceModuleItem;
+use App\Models\ServiceModulePack;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -16,6 +19,15 @@ use Illuminate\Validation\ValidationException;
 
 class ReservationController extends MatrixAwareController
 {
+    private const ADDITIONAL_SERVICE_MODULES = [
+        'troupe-musicale' => 'Troupe musicale',
+        'photographe' => 'Photographe',
+        'chanteur' => 'Chanteur',
+        'notaire' => 'Notaire',
+        'animation' => 'Animation',
+        'voiture' => 'Voiture',
+    ];
+
     private const RESERVATION_SERVICES = [
         'salles' => 'Salles',
         'troupe-musicale' => 'Troupe musicale',
@@ -89,7 +101,7 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'list', 'view');
 
-        $reservation->load(['client', 'salle', 'user', 'payments.user']);
+        $reservation->load(['client', 'salle', 'user', 'payments.user', 'additionalServices.item', 'additionalServices.pack']);
 
         $currentStart = $this->reservationDateTime($reservation->start_date, $reservation->start_time);
         $currentEnd = $this->reservationDateTime($reservation->end_date, $reservation->end_time);
@@ -141,13 +153,161 @@ class ReservationController extends MatrixAwareController
                 ->values();
         }
 
+        $serviceItems = ServiceModuleItem::query()
+            ->whereIn('module_slug', array_keys(self::ADDITIONAL_SERVICE_MODULES))
+            ->where('status', 'active')
+            ->orderBy('module_slug')
+            ->orderBy('name')
+            ->get(['id', 'module_slug', 'name', 'base_price']);
+
+        $servicePacks = ServiceModulePack::query()
+            ->whereIn('module_slug', array_keys(self::ADDITIONAL_SERVICE_MODULES))
+            ->where('status', 'active')
+            ->orderBy('module_slug')
+            ->orderBy('name')
+            ->get(['id', 'module_slug', 'name', 'price']);
+
+        $serviceOptionsByModule = [];
+        foreach (self::ADDITIONAL_SERVICE_MODULES as $slug => $label) {
+            $serviceOptionsByModule[$slug] = [
+                'label' => $label,
+                'options' => [],
+            ];
+        }
+
+        foreach ($serviceItems as $item) {
+            $serviceOptionsByModule[$item->module_slug]['options'][] = [
+                'ref' => 'item:' . $item->id,
+                'name' => $item->name,
+                'amount' => (float) $item->base_price,
+                'kind' => 'Item',
+            ];
+        }
+
+        foreach ($servicePacks as $pack) {
+            $serviceOptionsByModule[$pack->module_slug]['options'][] = [
+                'ref' => 'pack:' . $pack->id,
+                'name' => $pack->name,
+                'amount' => (float) $pack->price,
+                'kind' => 'Pack',
+            ];
+        }
+
+        $additionalServicesByCategory = $reservation->additionalServices
+            ->groupBy('module_slug')
+            ->mapWithKeys(function ($rows, $slug) {
+                $label = self::ADDITIONAL_SERVICE_MODULES[$slug] ?? $slug;
+
+                return [
+                    $slug => [
+                        'label' => $label,
+                        'rows' => $rows,
+                    ],
+                ];
+            });
+
         return view('reservations.show', [
             'title' => 'Detail reservation',
             'reservation' => $reservation,
             'governorates' => self::GOVERNORATES,
             'sources' => self::SOURCES,
             'nearbyCreneaux' => $nearbyCreneaux,
+            'serviceOptionsByModule' => $serviceOptionsByModule,
+            'additionalServicesByCategory' => $additionalServicesByCategory,
+            'additionalServiceModules' => self::ADDITIONAL_SERVICE_MODULES,
         ]);
+    }
+
+    public function storeAdditionalService(Request $request, Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        if (($reservation->service_slug ?? 'salles') !== 'salles') {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'service' => 'Les services supplementaires ne sont autorises que pour les reservations de type salle.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'module_slug' => ['required', Rule::in(array_keys(self::ADDITIONAL_SERVICE_MODULES))],
+            'service_ref' => ['required', 'string', 'max:80'],
+            'service_amount' => ['nullable', 'numeric', 'min:0'],
+            'note' => ['nullable', 'string'],
+        ]);
+
+        $serviceRef = (string) $validated['service_ref'];
+        $parts = explode(':', $serviceRef, 2);
+
+        if (count($parts) !== 2 || ! in_array($parts[0], ['item', 'pack'], true) || ! ctype_digit($parts[1])) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'service_ref' => 'Service selectionne invalide.',
+            ])->withInput();
+        }
+
+        [$kind, $idRaw] = $parts;
+        $serviceId = (int) $idRaw;
+
+        $itemId = null;
+        $packId = null;
+        $label = '';
+        $defaultAmount = 0.0;
+
+        if ($kind === 'item') {
+            $item = ServiceModuleItem::query()
+                ->where('id', $serviceId)
+                ->where('module_slug', $validated['module_slug'])
+                ->where('status', 'active')
+                ->first();
+
+            if (! $item) {
+                return redirect()->route('reservations.show', $reservation)->withErrors([
+                    'service_ref' => 'Item de service introuvable ou inactif.',
+                ])->withInput();
+            }
+
+            $itemId = $item->id;
+            $label = $item->name;
+            $defaultAmount = (float) $item->base_price;
+        } else {
+            $pack = ServiceModulePack::query()
+                ->where('id', $serviceId)
+                ->where('module_slug', $validated['module_slug'])
+                ->where('status', 'active')
+                ->first();
+
+            if (! $pack) {
+                return redirect()->route('reservations.show', $reservation)->withErrors([
+                    'service_ref' => 'Pack de service introuvable ou inactif.',
+                ])->withInput();
+            }
+
+            $packId = $pack->id;
+            $label = $pack->name;
+            $defaultAmount = (float) $pack->price;
+        }
+
+        ReservationAdditionalService::query()->create([
+            'reservation_id' => $reservation->id,
+            'module_slug' => $validated['module_slug'],
+            'service_module_item_id' => $itemId,
+            'service_module_pack_id' => $packId,
+            'label' => $label,
+            'amount' => $validated['service_amount'] ?? $defaultAmount,
+            'note' => $validated['note'] ?? null,
+        ]);
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Service supplementaire ajoute.');
+    }
+
+    public function destroyAdditionalService(Reservation $reservation, ReservationAdditionalService $additionalService)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        abort_if((int) $additionalService->reservation_id !== (int) $reservation->id, 404);
+
+        $additionalService->delete();
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Service supplementaire retire.');
     }
 
     public function updateClient(Request $request, Reservation $reservation)

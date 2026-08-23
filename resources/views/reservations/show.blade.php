@@ -31,6 +31,7 @@
             $paymentCount === 3 => 'partie-3',
             default => 'reste',
         };
+        $isSalleReservation = ($reservation->service_slug ?? 'salles') === 'salles';
         $clientAddress = trim(collect([
             $reservation->client?->address_number,
             $reservation->client?->address_street,
@@ -268,6 +269,44 @@
 
         .reservation-nearby strong {
             font-size: 12px;
+        }
+
+        .additional-service-category {
+            border: 1px solid #dbe8f5;
+            border-radius: 11px;
+            background: #f8fbff;
+            padding: 8px;
+            display: grid;
+            gap: 6px;
+        }
+
+        .additional-service-category h4 {
+            margin: 0;
+            font-size: 13px;
+            color: #1f4970;
+        }
+
+        .additional-service-item {
+            border: 1px solid #d7e4f2;
+            border-radius: 9px;
+            background: #fff;
+            padding: 7px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .additional-service-item small {
+            color: #5f7690;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .additional-service-item-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .reservation-actions-row {
@@ -538,13 +577,13 @@
 
             <article class="reservation-card">
                 <div class="reservation-object-head">
-                    <h3 class="reservation-object-title">Salle</h3>
+                    <h3 class="reservation-object-title">Services supplementaires</h3>
+                    @if ($canUpdateReservation && $isSalleReservation)
+                        <button type="button" class="btn" data-open-modal="additional-service-modal">Ajouter service</button>
+                    @endif
                 </div>
                 <div class="reservation-object-body">
-                    <div class="reservation-kv"><span class="reservation-kv-key">Salle actuelle</span><span class="reservation-kv-value">{{ $reservation->salle?->name ?? '-' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Capacite</span><span class="reservation-kv-value">{{ $reservation->salle?->capacity ?? '-' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Type</span><span class="reservation-kv-value">{{ $reservation->salle?->salle_type ?? '-' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Creneau</span><span class="reservation-kv-value">@frDate($reservation->start_date) {{ $reservation->start_time ?? '--:--' }} -> @frDate($reservation->end_date) {{ $reservation->end_time ?? '--:--' }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Salle de base</span><span class="reservation-kv-value">{{ $reservation->salle?->name ?? '-' }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Createur event</span><span class="reservation-kv-value">{{ $reservation->user?->name ?? '-' }}</span></div>
                     @if (($nearbyCreneaux ?? collect())->isNotEmpty())
                         <div class="reservation-nearby">
@@ -559,6 +598,48 @@
                                 </span>
                             @endforeach
                         </div>
+                    @endif
+
+                    @if (! $isSalleReservation)
+                        <p class="reservation-empty">Les services supplementaires sont disponibles uniquement pour les reservations de type salle.</p>
+                    @else
+                        @php
+                            $hasAdditionalRows = false;
+                        @endphp
+                        @foreach ($additionalServiceModules as $moduleSlug => $moduleLabel)
+                            @php
+                                $rows = $additionalServicesByCategory[$moduleSlug]['rows'] ?? collect();
+                                $hasAdditionalRows = $hasAdditionalRows || $rows->isNotEmpty();
+                            @endphp
+                            <div class="additional-service-category">
+                                <h4>{{ $moduleLabel }}</h4>
+                                @if ($rows->isEmpty())
+                                    <p class="reservation-empty" style="padding: 2px 0;">Aucun service rattache.</p>
+                                @else
+                                    @foreach ($rows as $row)
+                                        <div class="additional-service-item">
+                                            <div>
+                                                <strong>{{ $row->label }}</strong>
+                                                <small>{{ number_format((float) $row->amount, 2, '.', ' ') }} @if(!empty($row->note)) - {{ $row->note }} @endif</small>
+                                            </div>
+                                            @if ($canUpdateReservation)
+                                                <div class="additional-service-item-right">
+                                                    <form method="POST" action="{{ route('reservations.additional-services.destroy', [$reservation, $row]) }}" onsubmit="return confirm('Retirer ce service ?');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn">Retirer</button>
+                                                    </form>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                @endif
+                            </div>
+                        @endforeach
+
+                        @if (! $hasAdditionalRows)
+                            <p class="reservation-empty">Aucun service supplementaire rattache pour le moment.</p>
+                        @endif
                     @endif
                 </div>
             </article>
@@ -734,6 +815,52 @@
         </div>
     @endif
 
+    @if ($canUpdateReservation && $isSalleReservation)
+        <div class="modal-overlay" id="additional-service-modal">
+            <div class="modal-card">
+                <div class="modal-head">
+                    <h3 class="modal-title">Ajouter un service supplementaire</h3>
+                    <button type="button" class="btn" data-close-modal>Fermer</button>
+                </div>
+
+                <form method="POST" action="{{ route('reservations.additional-services.store', $reservation) }}" class="payment-form" id="additional-service-form">
+                    @csrf
+                    <div class="payment-form-row">
+                        <div>
+                            <label for="additional-service-module">Categorie</label>
+                            <select id="additional-service-module" name="module_slug" required>
+                                @foreach ($additionalServiceModules as $slug => $label)
+                                    <option value="{{ $slug }}" {{ old('module_slug') === $slug ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label for="additional-service-ref">Service</label>
+                            <select id="additional-service-ref" name="service_ref" required></select>
+                        </div>
+                    </div>
+
+                    <div class="payment-form-row">
+                        <div>
+                            <label for="additional-service-amount">Montant</label>
+                            <input id="additional-service-amount" name="service_amount" type="number" step="0.01" min="0" value="{{ old('service_amount') }}">
+                        </div>
+                        <div>
+                            <label for="additional-service-note">Note</label>
+                            <input id="additional-service-note" name="note" type="text" value="{{ old('note') }}" placeholder="Optionnel">
+                        </div>
+                    </div>
+
+                    <p class="payment-form-help" id="additional-service-help">Selectionne une categorie puis un service.</p>
+
+                    <div class="reservation-actions-row">
+                        <button type="submit" class="btn btn-primary">Ajouter service</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
     @if ($canCreatePayment)
         <div class="modal-overlay" id="payment-modal">
             <div class="modal-card">
@@ -868,11 +995,79 @@
                 syncPaymentControls();
             }
 
+            const serviceOptionsByModule = JSON.parse('{{ json_encode($serviceOptionsByModule ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}');
+            const additionalServiceModule = document.getElementById('additional-service-module');
+            const additionalServiceRef = document.getElementById('additional-service-ref');
+            const additionalServiceAmount = document.getElementById('additional-service-amount');
+            const additionalServiceHelp = document.getElementById('additional-service-help');
+
+            const renderAdditionalServiceOptions = () => {
+                if (!additionalServiceModule || !additionalServiceRef) {
+                    return;
+                }
+
+                const slug = additionalServiceModule.value;
+                const bucket = serviceOptionsByModule[slug] || { options: [] };
+                const options = Array.isArray(bucket.options) ? bucket.options : [];
+
+                additionalServiceRef.innerHTML = '';
+
+                if (options.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'Aucun service actif';
+                    additionalServiceRef.appendChild(option);
+                    additionalServiceRef.disabled = true;
+                    if (additionalServiceAmount) {
+                        additionalServiceAmount.value = '';
+                    }
+                    if (additionalServiceHelp) {
+                        additionalServiceHelp.textContent = 'Aucun service actif dans cette categorie.';
+                    }
+                    return;
+                }
+
+                additionalServiceRef.disabled = false;
+                options.forEach((entry) => {
+                    const option = document.createElement('option');
+                    option.value = String(entry.ref || '');
+                    option.textContent = `${entry.kind}: ${entry.name}`;
+                    option.dataset.amount = String(entry.amount ?? '0');
+                    additionalServiceRef.appendChild(option);
+                });
+
+                const firstAmount = Number(additionalServiceRef.options[0]?.dataset?.amount || 0);
+                if (additionalServiceAmount && Number.isFinite(firstAmount) && !additionalServiceAmount.value) {
+                    additionalServiceAmount.value = firstAmount.toFixed(2);
+                }
+                if (additionalServiceHelp) {
+                    additionalServiceHelp.textContent = 'Montant propose automatiquement selon le service choisi.';
+                }
+            };
+
+            if (additionalServiceModule) {
+                additionalServiceModule.addEventListener('change', renderAdditionalServiceOptions);
+                renderAdditionalServiceOptions();
+            }
+
+            if (additionalServiceRef && additionalServiceAmount) {
+                additionalServiceRef.addEventListener('change', () => {
+                    const selected = additionalServiceRef.options[additionalServiceRef.selectedIndex];
+                    const amount = Number(selected?.dataset?.amount || 0);
+                    if (Number.isFinite(amount) && amount >= 0) {
+                        additionalServiceAmount.value = amount.toFixed(2);
+                    }
+                });
+            }
+
             const hasPaymentErrors = "{{ $errors->has('amount') || $errors->has('phase') || $errors->has('method') || $errors->has('note') ? '1' : '0' }}" === '1';
             const hasClientErrors = "{{ $errors->has('client_type') || $errors->has('first_name') || $errors->has('name') || $errors->has('phone') ? '1' : '0' }}" === '1';
+            const hasAdditionalServiceErrors = "{{ $errors->has('module_slug') || $errors->has('service_ref') || $errors->has('service_amount') || $errors->has('service') ? '1' : '0' }}" === '1';
 
             if (hasPaymentErrors) {
                 openModal('payment-modal');
+            } else if (hasAdditionalServiceErrors) {
+                openModal('additional-service-modal');
             } else if (hasClientErrors) {
                 openModal('client-modal');
             }

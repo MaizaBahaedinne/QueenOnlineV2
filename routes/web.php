@@ -38,6 +38,8 @@ Route::middleware('auth')->group(function () {
 	Route::patch('reservations/{reservation}/client', [ReservationController::class, 'updateClient'])->name('reservations.client.update');
 	Route::patch('reservations/{reservation}/salle', [ReservationController::class, 'updateSalle'])->name('reservations.salle.update');
 	Route::post('reservations/{reservation}/payments', [ReservationController::class, 'storePayment'])->name('reservations.payments.store');
+	Route::post('reservations/{reservation}/additional-services', [ReservationController::class, 'storeAdditionalService'])->name('reservations.additional-services.store');
+	Route::delete('reservations/{reservation}/additional-services/{additionalService}', [ReservationController::class, 'destroyAdditionalService'])->name('reservations.additional-services.destroy');
 	Route::resource('reservations', ReservationController::class);
 	Route::resource('payments', PaymentController::class);
 
