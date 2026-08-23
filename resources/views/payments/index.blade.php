@@ -51,7 +51,7 @@
                             <td>{{ number_format((float) $payment->amount, 2, '.', ' ') }}</td>
                             <td>{{ $payment->method }}</td>
                             <td>{{ $payment->status ?? 'pending' }}</td>
-                            <td>{{ $payment->paid_at ?? '-' }}</td>
+                            <td>@frDateTime($payment->paid_at)</td>
                             <td><div class="action-row">
                                 @if ($canUpdate)
                                     <button type="button" class="btn" data-open-modal="payment-edit-modal"

@@ -71,8 +71,8 @@
                                 <td>{{ $reservation->id }}</td>
                                 <td>{{ $reservation->client?->name ?? 'N/A' }}</td>
                                 <td>{{ $reservation->salle?->name ?? 'N/A' }}</td>
-                                <td>{{ $reservation->start_date }}</td>
-                                <td>{{ $reservation->end_date }}</td>
+                                <td>@frDate($reservation->start_date)</td>
+                                <td>@frDate($reservation->end_date)</td>
                                 <td>
                                     @php
                                         $status = strtolower((string) $reservation->status);

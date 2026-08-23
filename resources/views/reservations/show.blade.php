@@ -512,7 +512,7 @@
                 <p class="reservation-show-sub">Client: {{ $clientFullName }} | Salle: {{ $reservation->salle?->name ?? '-' }}</p>
                 <div class="reservation-show-chips">
                     <span class="reservation-chip {{ $statusTone }}">{{ $statusLabel }}</span>
-                    <span class="reservation-chip">Du {{ $reservation->start_date }} au {{ $reservation->end_date }}</span>
+                    <span class="reservation-chip">Du @frDate($reservation->start_date) au @frDate($reservation->end_date)</span>
                     <span class="reservation-chip">{{ $reservation->start_time ?? '--:--' }} - {{ $reservation->end_time ?? '--:--' }}</span>
                 </div>
             </div>
@@ -544,7 +544,7 @@
                     <div class="reservation-kv"><span class="reservation-kv-key">Salle actuelle</span><span class="reservation-kv-value">{{ $reservation->salle?->name ?? '-' }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Capacite</span><span class="reservation-kv-value">{{ $reservation->salle?->capacity ?? '-' }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Type</span><span class="reservation-kv-value">{{ $reservation->salle?->salle_type ?? '-' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Creneau</span><span class="reservation-kv-value">{{ $reservation->start_date }} {{ $reservation->start_time ?? '--:--' }} -> {{ $reservation->end_date }} {{ $reservation->end_time ?? '--:--' }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Creneau</span><span class="reservation-kv-value">@frDate($reservation->start_date) {{ $reservation->start_time ?? '--:--' }} -> @frDate($reservation->end_date) {{ $reservation->end_time ?? '--:--' }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Createur event</span><span class="reservation-kv-value">{{ $reservation->user?->name ?? '-' }}</span></div>
                     @if (($nearbyCreneaux ?? collect())->isNotEmpty())
                         <div class="reservation-nearby">
@@ -602,7 +602,7 @@
                                     </div>
                                     <div class="reservation-payment-meta">
                                         <span>Date</span>
-                                        <strong>{{ $payment->paid_at ? \Illuminate\Support\Carbon::parse($payment->paid_at)->format('d/m/Y H:i:s') : '-' }}</strong>
+                                        <strong>@frDateTime($payment->paid_at)</strong>
                                     </div>
                                     <div class="reservation-payment-meta">
                                         <span>Methode</span>
