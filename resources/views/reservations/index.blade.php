@@ -23,6 +23,7 @@
         .reservation-inline-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .reservation-field { display: flex; flex-direction: column; gap: 5px; }
         .reservation-field label { font-size: 12px; font-weight: 700; color: #3e536b; }
+        .reservation-field .is-locked { background: #eef3f8; color: #5b6b7d; border-color: #cfd9e4; pointer-events: none; }
         .reservation-radio-group { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; min-height: 42px; }
         .reservation-radio { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #334a62; }
         .reservation-hint { margin: 8px 0 0; font-size: 12px; color: #5f6b7a; background: #f4f8fc; border: 1px solid #d7e4f2; border-radius: 9px; padding: 8px 9px; }
@@ -382,6 +383,7 @@
         const minimumStartTime = '08:00';
         const maximumTime = '23:59';
         const monthLabelFormatter = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' });
+        let lockedCreateDateValue = null;
         let calendarCursor = new Date();
         calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), 1);
 
@@ -576,6 +578,24 @@
                     ${eventSnippets ? `<div class="reservation-day-events">${eventSnippets}</div>` : ''}
                 `;
 
+                cell.addEventListener('click', (event) => {
+                    if (event.target.closest('.reservation-day-event-link')) {
+                        return;
+                    }
+
+                    const createModal = document.getElementById('reservation-create-modal');
+                    if (!createModal || !eventDateInput) {
+                        return;
+                    }
+
+                    if (iso < todayIso) {
+                        return;
+                    }
+
+                    prepareCreateReservationModal(iso, true);
+                    createModal.classList.add('show');
+                });
+
                 reservationCalendarGrid.appendChild(cell);
             }
         };
@@ -680,6 +700,47 @@
         const resetClientSelect = () => {
             if (!clientIdInput) return;
             clientIdInput.value = '';
+        };
+
+        const lockCreateEventDate = (locked, dateValue = null) => {
+            if (!eventDateInput) return;
+
+            if (locked) {
+                lockedCreateDateValue = dateValue || eventDateInput.value || null;
+                eventDateInput.readOnly = true;
+                eventDateInput.classList.add('is-locked');
+                eventDateInput.tabIndex = -1;
+            } else {
+                lockedCreateDateValue = null;
+                eventDateInput.readOnly = false;
+                eventDateInput.classList.remove('is-locked');
+                eventDateInput.removeAttribute('tabindex');
+            }
+        };
+
+        const prepareCreateReservationModal = (selectedDate = '', lockDate = false) => {
+            resetSalleSelection();
+            resetClientSelect();
+            applyClientFormData();
+            setStatusMessage(clientSearchStatus, 'Saisis le CIN (8 chiffres). La recherche se fait automatiquement sur ce champ.');
+
+            if (eventDateInput) {
+                if (selectedDate) {
+                    eventDateInput.value = selectedDate;
+                } else {
+                    eventDateInput.value = '';
+                }
+            }
+
+            endDateInput.value = selectedDate || '';
+
+            if (lockDate && selectedDate) {
+                lockCreateEventDate(true, selectedDate);
+                setStatusMessage(availabilityStatus, `Date selectionnee: ${selectedDate}. Clique sur verifier disponibilite.`);
+            } else {
+                lockCreateEventDate(false);
+                setStatusMessage(availabilityStatus, 'Selectionne la date et les horaires, puis clique sur verifier.');
+            }
         };
 
         const fillClientSelect = (clients) => {
@@ -837,6 +898,17 @@
             syncEndTimeConstraints(startTimeInput, endTimeInput);
         }
 
+        if (eventDateInput) {
+            const enforceLockedDate = () => {
+                if (lockedCreateDateValue && eventDateInput.value !== lockedCreateDateValue) {
+                    eventDateInput.value = lockedCreateDateValue;
+                }
+            };
+
+            eventDateInput.addEventListener('input', enforceLockedDate);
+            eventDateInput.addEventListener('change', enforceLockedDate);
+        }
+
         if (editStartTimeInput && editEndTimeInput) {
             editStartTimeInput.addEventListener('change', () => syncEndTimeConstraints(editStartTimeInput, editEndTimeInput));
             editStartTimeInput.addEventListener('input', () => syncEndTimeConstraints(editStartTimeInput, editEndTimeInput));
@@ -869,12 +941,7 @@
                 }
 
                 if (modalId === 'reservation-create-modal') {
-                    resetSalleSelection();
-                    resetClientSelect();
-                    applyClientFormData();
-                    setStatusMessage(availabilityStatus, 'Selectionne la date et les horaires, puis clique sur verifier.');
-                    setStatusMessage(clientSearchStatus, 'Saisis le CIN (8 chiffres). La recherche se fait automatiquement sur ce champ.');
-                    endDateInput.value = '';
+                    prepareCreateReservationModal('', false);
                 }
             });
         });
