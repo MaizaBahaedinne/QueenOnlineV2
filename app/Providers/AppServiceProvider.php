@@ -21,11 +21,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Blade::directive('frDate', function ($expression) {
-            return "<?php if (!empty({$expression})) { try { echo \\Illuminate\\Support\\Carbon::parse({$expression})->format('d/m/Y'); } catch (\\Throwable \\$e) { echo e({$expression}); } } else { echo '-'; } ?>";
+            return "<?php if (!empty({$expression})) { try { echo \\Illuminate\\Support\\Carbon::parse({$expression})->format('d/m/Y'); } catch (\\Throwable) { echo e({$expression}); } } else { echo '-'; } ?>";
         });
 
         Blade::directive('frDateTime', function ($expression) {
-            return "<?php if (!empty({$expression})) { try { echo \\Illuminate\\Support\\Carbon::parse({$expression})->format('d/m/Y H:i:s'); } catch (\\Throwable \\$e) { echo e({$expression}); } } else { echo '-'; } ?>";
+            return "<?php if (!empty({$expression})) { try { echo \\Illuminate\\Support\\Carbon::parse({$expression})->format('d/m/Y H:i:s'); } catch (\\Throwable) { echo e({$expression}); } } else { echo '-'; } ?>";
         });
     }
 }
