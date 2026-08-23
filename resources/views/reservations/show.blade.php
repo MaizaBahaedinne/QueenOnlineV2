@@ -545,6 +545,7 @@
                     <div class="reservation-kv"><span class="reservation-kv-key">Capacite</span><span class="reservation-kv-value">{{ $reservation->salle?->capacity ?? '-' }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Type</span><span class="reservation-kv-value">{{ $reservation->salle?->salle_type ?? '-' }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Creneau</span><span class="reservation-kv-value">{{ $reservation->start_date }} {{ $reservation->start_time ?? '--:--' }} -> {{ $reservation->end_date }} {{ $reservation->end_time ?? '--:--' }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Createur event</span><span class="reservation-kv-value">{{ $reservation->user?->name ?? '-' }}</span></div>
                     @if (($nearbyCreneaux ?? collect())->isNotEmpty())
                         <div class="reservation-nearby">
                             <strong>Reservations proches (+/- 1h30)</strong>
@@ -606,6 +607,10 @@
                                     <div class="reservation-payment-meta">
                                         <span>Methode</span>
                                         <strong>{{ $payment->method ?? '-' }}</strong>
+                                    </div>
+                                    <div class="reservation-payment-meta">
+                                        <span>Recepteur</span>
+                                        <strong>{{ $payment->user?->name ?? '-' }}</strong>
                                     </div>
                                 </li>
                             @endforeach

@@ -89,7 +89,7 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'list', 'view');
 
-        $reservation->load(['client', 'salle', 'user', 'payments']);
+        $reservation->load(['client', 'salle', 'user', 'payments.user']);
 
         $currentStart = $this->reservationDateTime($reservation->start_date, $reservation->start_time);
         $currentEnd = $this->reservationDateTime($reservation->end_date, $reservation->end_time);
