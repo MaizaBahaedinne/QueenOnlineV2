@@ -120,6 +120,7 @@
     @if ($canCreate)
         <div class="modal-overlay" id="reservation-create-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Ajouter reservation</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
             <form method="POST" action="{{ route('reservations.store') }}" id="reservation-create-form" style="display:grid; gap:10px;">@csrf
+                <input type="hidden" name="service_slug" value="{{ $reservationService !== '' ? $reservationService : 'salles' }}">
                 <div class="reservation-intro">Planifie un evenement en 2 etapes: verification du creneau puis choix ou creation du client.</div>
 
                 <div class="reservation-helper-box">
@@ -314,6 +315,7 @@
     <script type="application/json" id="reservation-calendar-data">{!! $reservations->map(function($reservation){
         return [
             'id' => $reservation->id,
+            'service_slug' => $reservation->service_slug ?? 'salles',
             'title' => $reservation->title,
             'client' => $reservation->client?->name ?? '-',
             'salle' => $reservation->salle?->name ?? '-',

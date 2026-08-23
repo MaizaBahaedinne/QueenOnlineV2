@@ -47,9 +47,28 @@ class ReservationController extends MatrixAwareController
             $service = '';
         }
 
+        $reservationsQuery = Reservation::query()->with(['client', 'salle']);
+        $hasServiceSlugColumn = Schema::hasColumn('reservations', 'service_slug');
+
+        if ($service !== '') {
+            if ($hasServiceSlugColumn) {
+                if ($service === 'salles') {
+                    $reservationsQuery->where(function ($query) {
+                        $query
+                            ->where('service_slug', 'salles')
+                            ->orWhereNull('service_slug');
+                    });
+                } else {
+                    $reservationsQuery->where('service_slug', $service);
+                }
+            } elseif ($service !== 'salles') {
+                $reservationsQuery->whereRaw('1 = 0');
+            }
+        }
+
         return view('reservations.index', [
             'title' => 'Reservations',
-            'reservations' => Reservation::query()->with(['client', 'salle'])->latest()->get(),
+            'reservations' => $reservationsQuery->latest()->get(),
             'clients' => Client::query()->orderBy('name')->get(),
             'salles' => Salle::query()->orderBy('name')->get(),
             'governorates' => self::GOVERNORATES,
@@ -84,6 +103,7 @@ class ReservationController extends MatrixAwareController
 
         $validated = $request->validate([
             'salle_id' => ['required', 'exists:salles,id'],
+            'service_slug' => ['nullable', Rule::in(array_keys(self::RESERVATION_SERVICES))],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
@@ -104,6 +124,12 @@ class ReservationController extends MatrixAwareController
             'total_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
+        if (Schema::hasColumn('reservations', 'service_slug')) {
+            $validated['service_slug'] = $validated['service_slug'] ?? 'salles';
+        } else {
+            unset($validated['service_slug']);
+        }
+
         $validated['client_id'] = $resolvedClientId;
 
         Reservation::create($validated);
@@ -118,6 +144,7 @@ class ReservationController extends MatrixAwareController
         $validated = $request->validate([
             'client_id' => ['required', 'exists:clients,id'],
             'salle_id' => ['required', 'exists:salles,id'],
+            'service_slug' => ['nullable', Rule::in(array_keys(self::RESERVATION_SERVICES))],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
@@ -138,6 +165,12 @@ class ReservationController extends MatrixAwareController
             'status' => ['nullable', Rule::in(['pending', 'confirmed', 'cancelled', 'completed'])],
             'total_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        if (Schema::hasColumn('reservations', 'service_slug')) {
+            $validated['service_slug'] = $validated['service_slug'] ?? ($reservation->service_slug ?: 'salles');
+        } else {
+            unset($validated['service_slug']);
+        }
 
         $reservation->update($validated);
 
