@@ -1094,7 +1094,7 @@
     <script>
         document.querySelectorAll('.js-service-start-time').forEach(function (input) {
             input.addEventListener('change', function () {
-                var status = input.closest('small').querySelector('.js-start-time-status');
+                var status = input.parentElement.querySelector('.js-start-time-status');
                 status.textContent = '...';
                 fetch(input.dataset.url, {
                     method: 'PATCH',
