@@ -1,21 +1,41 @@
--- Import complet de l'ancienne base quee_QueenDB vers la base Laravel actuelle
--- Hypothese: la base cible est vide ou quasi vide avant execution
--- Base source: quee_QueenDB (meme serveur MySQL)
--- Cible: base Laravel de QueenOnlineV2
--- Couvre:
---   - clients depuis tbl_users roleId = 4
---   - salles depuis tbl_salle
---   - packs/items legacy vers service_module_items / service_module_packs
---   - reservations salle
---   - reservations service: photographe, prestation -> animation, troupe -> troupe-musicale, voiture
---   - paiements salle et paiements service
+-- ============================================================================
+-- MIGRATION COMPLÈTE: quee_QueenDB → quee_QueenBD
+-- ============================================================================
+-- Objectif: Importer tous les données legacy avec préservation des relations
+-- et métadonnées dans note_admin pour traçabilité
+-- Utilise le VRAI schéma legacy (colonnes réelles)
+-- ============================================================================
+
+USE quee_QueenBD;
+SET FOREIGN_KEY_CHECKS = 0;
+SET SESSION sql_mode = 'STRICT_TRANS_TABLES';
+
+-- Vider les tables cibles (dans l'ordre inverse des dépendances FK)
+DELETE FROM `quee_QueenBD`.payments;
+DELETE FROM `quee_QueenBD`.reservations;
+DELETE FROM `quee_QueenBD`.service_module_packs;
+DELETE FROM `quee_QueenBD`.service_module_items;
+DELETE FROM `quee_QueenBD`.clients;
+DELETE FROM `quee_QueenBD`.salles;
+
+-- Réinitialiser les auto-increment
+ALTER TABLE `quee_QueenBD`.clients AUTO_INCREMENT = 1;
+ALTER TABLE `quee_QueenBD`.salles AUTO_INCREMENT = 1;
+ALTER TABLE `quee_QueenBD`.service_module_items AUTO_INCREMENT = 1;
+ALTER TABLE `quee_QueenBD`.service_module_packs AUTO_INCREMENT = 1;
+ALTER TABLE `quee_QueenBD`.reservations AUTO_INCREMENT = 1;
+ALTER TABLE `quee_QueenBD`.payments AUTO_INCREMENT = 1;
+
+SET FOREIGN_KEY_CHECKS = 1;
 
 START TRANSACTION;
 
+-- ============================================================================
+-- 1) TABLES TEMPORAIRES DE MAPPING
+-- ============================================================================
+
 DROP TEMPORARY TABLE IF EXISTS legacy_client_map;
 DROP TEMPORARY TABLE IF EXISTS legacy_salle_map;
-DROP TEMPORARY TABLE IF EXISTS legacy_item_map;
-DROP TEMPORARY TABLE IF EXISTS legacy_pack_map;
 DROP TEMPORARY TABLE IF EXISTS legacy_reservation_map;
 
 CREATE TEMPORARY TABLE legacy_client_map (
@@ -28,723 +48,533 @@ CREATE TEMPORARY TABLE legacy_salle_map (
     new_salle_id BIGINT NOT NULL
 );
 
-CREATE TEMPORARY TABLE legacy_item_map (
-    source_table VARCHAR(64) NOT NULL,
-    old_item_id INT NOT NULL,
-    new_item_id BIGINT NOT NULL,
-    PRIMARY KEY (source_table, old_item_id)
-);
-
-CREATE TEMPORARY TABLE legacy_pack_map (
-    source_table VARCHAR(64) NOT NULL,
-    old_pack_id INT NOT NULL,
-    new_pack_id BIGINT NOT NULL,
-    PRIMARY KEY (source_table, old_pack_id)
-);
-
 CREATE TEMPORARY TABLE legacy_reservation_map (
-    source_table VARCHAR(64) NOT NULL,
-    old_reservation_id INT NOT NULL,
-    new_reservation_id BIGINT NOT NULL,
-    PRIMARY KEY (source_table, old_reservation_id)
+    old_reservation_id INT NOT NULL PRIMARY KEY,
+    new_reservation_id BIGINT NOT NULL
 );
 
--- ----------------------------------------------------------------------
--- 1) Clients
--- ----------------------------------------------------------------------
-INSERT INTO clients (
-    user_id,
-    client_type,
-    fiscal_number,
-    company_name,
-    first_name,
-    name,
-    gender,
-    birth_date,
-    email,
-    phone,
-    phone_label_1,
-    phone_2,
-    phone_label_2,
-    cin,
-    address_number,
-    address_street,
-    date_cin,
-    city,
-    governorate,
-    source,
-    note,
-    status,
-    created_at,
-    updated_at
-)
-SELECT
-    NULL,
-    CASE WHEN u.type = 'societe' THEN 'societe' ELSE 'personne-physique' END,
-    NULL,
-    CASE WHEN u.type = 'societe' THEN NULLIF(u.raisonSocial, '') ELSE NULL END,
-    NULLIF(u.prenom, ''),
-    NULLIF(u.nom, ''),
-    NULLIF(u.sexe, ''),
-    u.birthday,
-    NULLIF(u.email, ''),
-    NULLIF(CAST(u.mobile AS CHAR), ''),
-    NULL,
-    NULLIF(CAST(u.mobile2 AS CHAR), ''),
-    NULL,
-    NULLIF(u.cin, ''),
-    NULLIF(CAST(u.n AS CHAR), ''),
-    NULLIF(u.rue, ''),
-    u.dateCin,
-    NULLIF(u.ville, ''),
-    NULL,
-    NULLIF(u.source, ''),
-    NULL,
-    'active',
-    COALESCE(u.createdDtm, NOW()),
-    COALESCE(u.updatedDtm, NOW())
-FROM `quee_QueenDB`.tbl_users u
-WHERE u.roleId = 4;
+-- ============================================================================
+-- 2) IMPORT CLIENTS (tbl_users avec roleId = 4)
+-- ============================================================================
 
-INSERT INTO legacy_client_map (old_user_id, new_client_id)
-SELECT
-    u.userId,
-    MIN(c.id)
+INSERT INTO clients (cin, first_name, last_name, phone, phone2, email, governorate, city, address, status, created_at, updated_at)
+SELECT DISTINCT
+    COALESCE(u.cin, CONCAT('LEGACY_', u.userId)),
+    COALESCE(u.prenom, ''),
+    COALESCE(u.nom, 'Client Legacy'),
+    COALESCE(CAST(u.mobile AS CHAR), ''),
+    COALESCE(CAST(u.mobile2 AS CHAR), ''),
+    COALESCE(u.email, ''),
+    COALESCE(u.ville, ''),
+    '',
+    CONCAT(COALESCE(CAST(u.n AS CHAR), ''), ' ', COALESCE(u.rue, '')),
+    'active',
+    NOW(),
+    NOW()
 FROM `quee_QueenDB`.tbl_users u
-JOIN clients c
-    ON (
-        (NULLIF(u.cin, '') IS NOT NULL AND c.cin = u.cin COLLATE utf8mb3_unicode_ci)
-        OR (
-            NULLIF(u.cin, '') IS NULL
-            AND c.name = NULLIF(u.nom, '') COLLATE utf8mb3_unicode_ci
-            AND IFNULL(c.first_name, '') = IFNULL(NULLIF(u.prenom, ''), '') COLLATE utf8mb3_unicode_ci
-            AND IFNULL(c.phone, '') = IFNULL(NULLIF(CAST(u.mobile AS CHAR), ''), '') COLLATE utf8mb3_unicode_ci
+WHERE u.roleId = 4
+ORDER BY u.userId;
+
+-- Construire la table de mapping clients
+INSERT INTO legacy_client_map (old_user_id, new_client_id)
+SELECT u.userId, MIN(c.id)
+FROM `quee_QueenDB`.tbl_users u
+INNER JOIN clients c ON (
+    -- Priorité 1: CIN exact
+    (u.cin IS NOT NULL AND u.cin != '' AND c.cin = u.cin)
+    -- Priorité 2: Pas de CIN et match sur nom/prenom/téléphone
+    OR (
+        (u.cin IS NULL OR u.cin = '')
+        AND CONVERT(c.last_name USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(u.nom USING utf8mb4) COLLATE utf8mb4_unicode_ci
+        AND CONVERT(c.first_name USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(u.prenom USING utf8mb4) COLLATE utf8mb4_unicode_ci
+        AND (
+            c.phone = COALESCE(CAST(u.mobile AS CHAR), '')
+            OR c.phone2 = COALESCE(CAST(u.mobile2 AS CHAR), '')
         )
     )
+)
 WHERE u.roleId = 4
 GROUP BY u.userId;
 
--- ----------------------------------------------------------------------
--- 2) Salles
--- ----------------------------------------------------------------------
-INSERT INTO salles (
-    name,
-    capacity,
-    price_per_day,
-    location,
-    description,
-    status,
-    created_at,
-    updated_at
-)
-SELECT
-    s.nom,
-    COALESCE(s.`capacité`, 0),
-    COALESCE(s.`Prix`, 0),
-    NULL,
-    NULLIF(s.description, ''),
-    CASE WHEN LOWER(COALESCE(s.etat, 'active')) IN ('active', 'actif', '1') THEN 'active' ELSE 'inactive' END,
+-- ============================================================================
+-- 3) IMPORT SALLES (tbl_salle)
+-- ============================================================================
+
+INSERT INTO salles (name, capacity, price_per_hour, available_hours, status, created_at, updated_at)
+SELECT DISTINCT
+    CONVERT(s.nom USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+    COALESCE(s.capacité, 0),
+    COALESCE(s.Prix, 0),
+    '',
+    CASE 
+        WHEN COALESCE(s.etat, '') IN ('actif', 'active') THEN 'active'
+        ELSE 'inactive'
+    END,
     NOW(),
     NOW()
-FROM `quee_QueenDB`.tbl_salle s;
-
-INSERT INTO legacy_salle_map (old_salle_id, new_salle_id)
-SELECT
-    s.salleID,
-    n.id
 FROM `quee_QueenDB`.tbl_salle s
-JOIN salles n
-    ON n.name = s.nom COLLATE utf8mb3_unicode_ci
-   AND n.capacity = COALESCE(s.`capacité`, 0)
-   AND n.price_per_day = COALESCE(s.`Prix`, 0);
+ORDER BY s.salleID;
 
--- ----------------------------------------------------------------------
--- 3) Packs / items legacy -> service modules
---    mapping choisi:
---    - tbl_pack_troupe -> troupe-musicale
---    - tbl_pack_photographe -> photographe
---    - tbl_pack_prestation -> animation
---    - tbl_pack_troupe_artiste -> service_module_items de troupe-musicale
--- ----------------------------------------------------------------------
-INSERT INTO service_module_items (
-    module_slug,
-    name,
-    phone,
-    base_price,
-    status,
-    notes,
-    created_at,
-    updated_at
+-- Construire la table de mapping salles
+INSERT INTO legacy_salle_map (old_salle_id, new_salle_id)
+SELECT s.salleID, MIN(sl.id)
+FROM `quee_QueenDB`.tbl_salle s
+INNER JOIN salles sl ON (
+    CONVERT(sl.name USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(s.nom USING utf8mb4) COLLATE utf8mb4_unicode_ci
+    AND sl.capacity = COALESCE(s.capacité, 0)
+    AND sl.price_per_hour = COALESCE(s.Prix, 0)
 )
-SELECT
+GROUP BY s.salleID;
+
+-- ============================================================================
+-- 4) IMPORT SERVICE MODULES - ITEMS
+-- ============================================================================
+
+-- 4.1) Troupe musicale - items (artistes)
+INSERT INTO service_module_items (module_slug, name, phone, base_price, status, notes, created_at, updated_at)
+SELECT DISTINCT
     'troupe-musicale',
-    a.nom,
-    NULL,
+    CONVERT(a.nom USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+    '',
     COALESCE(a.prix, 0),
-    CASE WHEN a.statut = 1 THEN 'active' ELSE 'inactive' END,
-    CONCAT('Legacy artisteId=', a.artisteId),
+    'active',
+    CONCAT('Artiste legacy ID ', a.artisteId),
     NOW(),
     NOW()
-FROM `quee_QueenDB`.tbl_pack_troupe_artiste a;
-
-INSERT INTO legacy_item_map (source_table, old_item_id, new_item_id)
-SELECT
-    'tbl_pack_troupe_artiste',
-    a.artisteId,
-    n.id
 FROM `quee_QueenDB`.tbl_pack_troupe_artiste a
-JOIN service_module_items n
-    ON n.module_slug = 'troupe-musicale'
-   AND n.name = a.nom COLLATE utf8mb3_unicode_ci
-   AND n.base_price = COALESCE(a.prix, 0);
+WHERE a.nom IS NOT NULL AND a.nom != '';
 
-INSERT INTO service_module_packs (
-    module_slug,
-    service_module_item_id,
-    name,
-    price,
-    status,
-    description,
-    created_at,
-    updated_at
-)
+-- 4.2) Animation - items (chanteurs/prestations individuelles)
+INSERT INTO service_module_items (module_slug, name, phone, base_price, status, notes, created_at, updated_at)
 SELECT
-    'photographe',
-    NULL,
-    p.nom,
+    'animation',
+    CONVERT(p.nom USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+    '',
     COALESCE(p.prix, 0),
     'active',
-    CONCAT(
-        'Legacy packId=', p.packId,
-        ' | type=', COALESCE(p.type, ''),
-        ' | nbPhotos=', COALESCE(p.nombrePhotos, ''),
-        ' | nbCamera=', COALESCE(p.nombreCamera, ''),
-        ' | photos=', COALESCE(p.photos, ''),
-        ' | video=', COALESCE(p.video, ''),
-        ' | ghiraphe=', COALESCE(p.ghiraphe, ''),
-        ' | drone=', COALESCE(p.drone, ''),
-        ' | shooting=', COALESCE(p.shooting, ''),
-        ' | description=', COALESCE(p.description, '')
-    ),
+    CONCAT('Prestataire legacy ID ', p.packId, ' | type=', p.type),
     NOW(),
     NOW()
-FROM `quee_QueenDB`.tbl_pack_photographe p;
+FROM `quee_QueenDB`.tbl_pack_prestation p
+WHERE p.nom IS NOT NULL AND p.nom != '';
 
-INSERT INTO legacy_pack_map (source_table, old_pack_id, new_pack_id)
-SELECT
-    'tbl_pack_photographe',
-    p.packId,
-    n.id
-FROM `quee_QueenDB`.tbl_pack_photographe p
-JOIN service_module_packs n
-    ON n.module_slug = 'photographe'
-   AND n.name = p.nom COLLATE utf8mb3_unicode_ci
-   AND n.price = COALESCE(p.prix, 0);
+-- 4.3) Voiture - items (types de voitures)
+INSERT INTO service_module_items (module_slug, name, phone, base_price, status, notes, created_at, updated_at)
+SELECT DISTINCT
+    'voiture',
+    CONVERT(r.voitureName USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+    '',
+    0,
+    'active',
+    'Type voiture legacy depuis tbl_reservation_voiture',
+    NOW(),
+    NOW()
+FROM `quee_QueenDB`.tbl_reservation_voiture r
+WHERE r.voitureName IS NOT NULL AND r.voitureName != '';
 
-INSERT INTO service_module_packs (
-    module_slug,
-    service_module_item_id,
-    name,
-    price,
-    status,
-    description,
-    created_at,
-    updated_at
-)
+-- ============================================================================
+-- 5) IMPORT SERVICE MODULES - PACKS
+-- ============================================================================
+
+-- 5.1) Troupe musicale - packs
+INSERT INTO service_module_packs (module_slug, name, base_price, status, description, created_at, updated_at)
 SELECT
     'troupe-musicale',
-    NULL,
-    t.nom,
+    CONVERT(t.nom USING utf8mb4) COLLATE utf8mb4_unicode_ci,
     COALESCE(t.prix, 0),
     'active',
-    CONCAT('Legacy packId=', t.packId, ' | description=', COALESCE(t.description, ''), ' | mobile=', COALESCE(t.mobile, '')),
+    CONCAT('Pack troupe legacy ID ', t.packId),
     NOW(),
     NOW()
-FROM `quee_QueenDB`.tbl_pack_troupe t;
-
-INSERT INTO legacy_pack_map (source_table, old_pack_id, new_pack_id)
-SELECT
-    'tbl_pack_troupe',
-    t.packId,
-    n.id
 FROM `quee_QueenDB`.tbl_pack_troupe t
-JOIN service_module_packs n
-    ON n.module_slug = 'troupe-musicale'
-   AND n.name = t.nom COLLATE utf8mb3_unicode_ci
-   AND n.price = COALESCE(t.prix, 0);
+WHERE t.nom IS NOT NULL AND t.nom != '';
 
-INSERT INTO service_module_packs (
-    module_slug,
-    service_module_item_id,
-    name,
-    price,
-    status,
-    description,
-    created_at,
-    updated_at
-)
+-- 5.2) Photographe - packs
+INSERT INTO service_module_packs (module_slug, name, base_price, status, description, created_at, updated_at)
 SELECT
-    'animation',
-    NULL,
-    p.nom,
+    'photographe',
+    CONVERT(p.nom USING utf8mb4) COLLATE utf8mb4_unicode_ci,
     COALESCE(p.prix, 0),
     'active',
+    CONCAT('Pack photographe legacy ID ', p.packId),
+    NOW(),
+    NOW()
+FROM `quee_QueenDB`.tbl_pack_photographe p
+WHERE p.nom IS NOT NULL AND p.nom != '';
+
+-- 5.3) Animation - packs (tbl_pack_prestation)
+INSERT INTO service_module_packs (module_slug, name, base_price, status, description, created_at, updated_at)
+SELECT
+    'animation',
+    CONVERT(p.nom USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+    COALESCE(p.prix, 0),
+    'active',
+    CONCAT('Pack animation legacy ID ', p.packId, ' | type=', p.type),
+    NOW(),
+    NOW()
+FROM `quee_QueenDB`.tbl_pack_prestation p
+WHERE p.nom IS NOT NULL AND p.nom != '';
+
+-- ============================================================================
+-- 6) IMPORT RESERVATIONS - SALLES
+-- ============================================================================
+
+INSERT INTO reservations (client_id, salle_id, reservation_date, start_time, end_time, total_price, payment_status, service_slug, status, note_admin, created_at, updated_at)
+SELECT
+    lcm.new_client_id,
+    lsm.new_salle_id,
+    r.dateDebut,
+    COALESCE(r.heureDebut, '00:00:00'),
+    COALESCE(r.heureFin, '23:59:59'),
+    COALESCE(r.prix, 0),
+    'pending',
+    'salle',
+    CASE 
+        WHEN COALESCE(r.statut, 0) = 1 THEN 'confirmed'
+        ELSE 'pending'
+    END,
     CONCAT(
-        'Legacy packId=', p.packId,
-        ' | type=', COALESCE(p.type, ''),
-        ' | notification=', COALESCE(p.notification, ''),
-        ' | mobile=', COALESCE(p.mobile, ''),
-        ' | description=', COALESCE(p.description, '')
+        'Legacy reservation ID: ', r.reservationID,
+        ' | clientId: ', r.clientId,
+        ' | salleId: ', r.salleId,
+        ' | dateDebut: ', r.dateDebut,
+        ' | dateFin: ', r.dateFin,
+        ' | prix: ', COALESCE(r.prix, 0),
+        ' | statut: ', r.statut,
+        ' | titre: ', COALESCE(r.titre, ''),
+        ' | type: ', COALESCE(r.type, ''),
+        ' | nbPlace: ', COALESCE(r.nbPlace, 0),
+        ' | noteAdmin: ', COALESCE(r.noteAdmin, '')
     ),
     NOW(),
     NOW()
-FROM `quee_QueenDB`.tbl_pack_prestation p;
-
-INSERT INTO legacy_pack_map (source_table, old_pack_id, new_pack_id)
-SELECT
-    'tbl_pack_prestation',
-    p.packId,
-    n.id
-FROM `quee_QueenDB`.tbl_pack_prestation p
-JOIN service_module_packs n
-    ON n.module_slug = 'animation'
-   AND n.name = p.nom COLLATE utf8mb3_unicode_ci
-   AND n.price = COALESCE(p.prix, 0);
-
--- ----------------------------------------------------------------------
--- 4) Reservation salle (tbl_reservation)
--- ----------------------------------------------------------------------
-INSERT INTO reservations (
-    client_id,
-    salle_id,
-    user_id,
-    title,
-    start_date,
-    end_date,
-    start_time,
-    end_time,
-    status,
-    total_amount,
-    note_admin,
-    created_at,
-    updated_at
-)
-SELECT
-    cm.new_client_id,
-    sm.new_salle_id,
-    NULL,
-    COALESCE(NULLIF(r.titre, ''), CONCAT('Reservation #', r.reservationID)),
-    r.dateDebut,
-    r.dateFin,
-    r.heureDebut,
-    r.heureFin,
-    CASE WHEN r.statut = 1 THEN 'confirmed' ELSE 'pending' END,
-    COALESCE(r.prix, 0),
-    CONCAT(
-        'legacy:tbl_reservation:', r.reservationID,
-        ' | legacy clientId=', r.clientId,
-        ' | legacy locataireId=', r.locataireId,
-        ' | legacy statut=', r.statut,
-        ' | legacy demandeEcheance=', COALESCE(DATE_FORMAT(r.demandeEcheance, '%Y-%m-%d'), ''),
-        ' | noteAdmin=', COALESCE(r.noteAdmin, ''),
-        ' | cuisine=', COALESCE(r.cuisine, ''),
-        ' | tableCM=', COALESCE(r.tableCM, ''),
-        ' | voiture=', COALESCE(r.voiture, ''),
-        ' | troupe=', COALESCE(r.troupe, ''),
-        ' | prestation=', COALESCE(r.prestation, ''),
-        ' | photographe=', COALESCE(r.photographe, ''),
-        ' | gateau=', COALESCE(r.gateau, '')
-    ),
-    COALESCE(r.createdDTM, NOW()),
-    COALESCE(r.createdDTM, NOW())
 FROM `quee_QueenDB`.tbl_reservation r
-JOIN legacy_client_map cm ON cm.old_user_id = r.clientId
-JOIN legacy_salle_map sm ON sm.old_salle_id = r.salleId;
+INNER JOIN legacy_client_map lcm ON r.clientId = lcm.old_user_id
+INNER JOIN legacy_salle_map lsm ON r.salleId = lsm.old_salle_id;
 
-INSERT INTO legacy_reservation_map (source_table, old_reservation_id, new_reservation_id)
-SELECT
-    'tbl_reservation',
-    r.reservationID,
-    n.id
+-- Construire la table de mapping réservations
+INSERT INTO legacy_reservation_map (old_reservation_id, new_reservation_id)
+SELECT r.reservationID, res.id
 FROM `quee_QueenDB`.tbl_reservation r
-JOIN reservations n
-    ON n.note_admin LIKE CONCAT('legacy:tbl_reservation:', r.reservationID, '%')
-   AND n.start_date = r.dateDebut
-   AND n.end_date = r.dateFin
-   AND n.start_time = r.heureDebut
-   AND n.end_time = r.heureFin;
-
--- ----------------------------------------------------------------------
--- 5) Reservations service
--- ----------------------------------------------------------------------
--- Photographe
-INSERT INTO reservations (
-    client_id,
-    salle_id,
-    user_id,
-    title,
-    start_date,
-    end_date,
-    start_time,
-    end_time,
-    service_slug,
-    status,
-    total_amount,
-    note_admin,
-    created_at,
-    updated_at
+INNER JOIN reservations res ON (
+    DATE(res.reservation_date) = DATE(r.dateDebut)
+    AND res.service_slug = 'salle'
+    AND res.note_admin LIKE CONCAT('%Legacy reservation ID: ', r.reservationID, '%')
 )
+ORDER BY r.reservationID;
+
+-- ============================================================================
+-- 7) IMPORT RESERVATIONS - SERVICES (photographe, prestation, troupe, voiture)
+-- ============================================================================
+
+-- 7.1) Photographe
+INSERT INTO reservations (client_id, salle_id, reservation_date, start_time, end_time, total_price, payment_status, service_slug, status, user_id, note_admin, created_at, updated_at)
 SELECT
     parent.client_id,
     parent.salle_id,
-    NULL,
-    CONCAT('Photographe - ', COALESCE(p.nom, CONCAT('Pack #', r.packId)), ' #', r.reservationPId),
-    p.date,
-    p.date,
+    parent.reservation_date,
     parent.start_time,
     parent.end_time,
+    COALESCE(rp.prix, 0),
+    'pending',
     'photographe',
-    CASE WHEN r.statut = 1 THEN 'confirmed' ELSE 'pending' END,
-    COALESCE(r.prix, 0),
+    CASE 
+        WHEN COALESCE(rp.statut, 0) = 1 THEN 'confirmed'
+        ELSE 'pending'
+    END,
+    CASE r.createdBy
+        WHEN 32 THEN 4
+        WHEN 25 THEN 2
+        WHEN 1 THEN 1
+        WHEN 5 THEN 33
+        WHEN 400 THEN 3
+        ELSE NULL
+    END,
     CONCAT(
-        'legacy:tbl_reservation_photographe:', r.reservationPId,
-        ' | parentReservationId=', r.reservationId,
-        ' | legacy packId=', r.packId,
-        ' | avance=', COALESCE(r.avance, ''),
-        ' | createdBy=', COALESCE(r.createdBy, ''),
-        ' | noteAdmin=', COALESCE(r.noteAdmin, '')
+        'Legacy reservation photographe ID: ', rp.reservationPId,
+        ' | parent_salle_reservation: ', r.reservationID,
+        ' | date: ', rp.date,
+        ' | prix: ', COALESCE(rp.prix, 0),
+        ' | createdBy: ', r.createdBy
     ),
-    COALESCE(r.createdDTM, NOW()),
-    COALESCE(r.createdDTM, NOW())
-FROM `quee_QueenDB`.tbl_reservation_photographe r
-JOIN legacy_reservation_map prm ON prm.source_table = 'tbl_reservation' AND prm.old_reservation_id = r.reservationId
-JOIN reservations parent ON parent.id = prm.new_reservation_id
-LEFT JOIN `quee_QueenDB`.tbl_pack_photographe p ON p.packId = r.packId;
+    NOW(),
+    NOW()
+FROM `quee_QueenDB`.tbl_reservation_photographe rp
+INNER JOIN `quee_QueenDB`.tbl_reservation r ON rp.reservationId = r.reservationID
+INNER JOIN reservations parent ON parent.note_admin LIKE CONCAT('%Legacy reservation ID: ', r.reservationID, '%');
 
-INSERT INTO legacy_reservation_map (source_table, old_reservation_id, new_reservation_id)
-SELECT
-    'tbl_reservation_photographe',
-    r.reservationPId,
-    n.id
-FROM `quee_QueenDB`.tbl_reservation_photographe r
-JOIN reservations n
-    ON n.note_admin LIKE CONCAT('legacy:tbl_reservation_photographe:', r.reservationPId, '%');
-
--- Prestation -> animation
-INSERT INTO reservations (
-    client_id,
-    salle_id,
-    user_id,
-    title,
-    start_date,
-    end_date,
-    start_time,
-    end_time,
-    service_slug,
-    status,
-    total_amount,
-    note_admin,
-    created_at,
-    updated_at
-)
+-- 7.2) Animation (prestation)
+INSERT INTO reservations (client_id, salle_id, reservation_date, start_time, end_time, total_price, payment_status, service_slug, status, user_id, note_admin, created_at, updated_at)
 SELECT
     parent.client_id,
     parent.salle_id,
-    NULL,
-    CONCAT('Prestation - ', COALESCE(p.nom, CONCAT('Pack #', r.packId)), ' #', r.prestationId),
-    r.date,
-    r.date,
-    r.heure,
-    ADDTIME(r.heure, '01:00:00'),
+    parent.reservation_date,
+    parent.start_time,
+    parent.end_time,
+    COALESCE(rpr.prix, 0),
+    'pending',
     'animation',
-    CASE WHEN r.statut = 1 THEN 'confirmed' ELSE 'pending' END,
-    COALESCE(r.prix, 0),
+    CASE 
+        WHEN COALESCE(rpr.statut, 0) = 1 THEN 'confirmed'
+        ELSE 'pending'
+    END,
+    CASE r.createdBy
+        WHEN 32 THEN 4
+        WHEN 25 THEN 2
+        WHEN 1 THEN 1
+        WHEN 5 THEN 33
+        WHEN 400 THEN 3
+        ELSE NULL
+    END,
     CONCAT(
-        'legacy:tbl_reservation_prestation:', r.prestationId,
-        ' | parentReservationId=', r.reservationId,
-        ' | legacy packId=', r.packId,
-        ' | avance=', COALESCE(r.avance, ''),
-        ' | createdBy=', COALESCE(r.createdBy, ''),
-        ' | noteAdmin=', COALESCE(r.noteAdmin, '')
+        'Legacy reservation prestation ID: ', rpr.prestationId,
+        ' | parent_salle_reservation: ', r.reservationID,
+        ' | date: ', rpr.date,
+        ' | heure: ', rpr.heure,
+        ' | prix: ', COALESCE(rpr.prix, 0),
+        ' | createdBy: ', r.createdBy
     ),
-    COALESCE(r.createdDTM, NOW()),
-    COALESCE(r.createdDTM, NOW())
-FROM `quee_QueenDB`.tbl_reservation_prestation r
-JOIN legacy_reservation_map prm ON prm.source_table = 'tbl_reservation' AND prm.old_reservation_id = r.reservationId
-JOIN reservations parent ON parent.id = prm.new_reservation_id
-LEFT JOIN `quee_QueenDB`.tbl_pack_prestation p ON p.packId = r.packId;
+    NOW(),
+    NOW()
+FROM `quee_QueenDB`.tbl_reservation_prestation rpr
+INNER JOIN `quee_QueenDB`.tbl_reservation r ON rpr.reservationId = r.reservationID
+INNER JOIN reservations parent ON parent.note_admin LIKE CONCAT('%Legacy reservation ID: ', r.reservationID, '%');
 
-INSERT INTO legacy_reservation_map (source_table, old_reservation_id, new_reservation_id)
-SELECT
-    'tbl_reservation_prestation',
-    r.prestationId,
-    n.id
-FROM `quee_QueenDB`.tbl_reservation_prestation r
-JOIN reservations n
-    ON n.note_admin LIKE CONCAT('legacy:tbl_reservation_prestation:', r.prestationId, '%');
-
--- Troupe -> troupe-musicale
-INSERT INTO reservations (
-    client_id,
-    salle_id,
-    user_id,
-    title,
-    start_date,
-    end_date,
-    start_time,
-    end_time,
-    service_slug,
-    status,
-    total_amount,
-    note_admin,
-    created_at,
-    updated_at
-)
+-- 7.3) Troupe-musicale
+INSERT INTO reservations (client_id, salle_id, reservation_date, start_time, end_time, total_price, payment_status, service_slug, status, user_id, note_admin, created_at, updated_at)
 SELECT
     parent.client_id,
     parent.salle_id,
-    NULL,
-    CONCAT('Troupe - ', COALESCE(p.nom, CONCAT('Pack #', r.packId)), ' #', r.reservationTId),
-    r.date,
-    r.date,
-    SEC_TO_TIME(COALESCE(r.heure, 0) * 3600),
-    ADDTIME(SEC_TO_TIME(COALESCE(r.heure, 0) * 3600), '01:00:00'),
+    parent.reservation_date,
+    parent.start_time,
+    parent.end_time,
+    COALESCE(rt.prix, 0),
+    'pending',
     'troupe-musicale',
-    CASE WHEN r.statut = 1 THEN 'confirmed' ELSE 'pending' END,
-    COALESCE(r.prix, 0),
+    CASE 
+        WHEN COALESCE(rt.statut, 0) = 1 THEN 'confirmed'
+        ELSE 'pending'
+    END,
+    CASE r.createdBy
+        WHEN 32 THEN 4
+        WHEN 25 THEN 2
+        WHEN 1 THEN 1
+        WHEN 5 THEN 33
+        WHEN 400 THEN 3
+        ELSE NULL
+    END,
     CONCAT(
-        'legacy:tbl_reservation_troupe:', r.reservationTId,
-        ' | parentReservationId=', r.reservationId,
-        ' | legacy packId=', r.packId,
-        ' | chanteurs=', COALESCE(r.chanteurs, ''),
-        ' | avance=', COALESCE(r.avance, ''),
-        ' | createdBy=', COALESCE(r.createdBy, ''),
-        ' | noteAdmin=', COALESCE(r.noteAdmin, '')
+        'Legacy reservation troupe ID: ', rt.reservationTId,
+        ' | parent_salle_reservation: ', r.reservationID,
+        ' | date: ', rt.date,
+        ' | prix: ', COALESCE(rt.prix, 0),
+        ' | chanteurs: ', COALESCE(rt.chanteurs, ''),
+        ' | createdBy: ', r.createdBy
     ),
-    COALESCE(r.createdDTM, NOW()),
-    COALESCE(r.createdDTM, NOW())
-FROM `quee_QueenDB`.tbl_reservation_troupe r
-JOIN legacy_reservation_map prm ON prm.source_table = 'tbl_reservation' AND prm.old_reservation_id = r.reservationId
-JOIN reservations parent ON parent.id = prm.new_reservation_id
-LEFT JOIN `quee_QueenDB`.tbl_pack_troupe p ON p.packId = r.packId;
+    NOW(),
+    NOW()
+FROM `quee_QueenDB`.tbl_reservation_troupe rt
+INNER JOIN `quee_QueenDB`.tbl_reservation r ON rt.reservationId = r.reservationID
+INNER JOIN reservations parent ON parent.note_admin LIKE CONCAT('%Legacy reservation ID: ', r.reservationID, '%');
 
-INSERT INTO legacy_reservation_map (source_table, old_reservation_id, new_reservation_id)
+-- 7.4) Voiture
+INSERT INTO reservations (client_id, salle_id, reservation_date, start_time, end_time, total_price, payment_status, service_slug, status, user_id, note_admin, created_at, updated_at)
 SELECT
-    'tbl_reservation_troupe',
-    r.reservationTId,
-    n.id
-FROM `quee_QueenDB`.tbl_reservation_troupe r
-JOIN reservations n
-    ON n.note_admin LIKE CONCAT('legacy:tbl_reservation_troupe:', r.reservationTId, '%');
-
--- Voiture
-INSERT INTO reservations (
-    client_id,
-    salle_id,
-    user_id,
-    title,
-    start_date,
-    end_date,
-    start_time,
-    end_time,
-    service_slug,
-    status,
-    total_amount,
-    note_admin,
-    created_at,
-    updated_at
-)
-SELECT
-    COALESCE(parent.client_id, cm.new_client_id),
+    parent.client_id,
     parent.salle_id,
-    NULL,
-    CONCAT('Voiture - ', COALESCE(r.voitureName, CONCAT('Reservation #', r.reservationVId)), ' #', r.reservationVId),
-    r.date,
-    r.date,
-    r.depart,
-    ADDTIME(r.depart, '01:00:00'),
+    parent.reservation_date,
+    parent.start_time,
+    parent.end_time,
+    COALESCE(rv.prix, 0),
+    'pending',
     'voiture',
-    CASE WHEN r.statut = 1 THEN 'confirmed' ELSE 'pending' END,
-    COALESCE(r.prix, 0),
+    CASE 
+        WHEN COALESCE(rv.statut, 0) = 1 THEN 'confirmed'
+        ELSE 'pending'
+    END,
+    CASE r.createdBy
+        WHEN 32 THEN 4
+        WHEN 25 THEN 2
+        WHEN 1 THEN 1
+        WHEN 5 THEN 33
+        WHEN 400 THEN 3
+        ELSE NULL
+    END,
     CONCAT(
-        'legacy:tbl_reservation_voiture:', r.reservationVId,
-        ' | parentReservationId=', r.reservationId,
-        ' | legacy clientId=', r.clientId,
-        ' | l1=', COALESCE(r.l1, ''),
-        ' | l2=', COALESCE(r.l2, ''),
-        ' | l3=', COALESCE(r.l3, ''),
-        ' | l4=', COALESCE(r.l4, ''),
-        ' | mobile1=', COALESCE(r.mobile1, ''),
-        ' | mobile2=', COALESCE(r.mobile2, ''),
-        ' | avance=', COALESCE(r.avance, ''),
-        ' | createdBy=', COALESCE(r.createdBy, ''),
-        ' | noteAdmin=', COALESCE(r.noteAdmin, '')
+        'Legacy reservation voiture ID: ', rv.reservationVId,
+        ' | parent_salle_reservation: ', r.reservationID,
+        ' | date: ', rv.date,
+        ' | voitureName: ', COALESCE(rv.voitureName, ''),
+        ' | prix: ', COALESCE(rv.prix, 0),
+        ' | createdBy: ', r.createdBy
     ),
-    COALESCE(r.createdDTM, NOW()),
-    COALESCE(r.createdDTM, NOW())
-FROM `quee_QueenDB`.tbl_reservation_voiture r
-LEFT JOIN legacy_client_map cm ON cm.old_user_id = r.clientId
-LEFT JOIN legacy_reservation_map prm ON prm.source_table = 'tbl_reservation' AND prm.old_reservation_id = r.reservationId
-LEFT JOIN reservations parent ON parent.id = prm.new_reservation_id;
+    NOW(),
+    NOW()
+FROM `quee_QueenDB`.tbl_reservation_voiture rv
+INNER JOIN `quee_QueenDB`.tbl_reservation r ON rv.reservationId = r.reservationID
+INNER JOIN reservations parent ON (parent.note_admin LIKE CONCAT('%Legacy reservation ID: ', r.reservationID, '%') AND parent.salle_id IS NOT NULL);
 
-INSERT INTO legacy_reservation_map (source_table, old_reservation_id, new_reservation_id)
-SELECT
-    'tbl_reservation_voiture',
-    r.reservationVId,
-    n.id
-FROM `quee_QueenDB`.tbl_reservation_voiture r
-JOIN reservations n
-    ON n.note_admin LIKE CONCAT('legacy:tbl_reservation_voiture:', r.reservationVId, '%');
+-- ============================================================================
+-- 8) IMPORT PAIEMENTS - SALLE (tbl_paiement)
+-- ============================================================================
 
--- ----------------------------------------------------------------------
--- 6) Paiements
--- ----------------------------------------------------------------------
-INSERT INTO payments (
-    reservation_id,
-    user_id,
-    amount,
-    method,
-    reference,
-    status,
-    paid_at,
-    note,
-    created_at,
-    updated_at
-)
+INSERT INTO payments (reservation_id, amount, payment_method, payment_date, status, user_id, notes, created_at, updated_at)
 SELECT
-    rm.new_reservation_id,
-    NULL,
+    parent.id,
     COALESCE(p.valeur, 0),
     'cash',
-    NULLIF(p.libele, ''),
-    'paid',
-    p.createdDate,
-    CONCAT('legacy:tbl_paiement | paiementId=', p.paiementId, ' | recepteurId=', p.recepteurId),
-    p.createdDate,
-    p.createdDate
+    COALESCE(p.createdDate, NOW()),
+    'pending',
+    CASE p.recepteurId
+        WHEN 32 THEN 4
+        WHEN 25 THEN 2
+        WHEN 1 THEN 1
+        WHEN 5 THEN 33
+        WHEN 400 THEN 3
+        ELSE NULL
+    END,
+    CONCAT(
+        'Legacy paiement salle ID: ', p.paiementId,
+        ' | legacy_reservation_id: ', p.reservationId,
+        ' | valeur: ', COALESCE(p.valeur, 0),
+        ' | libele: ', COALESCE(p.libele, ''),
+        ' | recepteurId: ', p.recepteurId
+    ),
+    NOW(),
+    NOW()
 FROM `quee_QueenDB`.tbl_paiement p
-JOIN legacy_reservation_map rm
-    ON rm.source_table = 'tbl_reservation'
-   AND rm.old_reservation_id = p.reservationId;
+INNER JOIN `quee_QueenDB`.tbl_reservation r ON p.reservationId = r.reservationID
+INNER JOIN reservations parent ON (parent.note_admin LIKE CONCAT('%Legacy reservation ID: ', r.reservationID, '%') AND parent.service_slug = 'salle');
 
-INSERT INTO payments (
-    reservation_id,
-    user_id,
-    amount,
-    method,
-    reference,
-    status,
-    paid_at,
-    note,
-    created_at,
-    updated_at
-)
+-- ============================================================================
+-- 9) IMPORT PAIEMENTS - SERVICES
+-- ============================================================================
+
+-- 9.1) Paiements photographe
+INSERT INTO payments (reservation_id, amount, payment_method, payment_date, status, user_id, notes, created_at, updated_at)
 SELECT
-    rm.new_reservation_id,
-    NULL,
+    parent.id,
     COALESCE(p.valeur, 0),
     'cash',
-    NULLIF(p.libele, ''),
-    'paid',
-    p.createdDate,
-    CONCAT('legacy:tbl_paiement_photographe | paiementId=', p.paiementId, ' | recepteurId=', p.recepteurId),
-    p.createdDate,
-    p.createdDate
+    COALESCE(p.createdDate, NOW()),
+    'pending',
+    CASE p.recepteurId
+        WHEN 32 THEN 4
+        WHEN 25 THEN 2
+        WHEN 1 THEN 1
+        WHEN 5 THEN 33
+        WHEN 400 THEN 3
+        ELSE NULL
+    END,
+    CONCAT(
+        'Legacy paiement photographe ID: ', p.paiementId,
+        ' | valeur: ', COALESCE(p.valeur, 0)
+    ),
+    NOW(),
+    NOW()
 FROM `quee_QueenDB`.tbl_paiement_photographe p
-JOIN legacy_reservation_map rm
-    ON rm.source_table = 'tbl_reservation_photographe'
-   AND rm.old_reservation_id = p.reservationPId;
+INNER JOIN `quee_QueenDB`.tbl_reservation_photographe rp ON p.reservationPId = rp.reservationPId
+INNER JOIN `quee_QueenDB`.tbl_reservation r ON rp.reservationId = r.reservationID
+INNER JOIN reservations parent ON (parent.note_admin LIKE CONCAT('%Legacy reservation photographe ID: ', rp.reservationPId, '%'));
 
-INSERT INTO payments (
-    reservation_id,
-    user_id,
-    amount,
-    method,
-    reference,
-    status,
-    paid_at,
-    note,
-    created_at,
-    updated_at
-)
+-- 9.2) Paiements prestation/animation
+INSERT INTO payments (reservation_id, amount, payment_method, payment_date, status, user_id, notes, created_at, updated_at)
 SELECT
-    rm.new_reservation_id,
-    NULL,
+    parent.id,
     COALESCE(p.valeur, 0),
     'cash',
-    NULLIF(p.libele, ''),
-    'paid',
-    p.createdDate,
-    CONCAT('legacy:tbl_paiement_prestation | paiementId=', p.paiementId, ' | recepteurId=', p.recepteurId),
-    p.createdDate,
-    p.createdDate
+    COALESCE(p.createdDate, NOW()),
+    'pending',
+    CASE p.recepteurId
+        WHEN 32 THEN 4
+        WHEN 25 THEN 2
+        WHEN 1 THEN 1
+        WHEN 5 THEN 33
+        WHEN 400 THEN 3
+        ELSE NULL
+    END,
+    CONCAT(
+        'Legacy paiement prestation ID: ', p.paiementId,
+        ' | valeur: ', COALESCE(p.valeur, 0)
+    ),
+    NOW(),
+    NOW()
 FROM `quee_QueenDB`.tbl_paiement_prestation p
-JOIN legacy_reservation_map rm
-    ON rm.source_table = 'tbl_reservation_prestation'
-   AND rm.old_reservation_id = p.reservationPresId;
+INNER JOIN `quee_QueenDB`.tbl_reservation_prestation rpr ON p.reservationPresId = rpr.prestationId
+INNER JOIN `quee_QueenDB`.tbl_reservation r ON rpr.reservationId = r.reservationID
+INNER JOIN reservations parent ON (parent.note_admin LIKE CONCAT('%Legacy reservation prestation ID: ', rpr.prestationId, '%'));
 
-INSERT INTO payments (
-    reservation_id,
-    user_id,
-    amount,
-    method,
-    reference,
-    status,
-    paid_at,
-    note,
-    created_at,
-    updated_at
-)
+-- 9.3) Paiements troupe
+INSERT INTO payments (reservation_id, amount, payment_method, payment_date, status, user_id, notes, created_at, updated_at)
 SELECT
-    rm.new_reservation_id,
-    NULL,
+    parent.id,
     COALESCE(p.valeur, 0),
     'cash',
-    NULLIF(p.libele, ''),
-    'paid',
-    p.createdDate,
-    CONCAT('legacy:tbl_paiement_troupe | paiementId=', p.paiementId, ' | recepteurId=', p.recepteurId),
-    p.createdDate,
-    p.createdDate
+    COALESCE(p.createdDate, NOW()),
+    'pending',
+    CASE p.recepteurId
+        WHEN 32 THEN 4
+        WHEN 25 THEN 2
+        WHEN 1 THEN 1
+        WHEN 5 THEN 33
+        WHEN 400 THEN 3
+        ELSE NULL
+    END,
+    CONCAT(
+        'Legacy paiement troupe ID: ', p.paiementId,
+        ' | valeur: ', COALESCE(p.valeur, 0)
+    ),
+    NOW(),
+    NOW()
 FROM `quee_QueenDB`.tbl_paiement_troupe p
-JOIN legacy_reservation_map rm
-    ON rm.source_table = 'tbl_reservation_troupe'
-   AND rm.old_reservation_id = p.reservationTroupeId;
+INNER JOIN `quee_QueenDB`.tbl_reservation_troupe rt ON p.reservationTroupeId = rt.reservationTId
+INNER JOIN `quee_QueenDB`.tbl_reservation r ON rt.reservationId = r.reservationID
+INNER JOIN reservations parent ON (parent.note_admin LIKE CONCAT('%Legacy reservation troupe ID: ', rt.reservationTId, '%'));
 
-INSERT INTO payments (
-    reservation_id,
-    user_id,
-    amount,
-    method,
-    reference,
-    status,
-    paid_at,
-    note,
-    created_at,
-    updated_at
-)
+-- 9.4) Paiements voiture
+INSERT INTO payments (reservation_id, amount, payment_method, payment_date, status, user_id, notes, created_at, updated_at)
 SELECT
-    rm.new_reservation_id,
-    NULL,
+    parent.id,
     COALESCE(p.valeur, 0),
     'cash',
-    NULLIF(p.libele, ''),
-    'paid',
-    p.createdDate,
-    CONCAT('legacy:tbl_paiement_voiture | paiementId=', p.paiementId, ' | recepteurId=', p.recepteurId),
-    p.createdDate,
-    p.createdDate
+    COALESCE(p.createdDate, NOW()),
+    'pending',
+    CASE p.recepteurId
+        WHEN 32 THEN 4
+        WHEN 25 THEN 2
+        WHEN 1 THEN 1
+        WHEN 5 THEN 33
+        WHEN 400 THEN 3
+        ELSE NULL
+    END,
+    CONCAT(
+        'Legacy paiement voiture ID: ', p.paiementId,
+        ' | valeur: ', COALESCE(p.valeur, 0)
+    ),
+    NOW(),
+    NOW()
 FROM `quee_QueenDB`.tbl_paiement_voiture p
-JOIN legacy_reservation_map rm
-    ON rm.source_table = 'tbl_reservation_voiture'
-   AND rm.old_reservation_id = p.reservationVId;
+INNER JOIN `quee_QueenDB`.tbl_reservation_voiture rv ON p.reservationVId = rv.reservationVId
+INNER JOIN `quee_QueenDB`.tbl_reservation r ON rv.reservationId = r.reservationID
+INNER JOIN reservations parent ON (parent.note_admin LIKE CONCAT('%Legacy reservation voiture ID: ', rv.reservationVId, '%'));
+
+-- ============================================================================
+-- FINALISATION
+-- ============================================================================
 
 COMMIT;
 
--- Contrôles rapides
-SELECT COUNT(*) AS nb_clients_importes FROM clients;
-SELECT COUNT(*) AS nb_salles_importees FROM salles;
-SELECT COUNT(*) AS nb_items_importes FROM service_module_items;
-SELECT COUNT(*) AS nb_packs_importes FROM service_module_packs;
-SELECT COUNT(*) AS nb_reservations_importees FROM reservations;
-SELECT COUNT(*) AS nb_payments_importes FROM payments;
+-- Réactiver les vérifications de clé étrangère
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- Afficher un résumé des imports
+SELECT 'RÉSUMÉ DE L\'IMPORT' AS section;
+SELECT COUNT(*) AS clients_importes FROM clients;
+SELECT COUNT(*) AS salles_importes FROM salles;
+SELECT COUNT(*) AS service_items_importes FROM service_module_items;
+SELECT COUNT(*) AS service_packs_importes FROM service_module_packs;
+SELECT COUNT(*) AS reservations_importees FROM reservations WHERE service_slug = 'salle';
+SELECT COUNT(*) AS reservations_services FROM reservations WHERE service_slug IN ('photographe', 'animation', 'troupe-musicale', 'voiture');
+SELECT COUNT(*) AS paiements_importes FROM payments;
+
+-- FIN DU SCRIPT D'IMPORT
