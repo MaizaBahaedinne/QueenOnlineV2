@@ -614,13 +614,8 @@
                                             <div>
                                                 <strong>{{ $row->label }}</strong>
                                                 <small>{{ number_format((float) $row->amount, 2, '.', ' ') }} @if(!empty($row->note)) - {{ $row->note }} @endif</small>
-                                                @if ($row->linkedReservation)
-                                                    <small>
-                                                        Reservation liee:
-                                                        <a href="{{ route('reservations.show', $row->linkedReservation) }}">#{{ $row->linkedReservation->id }}</a>
-                                                        ({{ $row->linkedReservation->status ?? 'pending' }},
-                                                        {{ $row->linkedReservation->payments->count() }} paiement(s))
-                                                    </small>
+                                                @if ($row->linkedReservation?->start_time)
+                                                    <small>Heure de debut: {{ \Carbon\Carbon::parse($row->linkedReservation->start_time)->format('H:i') }}</small>
                                                 @endif
                                             </div>
                                             @if ($canUpdateReservation)
