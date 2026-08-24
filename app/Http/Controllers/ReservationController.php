@@ -624,8 +624,11 @@ class ReservationController extends MatrixAwareController
                 'after:start_time',
                 'before_or_equal:23:59',
                 function (string $attribute, mixed $value, \Closure $fail) use ($request) {
-                    $start = Carbon::createFromFormat('H:i', (string) $request->input('start_time'));
-                    $end = Carbon::createFromFormat('H:i', (string) $value);
+                    $startRaw = substr((string) $request->input('start_time'), 0, 5);
+                    $endRaw = substr((string) $value, 0, 5);
+
+                    $start = Carbon::createFromFormat('H:i', $startRaw);
+                    $end = Carbon::createFromFormat('H:i', $endRaw);
 
                     if ($start && $end && $start->diffInMinutes($end, false) < 60) {
                         $fail('Heure fin doit etre au moins heure debut + 1 heure.');
@@ -672,8 +675,11 @@ class ReservationController extends MatrixAwareController
                 'after:start_time',
                 'before_or_equal:23:59',
                 function (string $attribute, mixed $value, \Closure $fail) use ($request) {
-                    $start = Carbon::createFromFormat('H:i', (string) $request->input('start_time'));
-                    $end = Carbon::createFromFormat('H:i', (string) $value);
+                    $startRaw = substr((string) $request->input('start_time'), 0, 5);
+                    $endRaw = substr((string) $value, 0, 5);
+
+                    $start = Carbon::createFromFormat('H:i', $startRaw);
+                    $end = Carbon::createFromFormat('H:i', $endRaw);
 
                     if ($start && $end && $start->diffInMinutes($end, false) < 60) {
                         $fail('Heure fin doit etre au moins heure debut + 1 heure.');
@@ -721,8 +727,11 @@ class ReservationController extends MatrixAwareController
                 'after:start_time',
                 'before_or_equal:23:59',
                 function (string $attribute, mixed $value, \Closure $fail) use ($request) {
-                    $start = Carbon::createFromFormat('H:i', (string) $request->input('start_time'));
-                    $end = Carbon::createFromFormat('H:i', (string) $value);
+                    $startRaw = substr((string) $request->input('start_time'), 0, 5);
+                    $endRaw = substr((string) $value, 0, 5);
+
+                    $start = Carbon::createFromFormat('H:i', $startRaw);
+                    $end = Carbon::createFromFormat('H:i', $endRaw);
 
                     if ($start && $end && $start->diffInMinutes($end, false) < 60) {
                         $fail('Heure fin doit etre au moins heure debut + 1 heure.');
