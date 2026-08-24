@@ -623,18 +623,18 @@
                                                 @endif
                                             </div>
                                             @if ($canUpdateReservation)
-                                                <div class="additional-service-item-right">
+                                                <div class="additional-service-item-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
                                                     @if ($row->linkedReservation)
                                                         <a href="{{ route('reservations.show', $row->linkedReservation) }}" class="btn">Afficher</a>
                                                     @else
                                                         <button type="button" class="btn" disabled>Afficher</button>
                                                     @endif
                                                     @if ($row->linkedReservation)
-                                                        <div style="display:flex;align-items:center;gap:4px;margin-top:6px;">
-                                                            <label style="font-size:0.8em;white-space:nowrap;">Heure debut:</label>
+                                                        <div style="display:flex;align-items:center;gap:4px;">
+                                                            <label style="font-size:0.8em;white-space:nowrap;">Heure:</label>
                                                             <input type="time"
                                                                 value="{{ $row->linkedReservation->start_time ? \Carbon\Carbon::parse($row->linkedReservation->start_time)->format('H:i') : '' }}"
-                                                                style="font-size:0.8em;padding:2px 4px;width:100px;"
+                                                                style="font-size:0.8em;padding:2px 4px;width:95px;"
                                                                 data-url="{{ route('reservations.additional-services.start-time.update', [$reservation, $row]) }}"
                                                                 data-token="{{ csrf_token() }}"
                                                                 class="js-service-start-time">
