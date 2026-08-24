@@ -751,6 +751,7 @@
                     <input type="hidden" name="start_time" value="{{ old('start_time', $reservation->start_time) }}">
                     <input type="hidden" name="end_time" value="{{ old('end_time', $reservation->end_time) }}">
                     <input type="hidden" name="payment_due_date" value="{{ old('payment_due_date', $reservation->payment_due_date) }}">
+                    <input type="hidden" name="status" value="{{ old('status', $reservation->status ?? 'pending') }}">
 
                     <div class="client-form-grid">
                         <div>
@@ -766,17 +767,6 @@
                             <label for="reservation-guest-count">Nombre des invites</label>
                             <input id="reservation-guest-count" name="guest_count" type="number" min="1" step="1" value="{{ old('guest_count', $reservation->guest_count) }}">
                         </div>
-                        <div>
-                            <label for="reservation-status">Statut</label>
-                            <select id="reservation-status" name="status">
-                                @php $statusValue = old('status', $reservation->status ?? 'pending'); @endphp
-                                <option value="pending" {{ $statusValue === 'pending' ? 'selected' : '' }}>En attente</option>
-                                <option value="confirmed" {{ $statusValue === 'confirmed' ? 'selected' : '' }}>Confirmee</option>
-                                <option value="cancelled" {{ $statusValue === 'cancelled' ? 'selected' : '' }}>Annulee</option>
-                                <option value="completed" {{ $statusValue === 'completed' ? 'selected' : '' }}>Terminee</option>
-                            </select>
-                        </div>
-
                         <div>
                             <label for="reservation-total-amount">Montant total</label>
                             <input id="reservation-total-amount" name="total_amount" type="number" min="0" step="0.01" value="{{ old('total_amount', $reservation->total_amount) }}">
