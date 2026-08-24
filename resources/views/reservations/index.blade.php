@@ -151,6 +151,20 @@
                         <label for="reservation-create-title">Titre de l event</label>
                         <input class="search" id="reservation-create-title" style="max-width:none;" type="text" name="title" maxlength="255" required>
                     </div>
+                    <div class="reservation-inline-grid" style="margin-top:10px;">
+                        <div class="reservation-field">
+                            <label for="reservation-create-event-type">Type de l event</label>
+                            <input class="search" id="reservation-create-event-type" style="max-width:none;" type="text" name="event_type" maxlength="120" placeholder="Mariage, Fiance, Anniversaire...">
+                        </div>
+                        <div class="reservation-field">
+                            <label for="reservation-create-guest-count">Nombre des invites</label>
+                            <input class="search" id="reservation-create-guest-count" style="max-width:none;" type="number" min="1" step="1" name="guest_count" placeholder="Ex: 250">
+                        </div>
+                        <div class="reservation-field">
+                            <label for="reservation-create-payment-due-date">Date echeance paiement (J-30)</label>
+                            <input class="search" id="reservation-create-payment-due-date" style="max-width:none;" type="date" name="payment_due_date" readonly>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="reservation-helper-box">
@@ -311,6 +325,10 @@
                         <label for="reservation-total-amount">Montant total</label>
                         <input class="search" id="reservation-total-amount" style="max-width:none;" type="number" step="0.01" min="0" name="total_amount" placeholder="Ex: 2500.000">
                     </div>
+                    <div class="reservation-field" style="margin-top:10px;">
+                        <label for="reservation-create-note-admin">Note administrative</label>
+                        <textarea class="search" id="reservation-create-note-admin" style="max-width:none; min-height:72px;" name="note_admin" placeholder="Note interne"></textarea>
+                    </div>
                 </div>
 
                 <div class="reservation-actions">
@@ -323,14 +341,18 @@
         <div class="modal-overlay" id="reservation-edit-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Modifier reservation</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
             <form method="POST" id="reservation-edit-form" action="#" style="display:grid; gap:10px;">@csrf @method('PATCH')
                 <input class="search" style="max-width:none;" type="text" name="title" id="reservation-edit-title" maxlength="255" required placeholder="Titre de l event">
+                <input class="search" style="max-width:none;" type="text" name="event_type" id="reservation-edit-event-type" maxlength="120" placeholder="Type de l event">
+                <input class="search" style="max-width:none;" type="number" min="1" step="1" name="guest_count" id="reservation-edit-guest-count" placeholder="Nombre des invites">
                 <select class="search" style="max-width:none;" name="client_id" id="reservation-edit-client-id" required><option value="">Client</option>@foreach ($clients as $client)<option value="{{ $client->id }}">{{ $client->name }}</option>@endforeach</select>
                 <select class="search" style="max-width:none;" name="salle_id" id="reservation-edit-salle-id" required><option value="">Salle</option>@foreach ($salles as $salle)<option value="{{ $salle->id }}">{{ $salle->name }}</option>@endforeach</select>
                 <input class="search" style="max-width:none;" type="date" name="start_date" id="reservation-edit-start-date" min="{{ now()->toDateString() }}" required>
                 <input class="search" style="max-width:none;" type="date" name="end_date" id="reservation-edit-end-date" min="{{ now()->toDateString() }}" required>
                 <input class="search" style="max-width:none;" type="time" name="start_time" id="reservation-edit-start-time" min="08:00" max="23:59" required>
                 <input class="search" style="max-width:none;" type="time" name="end_time" id="reservation-edit-end-time" min="09:00" max="23:59" required>
+                <input class="search" style="max-width:none;" type="date" name="payment_due_date" id="reservation-edit-payment-due-date" readonly>
                 <select class="search" style="max-width:none;" name="status" id="reservation-edit-status"><option value="pending">En attente</option><option value="confirmed">Confirmee</option><option value="cancelled">Annulee</option><option value="completed">Terminee</option></select>
                 <input class="search" style="max-width:none;" type="number" step="0.01" min="0" name="total_amount" id="reservation-edit-total-amount">
+                <textarea class="search" style="max-width:none; min-height:72px;" name="note_admin" id="reservation-edit-note-admin" placeholder="Note administrative"></textarea>
                 <button type="submit" class="btn btn-primary">Mettre a jour</button>
             </form></div></div>
     @endif
@@ -355,7 +377,12 @@
             'end_date' => $reservation->end_date,
             'start_time' => $reservation->start_time,
             'end_time' => $reservation->end_time,
+            'guest_count' => $reservation->guest_count,
+            'event_type' => $reservation->event_type,
+            'payment_due_date' => $reservation->payment_due_date,
+            'note_admin' => $reservation->note_admin,
             'status' => $reservation->status ?? 'pending',
+            'total_amount' => $reservation->total_amount,
         ];
     })->values()->toJson() !!}</script>
 
@@ -402,8 +429,23 @@
         const reservationClientPhoneLabel2 = document.getElementById('reservation-client-phone-label-2');
         const reservationClientSource = document.getElementById('reservation-client-source');
         const reservationClientNote = document.getElementById('reservation-client-note');
+        const reservationCreatePaymentDueDate = document.getElementById('reservation-create-payment-due-date');
         const editStartTimeInput = document.getElementById('reservation-edit-start-time');
         const editEndTimeInput = document.getElementById('reservation-edit-end-time');
+        const editPaymentDueDateInput = document.getElementById('reservation-edit-payment-due-date');
+
+        const computeDueDate = (startDateValue) => {
+            if (!startDateValue) return '';
+
+            const date = new Date(`${startDateValue}T12:00:00`);
+            if (Number.isNaN(date.getTime())) return '';
+
+            date.setDate(date.getDate() - 30);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
 
         const minimumStartTime = '08:00';
         const maximumTime = '23:59';
@@ -922,6 +964,10 @@
                 }
             }
 
+            if (reservationCreatePaymentDueDate) {
+                reservationCreatePaymentDueDate.value = computeDueDate(eventDateInput?.value || '');
+            }
+
             endDateInput.value = selectedDate || '';
 
             if (lockDate && selectedDate) {
@@ -1093,6 +1139,10 @@
                 if (lockedCreateDateValue && eventDateInput.value !== lockedCreateDateValue) {
                     eventDateInput.value = lockedCreateDateValue;
                 }
+
+                if (reservationCreatePaymentDueDate) {
+                    reservationCreatePaymentDueDate.value = computeDueDate(eventDateInput.value);
+                }
             };
 
             eventDateInput.addEventListener('input', enforceLockedDate);
@@ -1103,6 +1153,16 @@
             editStartTimeInput.addEventListener('change', () => syncEndTimeConstraints(editStartTimeInput, editEndTimeInput));
             editStartTimeInput.addEventListener('input', () => syncEndTimeConstraints(editStartTimeInput, editEndTimeInput));
             syncEndTimeConstraints(editStartTimeInput, editEndTimeInput);
+        }
+
+        const editStartDateInput = document.getElementById('reservation-edit-start-date');
+        if (editStartDateInput && editPaymentDueDateInput) {
+            const syncEditDueDate = () => {
+                editPaymentDueDateInput.value = computeDueDate(editStartDateInput.value);
+            };
+
+            editStartDateInput.addEventListener('change', syncEditDueDate);
+            editStartDateInput.addEventListener('input', syncEditDueDate);
         }
 
         const openModalButtons = document.querySelectorAll('[data-open-modal]');
@@ -1116,6 +1176,8 @@
                 if (modalId === 'reservation-edit-modal') {
                     document.getElementById('reservation-edit-form').action = `{{ url('reservations') }}/${button.dataset.reservationId}`;
                     document.getElementById('reservation-edit-title').value = button.dataset.reservationTitle ?? '';
+                    document.getElementById('reservation-edit-event-type').value = button.dataset.reservationEventType ?? '';
+                    document.getElementById('reservation-edit-guest-count').value = button.dataset.reservationGuestCount ?? '';
                     document.getElementById('reservation-edit-client-id').value = button.dataset.reservationClientId ?? '';
                     document.getElementById('reservation-edit-salle-id').value = button.dataset.reservationSalleId ?? '';
                     document.getElementById('reservation-edit-start-date').value = button.dataset.reservationStartDate ?? '';
@@ -1123,8 +1185,11 @@
                     document.getElementById('reservation-edit-start-time').value = button.dataset.reservationStartTime ?? '';
                     document.getElementById('reservation-edit-end-time').value = button.dataset.reservationEndTime ?? '';
                     syncEndTimeConstraints(editStartTimeInput, editEndTimeInput);
+                    const editStartDate = document.getElementById('reservation-edit-start-date').value;
+                    document.getElementById('reservation-edit-payment-due-date').value = button.dataset.reservationPaymentDueDate ?? computeDueDate(editStartDate);
                     document.getElementById('reservation-edit-status').value = button.dataset.reservationStatus ?? 'pending';
                     document.getElementById('reservation-edit-total-amount').value = button.dataset.reservationTotalAmount ?? '';
+                    document.getElementById('reservation-edit-note-admin').value = button.dataset.reservationNoteAdmin ?? '';
                 }
                 if (modalId === 'reservation-delete-modal') {
                     document.getElementById('reservation-delete-form').action = `{{ url('reservations') }}/${button.dataset.reservationId}`;

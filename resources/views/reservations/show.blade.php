@@ -553,12 +553,27 @@
                     <span class="reservation-chip {{ $statusTone }}">{{ $statusLabel }}</span>
                     <span class="reservation-chip">Du @frDate($reservation->start_date) au @frDate($reservation->end_date)</span>
                     <span class="reservation-chip">{{ $reservation->start_time ?? '--:--' }} - {{ $reservation->end_time ?? '--:--' }}</span>
+                    <span class="reservation-chip">Type: {{ $reservation->event_type ?: '-' }}</span>
+                    <span class="reservation-chip">Invites: {{ $reservation->guest_count ?: '-' }}</span>
+                    <span class="reservation-chip">Echeance: {{ $reservation->payment_due_date ? \Carbon\Carbon::parse($reservation->payment_due_date)->format('d/m/Y') : '-' }}</span>
                 </div>
             </div>
             <a href="{{ route('reservations.index') }}" class="btn">Retour au calendrier</a>
         </div>
 
         <div class="reservation-objects-grid">
+            <article class="reservation-card">
+                <div class="reservation-object-head">
+                    <h3 class="reservation-object-title">Evenement</h3>
+                </div>
+                <div class="reservation-object-body">
+                    <div class="reservation-kv"><span class="reservation-kv-key">Type de l event</span><span class="reservation-kv-value">{{ $reservation->event_type ?: '-' }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Nombre des invites</span><span class="reservation-kv-value">{{ $reservation->guest_count ?: '-' }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Date echeance paiement</span><span class="reservation-kv-value">{{ $reservation->payment_due_date ? \Carbon\Carbon::parse($reservation->payment_due_date)->format('d/m/Y') : '-' }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Note administrative</span><span class="reservation-kv-value">{{ $reservation->note_admin ?: '-' }}</span></div>
+                </div>
+            </article>
+
             <article class="reservation-card">
                 <div class="reservation-object-head">
                     <h3 class="reservation-object-title">Client</h3>

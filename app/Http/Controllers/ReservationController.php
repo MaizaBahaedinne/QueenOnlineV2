@@ -305,6 +305,11 @@ class ReservationController extends MatrixAwareController
                 $linkedTitle = 'Service supplementaire';
             }
 
+            $dueDate = null;
+            if (! empty($reservation->start_date)) {
+                $dueDate = Carbon::parse((string) $reservation->start_date)->subDays(30)->toDateString();
+            }
+
             $linkedReservation = Reservation::query()->create([
                 'client_id' => $reservation->client_id,
                 'salle_id' => $reservation->salle_id,
@@ -315,6 +320,7 @@ class ReservationController extends MatrixAwareController
                 'end_date' => $reservation->end_date,
                 'start_time' => $reservation->start_time,
                 'end_time' => $reservation->end_time,
+                'payment_due_date' => $dueDate,
                 'status' => 'pending',
                 'total_amount' => $serviceAmount,
                 'note_admin' => 'Reservation supplementaire liee a la reservation salle #' . $reservation->id,
@@ -607,6 +613,8 @@ class ReservationController extends MatrixAwareController
             'salle_id' => ['required', 'exists:salles,id'],
             'service_slug' => ['nullable', Rule::in(array_keys(self::RESERVATION_SERVICES))],
             'title' => ['required', 'string', 'max:255'],
+            'guest_count' => ['nullable', 'integer', 'min:1'],
+            'event_type' => ['nullable', 'string', 'max:120'],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
@@ -624,8 +632,12 @@ class ReservationController extends MatrixAwareController
                     }
                 },
             ],
+            'payment_due_date' => ['nullable', 'date'],
+            'note_admin' => ['nullable', 'string'],
             'total_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        $validated['payment_due_date'] = Carbon::parse((string) $validated['start_date'])->subDays(30)->toDateString();
 
         if (Schema::hasColumn('reservations', 'service_slug')) {
             $validated['service_slug'] = $validated['service_slug'] ?? 'salles';
@@ -649,6 +661,8 @@ class ReservationController extends MatrixAwareController
             'salle_id' => ['required', 'exists:salles,id'],
             'service_slug' => ['nullable', Rule::in(array_keys(self::RESERVATION_SERVICES))],
             'title' => ['required', 'string', 'max:255'],
+            'guest_count' => ['nullable', 'integer', 'min:1'],
+            'event_type' => ['nullable', 'string', 'max:120'],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
@@ -666,9 +680,13 @@ class ReservationController extends MatrixAwareController
                     }
                 },
             ],
+            'payment_due_date' => ['nullable', 'date'],
             'status' => ['nullable', Rule::in(['pending', 'confirmed', 'cancelled', 'completed'])],
+            'note_admin' => ['nullable', 'string'],
             'total_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        $validated['payment_due_date'] = Carbon::parse((string) $validated['start_date'])->subDays(30)->toDateString();
 
         if (Schema::hasColumn('reservations', 'service_slug')) {
             $validated['service_slug'] = $validated['service_slug'] ?? ($reservation->service_slug ?: 'salles');
