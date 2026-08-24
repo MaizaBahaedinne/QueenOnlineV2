@@ -559,19 +559,6 @@
         </div>
 
         <div class="reservation-objects-grid">
-            <article class="reservation-card">
-                <div class="reservation-object-head">
-                    <h3 class="reservation-object-title">Reservation detail</h3>
-                </div>
-                <div class="reservation-object-body">
-                    <div class="reservation-kv"><span class="reservation-kv-key">Type de l event</span><span class="reservation-kv-value">{{ $reservation->event_type ?: '-' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Date event</span><span class="reservation-kv-value">Du @frDate($reservation->start_date) au @frDate($reservation->end_date)</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Heure</span><span class="reservation-kv-value">{{ $reservation->start_time ?? '--:--' }} - {{ $reservation->end_time ?? '--:--' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Nombre des invites</span><span class="reservation-kv-value">{{ $reservation->guest_count ?: '-' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Date echeance paiement</span><span class="reservation-kv-value">{{ $reservation->payment_due_date ? \Carbon\Carbon::parse($reservation->payment_due_date)->format('d/m/Y') : '-' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Note administrative</span><span class="reservation-kv-value">{{ $reservation->note_admin ?: '-' }}</span></div>
-                </div>
-            </article>
 
             <article class="reservation-card">
                 <div class="reservation-object-head">
