@@ -621,16 +621,6 @@
                                                     @endphp
                                                     <small>Reste a payer: <strong>{{ number_format($linkedReste, 2, '.', ' ') }}</strong></small>
                                                 @endif
-                                                @if ($canUpdateReservation && $row->linkedReservation)
-                                                    <form method="POST" action="{{ route('reservations.additional-services.start-time.update', [$reservation, $row]) }}" style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;">
-                                                        @csrf @method('PATCH')
-                                                        <label style="font-size:0.8em;">Heure debut:</label>
-                                                        <input type="time" name="start_time" value="{{ $row->linkedReservation->start_time ? \Carbon\Carbon::parse($row->linkedReservation->start_time)->format('H:i') : '' }}" style="font-size:0.8em;padding:2px 4px;">
-                                                        <button type="submit" class="btn" style="padding:2px 8px;font-size:0.8em;">OK</button>
-                                                    </form>
-                                                @elseif($row->linkedReservation?->start_time)
-                                                    <small>Heure de debut: {{ \Carbon\Carbon::parse($row->linkedReservation->start_time)->format('H:i') }}</small>
-                                                @endif
                                             </div>
                                             @if ($canUpdateReservation)
                                                 <div class="additional-service-item-right">
@@ -638,6 +628,18 @@
                                                         <a href="{{ route('reservations.show', $row->linkedReservation) }}" class="btn">Afficher</a>
                                                     @else
                                                         <button type="button" class="btn" disabled>Afficher</button>
+                                                    @endif
+                                                    @if ($row->linkedReservation)
+                                                        <div style="display:flex;align-items:center;gap:4px;margin-top:6px;">
+                                                            <label style="font-size:0.8em;white-space:nowrap;">Heure debut:</label>
+                                                            <input type="time"
+                                                                value="{{ $row->linkedReservation->start_time ? \Carbon\Carbon::parse($row->linkedReservation->start_time)->format('H:i') : '' }}"
+                                                                style="font-size:0.8em;padding:2px 4px;width:100px;"
+                                                                data-url="{{ route('reservations.additional-services.start-time.update', [$reservation, $row]) }}"
+                                                                data-token="{{ csrf_token() }}"
+                                                                class="js-service-start-time">
+                                                            <span class="js-start-time-status" style="font-size:0.75em;"></span>
+                                                        </div>
                                                     @endif
                                                 </div>
                                             @endif
@@ -1088,5 +1090,29 @@
                 openModal('client-modal');
             }
         })();
+    </script>
+    <script>
+        document.querySelectorAll('.js-service-start-time').forEach(function (input) {
+            input.addEventListener('change', function () {
+                var status = input.closest('small').querySelector('.js-start-time-status');
+                status.textContent = '...';
+                fetch(input.dataset.url, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': input.dataset.token,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ start_time: input.value }),
+                })
+                .then(function (r) {
+                    status.textContent = r.ok ? '✓' : '✗';
+                    setTimeout(function () { status.textContent = ''; }, 2000);
+                })
+                .catch(function () {
+                    status.textContent = '✗';
+                });
+            });
+        });
     </script>
 @endsection

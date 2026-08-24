@@ -382,6 +382,10 @@ class ReservationController extends MatrixAwareController
             $linkedReservation->update(['start_time' => $request->start_time . ':00']);
         }
 
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
         return redirect()->route('reservations.show', $reservation)->with('success', 'Heure de debut mise a jour.');
     }
 
