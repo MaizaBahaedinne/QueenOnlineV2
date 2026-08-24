@@ -614,7 +614,21 @@
                                             <div>
                                                 <strong>{{ $row->label }}</strong>
                                                 <small>{{ number_format((float) $row->amount, 2, '.', ' ') }} @if(!empty($row->note)) - {{ $row->note }} @endif</small>
-                                                @if ($row->linkedReservation?->start_time)
+                                                @if ($row->linkedReservation)
+                                                    @php
+                                                        $linkedTotalPaid = $row->linkedReservation->payments->sum('amount');
+                                                        $linkedReste = (float) $row->amount - $linkedTotalPaid;
+                                                    @endphp
+                                                    <small>Reste a payer: <strong>{{ number_format($linkedReste, 2, '.', ' ') }}</strong></small>
+                                                @endif
+                                                @if ($canUpdateReservation && $row->linkedReservation)
+                                                    <form method="POST" action="{{ route('reservations.additional-services.start-time.update', [$reservation, $row]) }}" style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;">
+                                                        @csrf @method('PATCH')
+                                                        <label style="font-size:0.8em;">Heure debut:</label>
+                                                        <input type="time" name="start_time" value="{{ $row->linkedReservation->start_time ? \Carbon\Carbon::parse($row->linkedReservation->start_time)->format('H:i') : '' }}" style="font-size:0.8em;padding:2px 4px;">
+                                                        <button type="submit" class="btn" style="padding:2px 8px;font-size:0.8em;">OK</button>
+                                                    </form>
+                                                @elseif($row->linkedReservation?->start_time)
                                                     <small>Heure de debut: {{ \Carbon\Carbon::parse($row->linkedReservation->start_time)->format('H:i') }}</small>
                                                 @endif
                                             </div>

@@ -367,6 +367,24 @@ class ReservationController extends MatrixAwareController
         return redirect()->route('reservations.show', $reservation)->with('success', 'Service supplementaire retire.');
     }
 
+    public function updateAdditionalServiceStartTime(Request $request, Reservation $reservation, ReservationAdditionalService $additionalService)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        abort_if((int) $additionalService->reservation_id !== (int) $reservation->id, 404);
+
+        $request->validate([
+            'start_time' => ['required', 'date_format:H:i'],
+        ]);
+
+        $linkedReservation = $additionalService->linkedReservation;
+        if ($linkedReservation) {
+            $linkedReservation->update(['start_time' => $request->start_time . ':00']);
+        }
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Heure de debut mise a jour.');
+    }
+
     public function updateClient(Request $request, Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'update', 'update');
