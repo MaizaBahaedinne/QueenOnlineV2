@@ -746,6 +746,11 @@
                     <input type="hidden" name="client_id" value="{{ $reservation->client_id }}">
                     <input type="hidden" name="salle_id" value="{{ $reservation->salle_id }}">
                     <input type="hidden" name="service_slug" value="{{ $reservation->service_slug ?? 'salles' }}">
+                    <input type="hidden" name="start_date" value="{{ old('start_date', $reservation->start_date) }}">
+                    <input type="hidden" name="end_date" value="{{ old('end_date', $reservation->end_date) }}">
+                    <input type="hidden" name="start_time" value="{{ old('start_time', $reservation->start_time) }}">
+                    <input type="hidden" name="end_time" value="{{ old('end_time', $reservation->end_time) }}">
+                    <input type="hidden" name="payment_due_date" value="{{ old('payment_due_date', $reservation->payment_due_date) }}">
 
                     <div class="client-form-grid">
                         <div>
@@ -755,24 +760,6 @@
                         <div>
                             <label for="reservation-event-type">Type de l event</label>
                             <input id="reservation-event-type" name="event_type" type="text" maxlength="120" value="{{ old('event_type', $reservation->event_type) }}">
-                        </div>
-
-                        <div>
-                            <label for="reservation-start-date">Date debut</label>
-                            <input id="reservation-start-date" name="start_date" type="date" required value="{{ old('start_date', $reservation->start_date) }}">
-                        </div>
-                        <div>
-                            <label for="reservation-end-date">Date fin</label>
-                            <input id="reservation-end-date" name="end_date" type="date" required value="{{ old('end_date', $reservation->end_date) }}">
-                        </div>
-
-                        <div>
-                            <label for="reservation-start-time">Heure debut</label>
-                            <input id="reservation-start-time" name="start_time" type="time" required value="{{ old('start_time', $reservation->start_time) }}">
-                        </div>
-                        <div>
-                            <label for="reservation-end-time">Heure fin</label>
-                            <input id="reservation-end-time" name="end_time" type="time" required value="{{ old('end_time', $reservation->end_time) }}">
                         </div>
 
                         <div>
@@ -794,11 +781,6 @@
                             <label for="reservation-total-amount">Montant total</label>
                             <input id="reservation-total-amount" name="total_amount" type="number" min="0" step="0.01" value="{{ old('total_amount', $reservation->total_amount) }}">
                         </div>
-                        <div>
-                            <label for="reservation-payment-due-date">Date echeance paiement (auto J-30)</label>
-                            <input id="reservation-payment-due-date" name="payment_due_date" type="date" readonly value="{{ old('payment_due_date', $reservation->payment_due_date) }}">
-                        </div>
-
                         <div class="full">
                             <label for="reservation-note-admin">Note administrative</label>
                             <textarea id="reservation-note-admin" name="note_admin" rows="3">{{ old('note_admin', $reservation->note_admin) }}</textarea>
@@ -1182,29 +1164,6 @@
             const hasClientErrors = "{{ $errors->has('client_type') || $errors->has('first_name') || $errors->has('name') || $errors->has('phone') ? '1' : '0' }}" === '1';
             const hasAdditionalServiceErrors = "{{ $errors->has('module_slug') || $errors->has('service_ref') || $errors->has('service_amount') || $errors->has('service') ? '1' : '0' }}" === '1';
             const hasReservationErrors = "{{ $errors->has('title') || $errors->has('event_type') || $errors->has('guest_count') || $errors->has('start_date') || $errors->has('end_date') || $errors->has('start_time') || $errors->has('end_time') || $errors->has('status') || $errors->has('total_amount') || $errors->has('note_admin') ? '1' : '0' }}" === '1';
-
-            const reservationStartDateInput = document.getElementById('reservation-start-date');
-            const reservationPaymentDueDateInput = document.getElementById('reservation-payment-due-date');
-
-            const computeDueDate = (startDateValue) => {
-                if (!startDateValue) return '';
-                const d = new Date(`${startDateValue}T12:00:00`);
-                if (Number.isNaN(d.getTime())) return '';
-                d.setDate(d.getDate() - 30);
-                const y = d.getFullYear();
-                const m = String(d.getMonth() + 1).padStart(2, '0');
-                const day = String(d.getDate()).padStart(2, '0');
-                return `${y}-${m}-${day}`;
-            };
-
-            if (reservationStartDateInput && reservationPaymentDueDateInput) {
-                const syncDueDate = () => {
-                    reservationPaymentDueDateInput.value = computeDueDate(reservationStartDateInput.value);
-                };
-                reservationStartDateInput.addEventListener('change', syncDueDate);
-                reservationStartDateInput.addEventListener('input', syncDueDate);
-                syncDueDate();
-            }
 
             if (hasReservationErrors) {
                 openModal('reservation-modal');
