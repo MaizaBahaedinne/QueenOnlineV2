@@ -143,6 +143,34 @@
             justify-content: flex-end;
         }
 
+        .reservation-actions-menu {
+            position: relative;
+        }
+
+        .reservation-actions-menu-panel {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            min-width: 260px;
+            background: #fff;
+            border: 1px solid #dbe7f4;
+            border-radius: 12px;
+            box-shadow: 0 14px 28px rgba(20, 49, 77, 0.14);
+            padding: 8px;
+            display: none;
+            z-index: 20;
+        }
+
+        .reservation-actions-menu-panel.show {
+            display: grid;
+            gap: 6px;
+        }
+
+        .reservation-actions-menu-item {
+            width: 100%;
+            text-align: left;
+        }
+
         .reservation-chip {
             border-radius: 999px;
             padding: 6px 10px;
@@ -685,11 +713,16 @@
             </div>
             <div class="reservation-show-actions">
                 @if ($canUpdateReservation)
-                    <button type="button" class="btn btn-primary" data-open-modal="reservation-modal">Modifier reservation</button>
-                    <button type="button" class="btn" data-open-modal="reservation-slot-modal">Modifier date/heure/salle</button>
-                    @if (($reservation->status ?? null) !== 'cancelled')
-                        <button type="button" class="btn" data-open-modal="cancel-reservation-modal" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Annuler la reservation</button>
-                    @endif
+                    <div class="reservation-actions-menu" id="reservation-actions-menu">
+                        <button type="button" class="btn btn-primary" id="reservation-actions-toggle">Actions reservation</button>
+                        <div class="reservation-actions-menu-panel" id="reservation-actions-panel">
+                            <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-modal">Modifier reservation</button>
+                            <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-slot-modal">Modifier date/heure/salle</button>
+                            @if (($reservation->status ?? null) !== 'cancelled')
+                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="cancel-reservation-modal" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Annuler la reservation</button>
+                            @endif
+                        </div>
+                    </div>
                 @endif
                 <a href="{{ route('reservations.index') }}" class="btn">Retour au calendrier</a>
             </div>
@@ -1336,6 +1369,9 @@
             const overlays = document.querySelectorAll('.modal-overlay');
             const openers = document.querySelectorAll('[data-open-modal]');
             const closers = document.querySelectorAll('[data-close-modal]');
+            const actionsToggle = document.getElementById('reservation-actions-toggle');
+            const actionsPanel = document.getElementById('reservation-actions-panel');
+            const actionsMenu = document.getElementById('reservation-actions-menu');
 
             const openModal = (id) => {
                 const target = document.getElementById(id);
@@ -1355,9 +1391,25 @@
                     const modalId = button.getAttribute('data-open-modal');
                     if (modalId) {
                         openModal(modalId);
+                        if (actionsPanel) {
+                            actionsPanel.classList.remove('show');
+                        }
                     }
                 });
             });
+
+            if (actionsToggle && actionsPanel && actionsMenu) {
+                actionsToggle.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    actionsPanel.classList.toggle('show');
+                });
+
+                document.addEventListener('click', (event) => {
+                    if (!actionsMenu.contains(event.target)) {
+                        actionsPanel.classList.remove('show');
+                    }
+                });
+            }
 
             closers.forEach((button) => {
                 button.addEventListener('click', () => {
