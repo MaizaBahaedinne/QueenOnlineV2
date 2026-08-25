@@ -686,6 +686,13 @@
                 @if ($canUpdateReservation)
                     <button type="button" class="btn btn-primary" data-open-modal="reservation-modal">Modifier reservation</button>
                     <button type="button" class="btn" data-open-modal="reservation-slot-modal">Modifier date/heure/salle</button>
+                    @if (($reservation->status ?? null) !== 'cancelled')
+                        <form method="POST" action="{{ route('reservations.cancel', $reservation) }}" onsubmit="return confirm('Confirmer l annulation de cette reservation ?');" style="display:inline;">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="btn" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Annuler la reservation</button>
+                        </form>
+                    @endif
                 @endif
                 <a href="{{ route('reservations.index') }}" class="btn">Retour au calendrier</a>
             </div>

@@ -38,6 +38,7 @@ Route::middleware('auth')->group(function () {
 	Route::patch('reservations/{reservation}/client', [ReservationController::class, 'updateClient'])->name('reservations.client.update');
 	Route::patch('reservations/{reservation}/details', [ReservationController::class, 'updateDetails'])->name('reservations.details.update');
 	Route::patch('reservations/{reservation}/slot', [ReservationController::class, 'updateSlot'])->name('reservations.slot.update');
+	Route::patch('reservations/{reservation}/cancel', [ReservationController::class, 'cancel'])->name('reservations.cancel');
 	Route::patch('reservations/{reservation}/salle', [ReservationController::class, 'updateSalle'])->name('reservations.salle.update');
 	Route::post('reservations/{reservation}/payments', [ReservationController::class, 'storePayment'])->name('reservations.payments.store');
 	Route::post('reservations/{reservation}/additional-services', [ReservationController::class, 'storeAdditionalService'])->name('reservations.additional-services.store');

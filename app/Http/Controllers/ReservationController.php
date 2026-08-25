@@ -639,7 +639,31 @@ class ReservationController extends MatrixAwareController
             'note' => $validated['note'] ?? null,
         ]);
 
+        $newTotalPaid = (float) $reservation->payments()->sum('amount');
+        $newRemaining = max($totalAmount - $newTotalPaid, 0);
+
+        if ($newRemaining <= 0.009 && ! in_array((string) $reservation->status, ['cancelled', 'completed'], true)) {
+            $reservation->update([
+                'status' => 'confirmed',
+            ]);
+        }
+
         return redirect()->route('reservations.show', $reservation)->with('success', 'Paiement ajoute a la reservation.');
+    }
+
+    public function cancel(Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        if ((string) $reservation->status === 'cancelled') {
+            return redirect()->route('reservations.show', $reservation)->with('success', 'La reservation est deja annulee.');
+        }
+
+        $reservation->update([
+            'status' => 'cancelled',
+        ]);
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Reservation annulee.');
     }
 
     public function store(Request $request)
