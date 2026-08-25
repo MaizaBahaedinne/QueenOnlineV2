@@ -1135,6 +1135,15 @@
                     });
 
                     const payload = await response.json();
+
+                    if (!response.ok) {
+                        const firstError = Object.values(payload?.errors || {})?.[0]?.[0];
+                        if (slotHelp) {
+                            slotHelp.textContent = firstError || payload?.message || 'Parametres invalides pour la verification.';
+                        }
+                        return;
+                    }
+
                     const salles = Array.isArray(payload?.salles) ? payload.salles : [];
 
                     slotSalleSelect.innerHTML = '';

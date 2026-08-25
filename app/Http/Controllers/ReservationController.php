@@ -454,26 +454,65 @@ class ReservationController extends MatrixAwareController
         return redirect()->route('reservations.show', $reservation)->with('success', 'Donnees client mises a jour.');
     }
 
-    public function availableSallesForReservation(Reservation $reservation)
+    public function availableSallesForReservation(Request $request, Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'update', 'update');
 
+        $request->merge([
+            'start_time' => substr((string) $request->input('start_time', ''), 0, 5),
+            'end_time' => substr((string) $request->input('end_time', ''), 0, 5),
+        ]);
+
+        $validator = Validator::make($request->all(), [
+            'event_date' => ['required', 'date', 'after_or_equal:today'],
+            'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
+            'end_time' => [
+                'required',
+                'date_format:H:i',
+                'after:start_time',
+                'before_or_equal:23:59',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request) {
+                    $startRaw = substr((string) $request->input('start_time'), 0, 5);
+                    $endRaw = substr((string) $value, 0, 5);
+
+                    $start = Carbon::createFromFormat('H:i', $startRaw);
+                    $end = Carbon::createFromFormat('H:i', $endRaw);
+
+                    if ($start && $end && $start->diffInMinutes($end, false) < 60) {
+                        $fail('Heure fin doit etre au moins heure debut + 1 heure.');
+                    }
+                },
+            ],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Parametres invalides.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $validated = $validator->validated();
+        $eventDate = (string) $validated['event_date'];
+        $startTime = (string) $validated['start_time'];
+        $endTime = (string) $validated['end_time'];
+
         $salles = Salle::query()
             ->where('status', 'active')
-            ->whereDoesntHave('reservations', function ($query) use ($reservation) {
+            ->whereDoesntHave('reservations', function ($query) use ($reservation, $eventDate, $startTime, $endTime) {
                 $query
                     ->where('id', '!=', $reservation->id)
                     ->where('status', '!=', 'cancelled')
-                    ->whereDate('start_date', '<=', $reservation->end_date)
-                    ->whereDate('end_date', '>=', $reservation->start_date)
-                    ->where(function ($timeQuery) use ($reservation) {
+                    ->whereDate('start_date', '<=', $eventDate)
+                    ->whereDate('end_date', '>=', $eventDate)
+                    ->where(function ($timeQuery) use ($startTime, $endTime) {
                         $timeQuery
                             ->whereNull('start_time')
                             ->orWhereNull('end_time')
-                            ->orWhere(function ($overlapQuery) use ($reservation) {
+                            ->orWhere(function ($overlapQuery) use ($startTime, $endTime) {
                                 $overlapQuery
-                                    ->where('start_time', '<', $reservation->end_time)
-                                    ->where('end_time', '>', $reservation->start_time);
+                                    ->where('start_time', '<', $endTime)
+                                    ->where('end_time', '>', $startTime);
                             });
                     });
             })
