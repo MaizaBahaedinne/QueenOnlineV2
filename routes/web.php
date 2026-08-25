@@ -32,6 +32,8 @@ Route::middleware('auth')->group(function () {
 	Route::resource('users', UserController::class);
 	Route::resource('clients', ClientController::class);
 	Route::post('clients/{client}/transfer-credit', [ClientController::class, 'transferCredit'])->name('clients.transfer-credit');
+	Route::post('staff/{staff}/documents', [StaffController::class, 'storeDocument'])->name('staff.documents.store');
+	Route::delete('staff/{staff}/documents/{document}', [StaffController::class, 'destroyDocument'])->name('staff.documents.destroy');
 	Route::resource('staff', StaffController::class);
 	Route::resource('salles', SalleController::class);
 	Route::get('reservations/availability', [ReservationController::class, 'availableSalles'])->name('reservations.availability');
