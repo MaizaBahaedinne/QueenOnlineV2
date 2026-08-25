@@ -19,4 +19,14 @@ class ServiceModuleItem extends Model
     {
         return $this->hasMany(ServiceModulePack::class);
     }
+
+    public function singerPartnershipPrices()
+    {
+        return $this->hasMany(SingerTroupePartnershipPrice::class, 'singer_item_id');
+    }
+
+    public function troupePartnershipPrices()
+    {
+        return $this->hasMany(SingerTroupePartnershipPrice::class, 'troupe_item_id');
+    }
 }

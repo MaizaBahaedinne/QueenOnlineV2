@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SingerTroupePartnershipPrice;
 use App\Models\ServiceModuleItem;
 use App\Models\ServiceModulePack;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
@@ -36,11 +38,34 @@ class ServiceModuleController extends MatrixAwareController
             ->latest()
             ->get();
 
+        $troupes = collect();
+        $partnershipPricesBySinger = [];
+        if ($module === 'chanteur') {
+            $troupes = ServiceModuleItem::query()
+                ->where('module_slug', 'troupe-musicale')
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name']);
+
+            $partnershipPricesBySinger = SingerTroupePartnershipPrice::query()
+                ->whereIn('singer_item_id', $items->pluck('id'))
+                ->get(['singer_item_id', 'troupe_item_id', 'partnership_price'])
+                ->groupBy('singer_item_id')
+                ->map(function ($rows) {
+                    return $rows->mapWithKeys(function ($row) {
+                        return [(string) $row->troupe_item_id => (string) $row->partnership_price];
+                    })->all();
+                })
+                ->all();
+        }
+
         return view('service-modules.show', [
             'title' => $meta['name'],
             'moduleSlug' => $module,
             'moduleMeta' => $meta,
             'items' => $items,
+            'troupes' => $troupes,
+            'partnershipPricesBySinger' => $partnershipPricesBySinger,
         ]);
     }
 
@@ -128,6 +153,49 @@ class ServiceModuleController extends MatrixAwareController
         $item->delete();
 
         return redirect()->route('service-modules.show', $module)->with('success', 'Element supprime.');
+    }
+
+    public function updatePartnershipPrices(Request $request, string $module, ServiceModuleItem $item)
+    {
+        $this->assertItemInModule($module, $item);
+        $this->enforcePermission($module, 'update', 'update');
+        abort_unless($module === 'chanteur', 404);
+
+        $troupeIds = ServiceModuleItem::query()
+            ->where('module_slug', 'troupe-musicale')
+            ->pluck('id')
+            ->all();
+
+        $validated = $request->validate([
+            'partnership_prices' => ['nullable', 'array'],
+            'partnership_prices.*' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $prices = $validated['partnership_prices'] ?? [];
+
+        DB::transaction(function () use ($item, $prices, $troupeIds) {
+            SingerTroupePartnershipPrice::query()
+                ->where('singer_item_id', $item->id)
+                ->delete();
+
+            foreach ($prices as $troupeId => $price) {
+                if (! in_array((int) $troupeId, $troupeIds, true)) {
+                    continue;
+                }
+
+                if ($price === null || $price === '') {
+                    continue;
+                }
+
+                SingerTroupePartnershipPrice::query()->create([
+                    'singer_item_id' => $item->id,
+                    'troupe_item_id' => (int) $troupeId,
+                    'partnership_price' => $price,
+                ]);
+            }
+        });
+
+        return redirect()->route('service-modules.show', $module)->with('success', 'Prix de partenariat mis a jour.');
     }
 
     public function storePack(Request $request, string $module)

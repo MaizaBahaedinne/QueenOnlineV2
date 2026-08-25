@@ -72,6 +72,7 @@ Route::middleware('auth')->group(function () {
 	Route::get('service-modules/{module}/packs', [ServiceModuleController::class, 'showPacks'])->name('service-modules.packs.index');
 	Route::post('service-modules/{module}/items', [ServiceModuleController::class, 'storeItem'])->name('service-modules.items.store');
 	Route::patch('service-modules/{module}/items/{item}', [ServiceModuleController::class, 'updateItem'])->name('service-modules.items.update');
+	Route::patch('service-modules/{module}/items/{item}/partnership-prices', [ServiceModuleController::class, 'updatePartnershipPrices'])->name('service-modules.items.partnership-prices.update');
 	Route::delete('service-modules/{module}/items/{item}', [ServiceModuleController::class, 'destroyItem'])->name('service-modules.items.destroy');
 
 	Route::post('service-modules/{module}/packs', [ServiceModuleController::class, 'storePack'])->name('service-modules.packs.store');

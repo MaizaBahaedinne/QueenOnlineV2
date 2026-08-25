@@ -84,6 +84,9 @@
                                 <th>Nom</th>
                                 <th>Telephone</th>
                                 <th>Prix base</th>
+                                @if ($moduleSlug === 'chanteur')
+                                    <th>Prix partenariat (troupes)</th>
+                                @endif
                                 <th>Statut</th>
                                 <th>Notes</th>
                                 <th>Actions</th>
@@ -91,14 +94,46 @@
                         </thead>
                         <tbody>
                             @forelse ($items as $item)
+                                @php
+                                    $rowPartnership = $moduleSlug === 'chanteur'
+                                        ? ($partnershipPricesBySinger[$item->id] ?? [])
+                                        : [];
+                                @endphp
                                 <tr>
                                     <td>{{ $item->name }}</td>
                                     <td>{{ $item->phone ?? '-' }}</td>
                                     <td>{{ number_format((float) $item->base_price, 2, '.', ' ') }}</td>
+                                    @if ($moduleSlug === 'chanteur')
+                                        <td>
+                                            @if (!empty($rowPartnership))
+                                                @foreach ($troupes as $troupe)
+                                                    @if (array_key_exists((string) $troupe->id, $rowPartnership))
+                                                        <div style="font-size:12px;">
+                                                            {{ $troupe->name }}: {{ number_format((float) $rowPartnership[(string) $troupe->id], 2, '.', ' ') }}
+                                                        </div>
+                                                    @endif
+                                                @endforeach
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                    @endif
                                     <td>{{ $item->status }}</td>
                                     <td>{{ $item->notes ?? '-' }}</td>
                                     <td>
                                         <div class="action-row">
+                                            @if ($moduleSlug === 'chanteur' && $canUpdate)
+                                                <button
+                                                    type="button"
+                                                    class="btn"
+                                                    data-open-modal="item-partnership-modal"
+                                                    data-item-id="{{ $item->id }}"
+                                                    data-item-name="{{ $item->name }}"
+                                                    data-item-partnership='@json($rowPartnership)'
+                                                >
+                                                    Prix partenariat
+                                                </button>
+                                            @endif
                                             @if ($canUpdate)
                                                 <button
                                                     type="button"
@@ -130,7 +165,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="muted">Aucun element.</td>
+                                    <td colspan="{{ $moduleSlug === 'chanteur' ? 7 : 6 }}" class="muted">Aucun element.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -205,6 +240,31 @@
         </div>
     @endif
 
+    @if ($moduleSlug === 'chanteur' && $canUpdate)
+        <div class="modal-overlay" id="item-partnership-modal">
+            <div class="modal-card">
+                <div class="modal-head">
+                    <h3 class="modal-title">Prix de partenariat par troupe</h3>
+                    <button type="button" class="btn" data-close-modal>Fermer</button>
+                </div>
+                <p class="panel-sub" id="item-partnership-subtitle" style="margin-bottom:10px;"></p>
+                <form method="POST" id="item-partnership-form" action="#" style="display:grid; gap:10px;">
+                    @csrf
+                    @method('PATCH')
+                    @forelse ($troupes as $troupe)
+                        <label style="display:grid; gap:4px;">
+                            <span style="font-weight:600;">{{ $troupe->name }}</span>
+                            <input class="search" style="max-width:none;" type="number" step="0.01" min="0" name="partnership_prices[{{ $troupe->id }}]" id="partnership-price-{{ $troupe->id }}" placeholder="Prix partenariat">
+                        </label>
+                    @empty
+                        <p class="muted">Aucune troupe musicale active trouvee.</p>
+                    @endforelse
+                    <button type="submit" class="btn btn-primary">Enregistrer les prix</button>
+                </form>
+            </div>
+        </div>
+    @endif
+
     <script>
         const openModalButtons = document.querySelectorAll('[data-open-modal]');
         const closeModalButtons = document.querySelectorAll('[data-close-modal]');
@@ -237,6 +297,26 @@
                 if (modalId === 'item-delete-modal') {
                     document.getElementById('item-delete-form').action = `{{ url('service-modules/'.$moduleSlug.'/items') }}/${button.dataset.itemId}`;
                     document.getElementById('item-delete-text').textContent = `Confirmer la suppression de "${button.dataset.itemName}" ?`;
+                }
+
+                if (modalId === 'item-partnership-modal') {
+                    const itemId = button.dataset.itemId;
+                    const itemName = button.dataset.itemName || '';
+                    const form = document.getElementById('item-partnership-form');
+                    form.action = `{{ url('service-modules/'.$moduleSlug.'/items') }}/${itemId}/partnership-prices`;
+                    document.getElementById('item-partnership-subtitle').textContent = `Chanteur: ${itemName}`;
+
+                    const rawData = button.dataset.itemPartnership || '{}';
+                    let prices = {};
+                    try {
+                        prices = JSON.parse(rawData);
+                    } catch (e) {
+                        prices = {};
+                    }
+
+                    @foreach ($troupes as $troupe)
+                        document.getElementById('partnership-price-{{ $troupe->id }}').value = prices['{{ $troupe->id }}'] ?? '';
+                    @endforeach
                 }
             });
         });
