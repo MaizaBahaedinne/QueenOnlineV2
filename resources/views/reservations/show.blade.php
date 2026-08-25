@@ -573,6 +573,7 @@
             <div class="reservation-show-actions">
                 @if ($canUpdateReservation)
                     <button type="button" class="btn btn-primary" data-open-modal="reservation-modal">Modifier reservation</button>
+                    <button type="button" class="btn" data-open-modal="reservation-slot-modal">Modifier date/heure/salle</button>
                 @endif
                 <a href="{{ route('reservations.index') }}" class="btn">Retour au calendrier</a>
             </div>
@@ -732,6 +733,66 @@
     </section>
 
     @if ($canUpdateReservation)
+        <div class="modal-overlay" id="reservation-slot-modal">
+            <div class="modal-card">
+                <div class="modal-head">
+                    <h3 class="modal-title">Modifier date/heure/salle</h3>
+                    <button type="button" class="btn" data-close-modal>Fermer</button>
+                </div>
+
+                <form method="POST" action="{{ route('reservations.update', $reservation) }}" id="reservation-slot-form" style="display:grid; gap:10px;">
+                    @csrf
+                    @method('PATCH')
+
+                    <input type="hidden" name="client_id" value="{{ $reservation->client_id }}">
+                    <input type="hidden" name="service_slug" value="{{ $reservation->service_slug ?? 'salles' }}">
+                    <input type="hidden" name="title" value="{{ old('title', $reservation->title) }}">
+                    <input type="hidden" name="event_type" value="{{ old('event_type', $reservation->event_type) }}">
+                    <input type="hidden" name="guest_count" value="{{ old('guest_count', $reservation->guest_count) }}">
+                    <input type="hidden" name="total_amount" value="{{ old('total_amount', $reservation->total_amount) }}">
+                    <input type="hidden" name="note_admin" value="{{ old('note_admin', $reservation->note_admin) }}">
+                    <input type="hidden" name="status" value="{{ old('status', $reservation->status ?? 'pending') }}">
+
+                    <div class="client-form-grid">
+                        <div>
+                            <label for="slot-start-date">Date event</label>
+                            <input id="slot-start-date" name="start_date" type="date" required value="{{ old('start_date', $reservation->start_date) }}">
+                        </div>
+                        <div>
+                            <label for="slot-end-date">Date fin</label>
+                            <input id="slot-end-date" name="end_date" type="date" required value="{{ old('end_date', $reservation->end_date) }}">
+                        </div>
+
+                        <div>
+                            <label for="slot-start-time">Heure debut</label>
+                            <input id="slot-start-time" name="start_time" type="time" required value="{{ old('start_time', $reservation->start_time) }}">
+                        </div>
+                        <div>
+                            <label for="slot-end-time">Heure fin</label>
+                            <input id="slot-end-time" name="end_time" type="time" required value="{{ old('end_time', $reservation->end_time) }}">
+                        </div>
+                    </div>
+
+                    <div class="reservation-actions-row" style="justify-content:flex-start;">
+                        <button type="button" class="btn" id="slot-check-availability">Verifier disponibilite salles</button>
+                    </div>
+
+                    <p class="payment-form-help" id="slot-availability-help">Renseigne date/heure puis verifie les disponibilites avant enregistrement.</p>
+
+                    <div>
+                        <label for="slot-salle-id">Salle</label>
+                        <select id="slot-salle-id" name="salle_id" required>
+                            <option value="{{ $reservation->salle_id }}">{{ $reservation->salle?->name ?? 'Salle actuelle' }} (actuelle)</option>
+                        </select>
+                    </div>
+
+                    <div class="reservation-actions-row">
+                        <button type="submit" class="btn btn-primary">Enregistrer date/heure/salle</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="modal-overlay" id="reservation-modal">
             <div class="modal-card">
                 <div class="modal-head">
@@ -1002,6 +1063,74 @@
     @endif
 
     <script type="application/json" id="additional-service-options-data">{!! json_encode($serviceOptionsByModule ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}</script>
+    <script>
+        (function () {
+            const slotCheckButton = document.getElementById('slot-check-availability');
+            const slotStartDate = document.getElementById('slot-start-date');
+            const slotStartTime = document.getElementById('slot-start-time');
+            const slotEndTime = document.getElementById('slot-end-time');
+            const slotSalleSelect = document.getElementById('slot-salle-id');
+            const slotHelp = document.getElementById('slot-availability-help');
+            const availableSallesBaseUrl = "{{ route('reservations.available-salles', $reservation) }}";
+
+            if (!slotCheckButton || !slotStartDate || !slotStartTime || !slotEndTime || !slotSalleSelect) {
+                return;
+            }
+
+            slotCheckButton.addEventListener('click', async () => {
+                const startDate = slotStartDate.value;
+                const startTime = slotStartTime.value;
+                const endTime = slotEndTime.value;
+
+                if (!startDate || !startTime || !endTime) {
+                    if (slotHelp) slotHelp.textContent = 'Renseigne date, heure debut et heure fin.';
+                    return;
+                }
+
+                if (slotHelp) slotHelp.textContent = 'Verification des salles disponibles...';
+
+                try {
+                    const params = new URLSearchParams({
+                        event_date: startDate,
+                        start_time: startTime,
+                        end_time: endTime,
+                        exclude_reservation_id: "{{ $reservation->id }}",
+                    });
+
+                    const response = await fetch(`${availableSallesBaseUrl}?${params.toString()}`, {
+                        headers: { Accept: 'application/json' },
+                    });
+
+                    const payload = await response.json();
+                    const salles = Array.isArray(payload?.salles) ? payload.salles : [];
+
+                    slotSalleSelect.innerHTML = '';
+                    if (salles.length === 0) {
+                        const option = document.createElement('option');
+                        option.value = '';
+                        option.textContent = 'Aucune salle disponible';
+                        slotSalleSelect.appendChild(option);
+                        if (slotHelp) slotHelp.textContent = 'Aucune salle disponible pour ce creneau.';
+                        return;
+                    }
+
+                    salles.forEach((salle) => {
+                        const option = document.createElement('option');
+                        option.value = String(salle.id);
+                        option.textContent = `${salle.name} (cap: ${salle.capacity ?? '-'}, prix/j: ${salle.price_per_day ?? '-'})`;
+                        if (Number(salle.id) === Number("{{ $reservation->salle_id }}")) {
+                            option.selected = true;
+                        }
+                        slotSalleSelect.appendChild(option);
+                    });
+
+                    if (slotHelp) slotHelp.textContent = `${salles.length} salle(s) disponible(s). Selectionne puis enregistre.`;
+                } catch (error) {
+                    if (slotHelp) slotHelp.textContent = 'Impossible de verifier la disponibilite pour le moment.';
+                }
+            });
+        })();
+    </script>
 
     <script>
         (function () {
