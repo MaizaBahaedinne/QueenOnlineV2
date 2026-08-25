@@ -39,6 +39,16 @@
             $reservation->client?->governorate,
         ])->filter()->implode(', '));
         $clientAddress = $clientAddress !== '' ? $clientAddress : '-';
+        $reservationTypeLabel = match ((string) ($reservation->service_slug ?? 'salles')) {
+            'salles' => 'Salle',
+            'troupe-musicale' => 'Troupe musicale',
+            'photographe' => 'Photographe',
+            'chanteur' => 'Chanteur',
+            'notaire' => 'Notaire',
+            'animation' => 'Animation',
+            'voiture' => 'Voiture',
+            default => 'Autre',
+        };
     @endphp
 
     <style>
@@ -542,6 +552,56 @@
             gap: 8px;
         }
 
+        .slot-inline-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr;
+            gap: 8px;
+            align-items: end;
+        }
+
+        .salle-card-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .salle-card {
+            border: 1px solid #d5e2f0;
+            border-radius: 12px;
+            padding: 10px;
+            background: #fcfdff;
+            cursor: pointer;
+            transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+            display: grid;
+            gap: 5px;
+        }
+
+        .salle-card:hover {
+            border-color: #9fc0e5;
+            box-shadow: 0 6px 16px rgba(19, 59, 93, 0.10);
+            transform: translateY(-1px);
+        }
+
+        .salle-card.is-selected {
+            border-color: #2c78b6;
+            box-shadow: 0 0 0 2px rgba(44, 120, 182, 0.18);
+            background: #f2f8ff;
+        }
+
+        .salle-card-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            color: #1e4f7b;
+            font-size: 13px;
+        }
+
+        .salle-card-meta {
+            color: #607a95;
+            font-size: 12px;
+        }
+
         .salle-option {
             border: 1px solid #d5e2f0;
             border-radius: 10px;
@@ -577,6 +637,8 @@
             .reservation-objects-grid { grid-template-columns: 1fr; }
             .payment-form-row { grid-template-columns: 1fr; }
             .client-form-grid { grid-template-columns: 1fr; }
+            .slot-inline-grid { grid-template-columns: 1fr; }
+            .salle-card-grid { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 640px) {
@@ -604,7 +666,7 @@
             <div>
                 <p class="reservation-show-kicker">Reservation detail</p>
                 <h1 class="reservation-show-title">{{ $reservation->title ?: 'Reservation #' . $reservation->id }}</h1>
-                <p class="reservation-show-sub">Client: {{ $clientFullName }} | Salle: {{ $reservation->salle?->name ?? '-' }} | Createur: {{ $reservation->user?->name ?? '-' }}</p>
+                <p class="reservation-show-sub">Salle: {{ $reservation->salle?->name ?? '-' }} | Createur: {{ $reservation->user?->name ?? '-' }}</p>
                 <div class="reservation-show-chips">
                     <span class="reservation-chip {{ $statusTone }}">{{ $statusLabel }}</span>
                     <span class="reservation-chip">
@@ -632,17 +694,15 @@
 
             <article class="reservation-card">
                 <div class="reservation-object-head">
-                    <h3 class="reservation-object-title">Client</h3>
+                    <h3 class="reservation-object-title">Reservation detail</h3>
                     @if ($canUpdateReservation)
-                        <button type="button" class="btn" data-open-modal="client-modal">Modifier donnees client</button>
+                        <button type="button" class="btn" data-open-modal="reservation-modal">Modifier reservation</button>
                     @endif
                 </div>
                 <div class="reservation-object-body">
-                    <div class="reservation-kv"><span class="reservation-kv-key">Nom complet</span><span class="reservation-kv-value">{{ $clientFullName }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">CIN</span><span class="reservation-kv-value">{{ $reservation->client?->cin ?? '-' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Mobile 1</span><span class="reservation-kv-value">{{ $reservation->client?->phone ?? '-' }}{{ $reservation->client?->phone_label_1 ? ' (' . $reservation->client->phone_label_1 . ')' : '' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Mobile 2</span><span class="reservation-kv-value">{{ $reservation->client?->phone_2 ?? '-' }}{{ $reservation->client?->phone_label_2 ? ' (' . $reservation->client->phone_label_2 . ')' : '' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Adresse</span><span class="reservation-kv-value">{{ $clientAddress }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Type reservation</span><span class="reservation-kv-value">{{ $reservationTypeLabel }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Total reservation</span><span class="reservation-kv-value">{{ number_format($totalAmount, 2, '.', ' ') }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Statut</span><span class="reservation-kv-value">{{ $statusLabel }}</span></div>
                 </div>
             </article>
 
@@ -654,7 +714,6 @@
                     @endif
                 </div>
                 <div class="reservation-object-body">
-                    <div class="reservation-kv"><span class="reservation-kv-key">Salle de base</span><span class="reservation-kv-value">{{ $reservation->salle?->name ?? '-' }}</span></div>
                     @if (($nearbyCreneaux ?? collect())->isNotEmpty())
                         <div class="reservation-nearby">
                             <strong>Reservations proches (+/- 1h30)</strong>
@@ -723,57 +782,6 @@
                 </div>
             </article>
 
-            <article class="reservation-card">
-                <div class="reservation-object-head">
-                    <h3 class="reservation-object-title">Paiements</h3>
-                    @if ($canCreatePayment)
-                        <button type="button" class="btn btn-primary" data-open-modal="payment-modal" {{ $remainingAmount <= 0 ? 'disabled' : '' }}>Ajouter paiement</button>
-                    @endif
-                </div>
-
-                <div class="reservation-object-body">
-                    <div class="reservation-kv"><span class="reservation-kv-key">Total reservation</span><span class="reservation-kv-value">{{ number_format($totalAmount, 2, '.', ' ') }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Total paye</span><span class="reservation-kv-value">{{ number_format($totalPaid, 2, '.', ' ') }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Reste</span><span class="reservation-kv-value">{{ number_format($remainingAmount, 2, '.', ' ') }}</span></div>
-
-                    @if ($reservation->payments->isEmpty())
-                        <p class="reservation-empty">Aucun paiement lie a cette reservation.</p>
-                    @else
-                        <ul class="reservation-payment-list">
-                            @foreach ($reservation->payments as $payment)
-                                @php
-                                    $receiverName = trim((string) ($payment->user?->name ?? 'Recepteur'));
-                                    $receiverParts = preg_split('/\s+/', $receiverName) ?: [];
-                                    $receiverInitials = '';
-                                    foreach ($receiverParts as $part) {
-                                        if ($part !== '') {
-                                            $receiverInitials .= mb_strtoupper(mb_substr($part, 0, 1));
-                                        }
-                                        if (mb_strlen($receiverInitials) >= 2) {
-                                            break;
-                                        }
-                                    }
-                                    if ($receiverInitials === '') {
-                                        $receiverInitials = 'R';
-                                    }
-                                @endphp
-                                <li class="reservation-payment-item">
-                                    <div class="reservation-payment-row">
-                                        <div class="reservation-payment-avatar">{{ $receiverInitials }}</div>
-                                        <div class="reservation-payment-main">
-                                            <div class="reservation-payment-line">
-                                                <span>{{ $payment->reference ?: ('Paiement #' . $payment->id) }}</span>
-                                                <strong>{{ number_format((float) ($payment->amount ?? 0), 2, '.', ' ') }}</strong>
-                                            </div>
-                                            <div class="reservation-payment-sub">@frDateTime($payment->paid_at) • {{ $payment->method ?? '-' }}</div>
-                                        </div>
-                                    </div>
-                                </li>
-                            @endforeach
-                        </ul>
-                    @endif
-                </div>
-            </article>
         </div>
     </section>
 
@@ -789,7 +797,7 @@
                     @csrf
                     @method('PATCH')
 
-                    <div class="client-form-grid">
+                    <div class="slot-inline-grid">
                         <div>
                             <label for="slot-start-date">Date event</label>
                             <input id="slot-start-date" name="start_date" type="date" required value="{{ old('start_date', $reservation->start_date) }}">
@@ -813,10 +821,17 @@
                     <p class="payment-form-help" id="slot-availability-help">Renseigne date/heure puis verifie les disponibilites avant enregistrement.</p>
 
                     <div>
-                        <label for="slot-salle-id">Salle</label>
-                        <select id="slot-salle-id" name="salle_id" required>
-                            <option value="{{ $reservation->salle_id }}">{{ $reservation->salle?->name ?? 'Salle actuelle' }} (actuelle)</option>
-                        </select>
+                        <label>Salles disponibles</label>
+                        <input type="hidden" id="slot-salle-id" name="salle_id" value="{{ old('salle_id', $reservation->salle_id) }}" required>
+                        <div class="salle-card-grid" id="slot-salle-cards">
+                            <button type="button" class="salle-card is-selected" data-salle-id="{{ $reservation->salle_id }}">
+                                <span class="salle-card-title">
+                                    <span class="salle-color-dot" style="background-color: {{ $reservation->salle?->color_code ?? '#8ea9c4' }}"></span>
+                                    {{ $reservation->salle?->name ?? 'Salle actuelle' }}
+                                </span>
+                                <span class="salle-card-meta">Salle actuelle</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="reservation-actions-row">
@@ -1027,64 +1042,6 @@
         </div>
     @endif
 
-    @if ($canCreatePayment)
-        <div class="modal-overlay" id="payment-modal">
-            <div class="modal-card">
-                <div class="modal-head">
-                    <h3 class="modal-title">Ajouter paiement relatif</h3>
-                    <button type="button" class="btn" data-close-modal>Fermer</button>
-                </div>
-
-                <form method="POST" action="{{ route('reservations.payments.store', $reservation) }}" class="payment-form" id="reservation-payment-form">
-                    @csrf
-                    <div class="payment-form-row">
-                        <div>
-                            <label for="payment-phase">Type paiement</label>
-                            <select id="payment-phase" name="phase" required>
-                                <option value="avance" {{ old('phase', $nextPhase) === 'avance' ? 'selected' : '' }}>Avance</option>
-                                <option value="partie-1" {{ old('phase', $nextPhase) === 'partie-1' ? 'selected' : '' }}>Partie 1</option>
-                                <option value="partie-2" {{ old('phase', $nextPhase) === 'partie-2' ? 'selected' : '' }}>Partie 2</option>
-                                <option value="partie-3" {{ old('phase', $nextPhase) === 'partie-3' ? 'selected' : '' }}>Partie 3</option>
-                                <option value="reste" {{ old('phase', $nextPhase) === 'reste' ? 'selected' : '' }}>Reste</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="payment-amount">Montant</label>
-                            <input id="payment-amount" type="number" step="0.01" min="0.01" name="amount" value="{{ old('amount') }}" required>
-                        </div>
-                    </div>
-
-                    <div class="payment-form-row">
-                        <div>
-                            <label for="payment-method">Methode</label>
-                            <select id="payment-method" name="method" required>
-                                <option value="cash" {{ old('method') === 'cash' ? 'selected' : '' }}>Cash</option>
-                                <option value="virement" {{ old('method') === 'virement' ? 'selected' : '' }}>Virement</option>
-                                <option value="carte" {{ old('method') === 'carte' ? 'selected' : '' }}>Carte</option>
-                                <option value="cheque" {{ old('method') === 'cheque' ? 'selected' : '' }}>Cheque</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="payment-paid-at-display">Date paiement (auto)</label>
-                            <input id="payment-paid-at-display" type="text" value="{{ now()->format('d/m/Y H:i:s') }}" readonly>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="payment-note">Note</label>
-                        <textarea id="payment-note" name="note" rows="2" placeholder="Note optionnelle">{{ old('note') }}</textarea>
-                    </div>
-
-                    <p class="payment-form-help" id="payment-form-help">Controle: le premier paiement doit etre "Avance". Reste actuel: {{ number_format($remainingAmount, 2, '.', ' ') }}.</p>
-
-                    <div class="reservation-actions-row">
-                        <button type="submit" class="btn btn-primary" {{ $remainingAmount <= 0 ? 'disabled' : '' }}>Ajouter paiement</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    @endif
-
     <script type="application/json" id="additional-service-options-data">{!! json_encode($serviceOptionsByModule ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}</script>
     <script>
         (function () {
@@ -1092,13 +1049,29 @@
             const slotStartDate = document.getElementById('slot-start-date');
             const slotStartTime = document.getElementById('slot-start-time');
             const slotEndTime = document.getElementById('slot-end-time');
-            const slotSalleSelect = document.getElementById('slot-salle-id');
+            const slotSalleInput = document.getElementById('slot-salle-id');
+            const slotSalleCards = document.getElementById('slot-salle-cards');
             const slotHelp = document.getElementById('slot-availability-help');
             const availableSallesBaseUrl = "{{ route('reservations.available-salles', $reservation) }}";
 
-            if (!slotCheckButton || !slotStartDate || !slotStartTime || !slotEndTime || !slotSalleSelect) {
+            if (!slotCheckButton || !slotStartDate || !slotStartTime || !slotEndTime || !slotSalleInput || !slotSalleCards) {
                 return;
             }
+
+            const setSelectedSalle = (salleId) => {
+                slotSalleInput.value = salleId ? String(salleId) : '';
+                slotSalleCards.querySelectorAll('.salle-card').forEach((card) => {
+                    card.classList.toggle('is-selected', String(card.dataset.salleId) === String(salleId));
+                });
+            };
+
+            slotSalleCards.addEventListener('click', (event) => {
+                const card = event.target.closest('.salle-card');
+                if (!card || !card.dataset.salleId) {
+                    return;
+                }
+                setSelectedSalle(card.dataset.salleId);
+            });
 
             const slotEndDate = document.getElementById('slot-end-date');
             if (slotEndDate) {
@@ -1146,25 +1119,42 @@
 
                     const salles = Array.isArray(payload?.salles) ? payload.salles : [];
 
-                    slotSalleSelect.innerHTML = '';
+                    slotSalleCards.innerHTML = '';
                     if (salles.length === 0) {
-                        const option = document.createElement('option');
-                        option.value = '';
-                        option.textContent = 'Aucune salle disponible';
-                        slotSalleSelect.appendChild(option);
+                        slotSalleInput.value = '';
+                        const empty = document.createElement('div');
+                        empty.className = 'salle-card';
+                        empty.style.cursor = 'default';
+                        empty.textContent = 'Aucune salle disponible';
+                        slotSalleCards.appendChild(empty);
                         if (slotHelp) slotHelp.textContent = 'Aucune salle disponible pour ce creneau.';
                         return;
                     }
 
+                    let selectedSalleId = '';
                     salles.forEach((salle) => {
-                        const option = document.createElement('option');
-                        option.value = String(salle.id);
-                        option.textContent = `${salle.name} (cap: ${salle.capacity ?? '-'}, prix/j: ${salle.price_per_day ?? '-'})`;
-                        if (Number(salle.id) === Number("{{ $reservation->salle_id }}")) {
-                            option.selected = true;
+                        const card = document.createElement('button');
+                        card.type = 'button';
+                        card.className = 'salle-card';
+                        card.dataset.salleId = String(salle.id);
+                        card.innerHTML = `
+                            <span class="salle-card-title">
+                                <span class="salle-color-dot" style="background-color: ${salle.color_code || '#8ea9c4'}"></span>
+                                ${salle.name}
+                            </span>
+                            <span class="salle-card-meta">Capacite: ${salle.capacity ?? '-'} | Prix/j: ${salle.price_per_day ?? '-'}</span>
+                        `;
+                        slotSalleCards.appendChild(card);
+
+                        if (selectedSalleId === '' && Number(salle.id) === Number("{{ $reservation->salle_id }}")) {
+                            selectedSalleId = String(salle.id);
                         }
-                        slotSalleSelect.appendChild(option);
                     });
+
+                    if (selectedSalleId === '' && salles[0]) {
+                        selectedSalleId = String(salles[0].id);
+                    }
+                    setSelectedSalle(selectedSalleId);
 
                     if (slotHelp) slotHelp.textContent = `${salles.length} salle(s) disponible(s). Selectionne puis enregistre.`;
                 } catch (error) {
