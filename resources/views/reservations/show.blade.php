@@ -743,6 +743,8 @@
                     @csrf
                     @method('PATCH')
 
+                    <p class="payment-form-help">Toute modification de salle/date/heure est validee contre la disponibilite reelle. En cas de conflit, la mise a jour sera refusee.</p>
+
                     <input type="hidden" name="client_id" value="{{ $reservation->client_id }}">
                     <input type="hidden" name="salle_id" value="{{ $reservation->salle_id }}">
                     <input type="hidden" name="service_slug" value="{{ $reservation->service_slug ?? 'salles' }}">

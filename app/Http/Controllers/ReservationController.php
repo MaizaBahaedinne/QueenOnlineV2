@@ -700,6 +700,39 @@ class ReservationController extends MatrixAwareController
             unset($validated['service_slug']);
         }
 
+        // Verifier la disponibilite sur le creneau cible (meme logique que updateSalle).
+        // Cela couvre toute modification de salle/date/heure depuis n'importe quel formulaire.
+        $targetSalleId = (int) $validated['salle_id'];
+        $targetStartDate = (string) $validated['start_date'];
+        $targetEndDate = (string) $validated['end_date'];
+        $targetStartTime = (string) $validated['start_time'];
+        $targetEndTime = (string) $validated['end_time'];
+
+        $hasConflict = Reservation::query()
+            ->where('id', '!=', $reservation->id)
+            ->where('salle_id', $targetSalleId)
+            ->where('status', '!=', 'cancelled')
+            ->whereDate('start_date', '<=', $targetEndDate)
+            ->whereDate('end_date', '>=', $targetStartDate)
+            ->where(function ($timeQuery) use ($targetStartTime, $targetEndTime) {
+                $timeQuery
+                    ->whereNull('start_time')
+                    ->orWhereNull('end_time')
+                    ->orWhere(function ($overlapQuery) use ($targetStartTime, $targetEndTime) {
+                        $overlapQuery
+                            ->where('start_time', '<', $targetEndTime)
+                            ->where('end_time', '>', $targetStartTime);
+                    });
+            })
+            ->exists();
+
+        if ($hasConflict) {
+            return redirect()
+                ->route('reservations.show', $reservation)
+                ->withErrors(['salle_id' => 'Salle indisponible pour la date/heure choisie. Verifie la disponibilite avant modification.'])
+                ->withInput();
+        }
+
         $reservation->update($validated);
 
         return redirect()->route('reservations.index')->with('success', 'Reservation mise a jour.');
