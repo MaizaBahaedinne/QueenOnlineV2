@@ -783,6 +783,58 @@
                 </div>
             </article>
 
+            <article class="reservation-card">
+                <div class="reservation-object-head">
+                    <h3 class="reservation-object-title">Paiements</h3>
+                    @if ($canCreatePayment)
+                        <button type="button" class="btn btn-primary" data-open-modal="payment-modal" {{ $remainingAmount <= 0 ? 'disabled' : '' }}>Ajouter paiement</button>
+                    @endif
+                </div>
+
+                <div class="reservation-object-body">
+                    <div class="reservation-kv"><span class="reservation-kv-key">Total reservation</span><span class="reservation-kv-value">{{ number_format($totalAmount, 2, '.', ' ') }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Total paye</span><span class="reservation-kv-value">{{ number_format($totalPaid, 2, '.', ' ') }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Reste</span><span class="reservation-kv-value">{{ number_format($remainingAmount, 2, '.', ' ') }}</span></div>
+
+                    @if ($reservation->payments->isEmpty())
+                        <p class="reservation-empty">Aucun paiement lie a cette reservation.</p>
+                    @else
+                        <ul class="reservation-payment-list">
+                            @foreach ($reservation->payments as $payment)
+                                @php
+                                    $receiverName = trim((string) ($payment->user?->name ?? 'Recepteur'));
+                                    $receiverParts = preg_split('/\s+/', $receiverName) ?: [];
+                                    $receiverInitials = '';
+                                    foreach ($receiverParts as $part) {
+                                        if ($part !== '') {
+                                            $receiverInitials .= mb_strtoupper(mb_substr($part, 0, 1));
+                                        }
+                                        if (mb_strlen($receiverInitials) >= 2) {
+                                            break;
+                                        }
+                                    }
+                                    if ($receiverInitials === '') {
+                                        $receiverInitials = 'R';
+                                    }
+                                @endphp
+                                <li class="reservation-payment-item">
+                                    <div class="reservation-payment-row">
+                                        <div class="reservation-payment-avatar">{{ $receiverInitials }}</div>
+                                        <div class="reservation-payment-main">
+                                            <div class="reservation-payment-line">
+                                                <span>{{ $payment->reference ?: ('Paiement #' . $payment->id) }}</span>
+                                                <strong>{{ number_format((float) ($payment->amount ?? 0), 2, '.', ' ') }}</strong>
+                                            </div>
+                                            <div class="reservation-payment-sub">@frDateTime($payment->paid_at) • {{ $payment->method ?? '-' }}</div>
+                                        </div>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
+            </article>
+
         </div>
     </section>
 
@@ -1037,6 +1089,64 @@
 
                     <div class="reservation-actions-row">
                         <button type="submit" class="btn btn-primary">Ajouter service</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    @if ($canCreatePayment)
+        <div class="modal-overlay" id="payment-modal">
+            <div class="modal-card">
+                <div class="modal-head">
+                    <h3 class="modal-title">Ajouter paiement relatif</h3>
+                    <button type="button" class="btn" data-close-modal>Fermer</button>
+                </div>
+
+                <form method="POST" action="{{ route('reservations.payments.store', $reservation) }}" class="payment-form" id="reservation-payment-form">
+                    @csrf
+                    <div class="payment-form-row">
+                        <div>
+                            <label for="payment-phase">Type paiement</label>
+                            <select id="payment-phase" name="phase" required>
+                                <option value="avance" {{ old('phase', $nextPhase) === 'avance' ? 'selected' : '' }}>Avance</option>
+                                <option value="partie-1" {{ old('phase', $nextPhase) === 'partie-1' ? 'selected' : '' }}>Partie 1</option>
+                                <option value="partie-2" {{ old('phase', $nextPhase) === 'partie-2' ? 'selected' : '' }}>Partie 2</option>
+                                <option value="partie-3" {{ old('phase', $nextPhase) === 'partie-3' ? 'selected' : '' }}>Partie 3</option>
+                                <option value="reste" {{ old('phase', $nextPhase) === 'reste' ? 'selected' : '' }}>Reste</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="payment-amount">Montant</label>
+                            <input id="payment-amount" type="number" step="0.01" min="0.01" name="amount" value="{{ old('amount') }}" required>
+                        </div>
+                    </div>
+
+                    <div class="payment-form-row">
+                        <div>
+                            <label for="payment-method">Methode</label>
+                            <select id="payment-method" name="method" required>
+                                <option value="cash" {{ old('method') === 'cash' ? 'selected' : '' }}>Cash</option>
+                                <option value="virement" {{ old('method') === 'virement' ? 'selected' : '' }}>Virement</option>
+                                <option value="carte" {{ old('method') === 'carte' ? 'selected' : '' }}>Carte</option>
+                                <option value="cheque" {{ old('method') === 'cheque' ? 'selected' : '' }}>Cheque</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="payment-paid-at-display">Date paiement (auto)</label>
+                            <input id="payment-paid-at-display" type="text" value="{{ now()->format('d/m/Y H:i:s') }}" readonly>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="payment-note">Note</label>
+                        <textarea id="payment-note" name="note" rows="2" placeholder="Note optionnelle">{{ old('note') }}</textarea>
+                    </div>
+
+                    <p class="payment-form-help" id="payment-form-help">Controle: le premier paiement doit etre "Avance". Reste actuel: {{ number_format($remainingAmount, 2, '.', ' ') }}.</p>
+
+                    <div class="reservation-actions-row">
+                        <button type="submit" class="btn btn-primary" {{ $remainingAmount <= 0 ? 'disabled' : '' }}>Ajouter paiement</button>
                     </div>
                 </form>
             </div>
