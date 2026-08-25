@@ -68,6 +68,11 @@ class ReservationController extends MatrixAwareController
             $service = 'salles';
         }
 
+        $scope = trim((string) request()->query('scope', 'all'));
+        if (! in_array($scope, ['all', 'interne', 'externe'], true)) {
+            $scope = 'all';
+        }
+
         $reservationsQuery = Reservation::query()->with(['client', 'salle']);
         $hasServiceSlugColumn = Schema::hasColumn('reservations', 'service_slug');
 
@@ -87,6 +92,64 @@ class ReservationController extends MatrixAwareController
             }
         }
 
+        if ($scope === 'interne') {
+            if ($hasServiceSlugColumn) {
+                $reservationsQuery->where(function ($query) {
+                    $query
+                        ->where('service_slug', 'salles')
+                        ->orWhereNull('service_slug');
+                });
+            }
+        } elseif ($scope === 'externe') {
+            if ($hasServiceSlugColumn) {
+                $reservationsQuery
+                    ->whereNotNull('service_slug')
+                    ->where('service_slug', '!=', 'salles');
+            } else {
+                $reservationsQuery->whereRaw('1 = 0');
+            }
+        }
+
+        $scopeCountsQuery = Reservation::query();
+        if ($service !== 'all') {
+            if ($hasServiceSlugColumn) {
+                if ($service === 'salles') {
+                    $scopeCountsQuery->where(function ($query) {
+                        $query
+                            ->where('service_slug', 'salles')
+                            ->orWhereNull('service_slug');
+                    });
+                } else {
+                    $scopeCountsQuery->where('service_slug', $service);
+                }
+            } elseif ($service !== 'salles') {
+                $scopeCountsQuery->whereRaw('1 = 0');
+            }
+        }
+
+        $internalCount = $hasServiceSlugColumn
+            ? (clone $scopeCountsQuery)
+                ->where(function ($query) {
+                    $query
+                        ->where('service_slug', 'salles')
+                        ->orWhereNull('service_slug');
+                })
+                ->count()
+            : (clone $scopeCountsQuery)->count();
+
+        $externalCount = $hasServiceSlugColumn
+            ? (clone $scopeCountsQuery)
+                ->whereNotNull('service_slug')
+                ->where('service_slug', '!=', 'salles')
+                ->count()
+            : 0;
+
+        $scopeLabel = match ($scope) {
+            'interne' => 'Interne',
+            'externe' => 'Externe',
+            default => 'Toutes',
+        };
+
         return view('reservations.index', [
             'title' => 'Reservations',
             'reservations' => $reservationsQuery->latest()->get(),
@@ -96,6 +159,10 @@ class ReservationController extends MatrixAwareController
             'sources' => self::SOURCES,
             'reservationService' => $service,
             'reservationServiceLabel' => $service !== 'all' ? self::RESERVATION_SERVICES[$service] : 'Toutes',
+            'reservationScope' => $scope,
+            'reservationScopeLabel' => $scopeLabel,
+            'reservationScopeInternalCount' => $internalCount,
+            'reservationScopeExternalCount' => $externalCount,
         ]);
     }
 
@@ -224,6 +291,7 @@ class ReservationController extends MatrixAwareController
             'additionalServicesByCategory' => $additionalServicesByCategory,
             'additionalServiceModules' => self::ADDITIONAL_SERVICE_MODULES,
             'clientCreditBalance' => $clientCreditBalance,
+            'reservationScopeLabel' => ($reservation->service_slug ?? 'salles') === 'salles' ? 'Interne' : 'Externe',
         ]);
     }
 

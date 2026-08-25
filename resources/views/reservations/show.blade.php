@@ -51,6 +51,7 @@
             'voiture' => 'Voiture',
             default => 'Autre',
         };
+        $reservationScopeLabel = (string) ($reservationScopeLabel ?? (($reservation->service_slug ?? 'salles') === 'salles' ? 'Interne' : 'Externe'));
     @endphp
 
     <style>
@@ -696,9 +697,10 @@
             <div>
                 <p class="reservation-show-kicker">Reservation detail</p>
                 <h1 class="reservation-show-title">{{ $reservation->title ?: 'Reservation #' . $reservation->id }}</h1>
-                <p class="reservation-show-sub">Salle: {{ $reservation->salle?->name ?? '-' }} | Createur: {{ $reservation->user?->name ?? '-' }}</p>
+                <p class="reservation-show-sub">Type: {{ $reservationTypeLabel }} ({{ $reservationScopeLabel }}) | Salle: {{ $reservation->salle?->name ?? '-' }} | Createur: {{ $reservation->user?->name ?? '-' }}</p>
                 <div class="reservation-show-chips">
                     <span class="reservation-chip {{ $statusTone }}">{{ $statusLabel }}</span>
+                    <span class="reservation-chip">{{ $reservationScopeLabel }}</span>
                     <span class="reservation-chip">
                         @if ($reservation->start_date === $reservation->end_date)
                             @frDate($reservation->start_date)

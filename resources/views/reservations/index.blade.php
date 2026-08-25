@@ -60,6 +60,12 @@
         .reservation-day-events { margin-top: 4px; display: grid; gap: 3px; }
         .reservation-day-event { font-size: 10px; line-height: 1.2; padding: 2px 4px; border-radius: 6px; background: #eef5fc; color: #244f77; border-left: 3px solid #3b82f6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .reservation-day-event-link { text-decoration: none; display: block; }
+        .reservation-scope-filter { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .reservation-scope-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; border: 1px solid #cddded; color: #2f4b67; background: #f8fbff; text-decoration: none; font-size: 12px; font-weight: 700; }
+        .reservation-scope-pill.is-active { border-color: #1f5d9f; color: #ffffff; background: #1f5d9f; }
+        .reservation-scope-badge { display: inline-flex; margin-right: 3px; padding: 1px 4px; border-radius: 999px; font-size: 9px; line-height: 1.2; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
+        .reservation-scope-badge.interne { color: #1e5f9d; background: #deefff; }
+        .reservation-scope-badge.externe { color: #1d6a3d; background: #dff8e9; }
         .salle-cards-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
         .salle-card { border: 1px solid #d7dee8; border-radius: 12px; padding: 11px; cursor: pointer; background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%); transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; text-align: left; }
         .salle-card:hover { border-color: #8ca6c1; box-shadow: 0 6px 14px rgba(8, 24, 48, 0.08); transform: translateY(-1px); }
@@ -87,7 +93,22 @@
             @if (! empty($reservationServiceLabel))
                 Filtre service: <strong>{{ $reservationServiceLabel }}</strong>
             @endif
+            @if (! empty($reservationScopeLabel))
+                | Portee: <strong>{{ $reservationScopeLabel }}</strong>
+            @endif
         </p>
+
+        <div class="reservation-scope-filter">
+            <a href="{{ route('reservations.index', array_filter(['service' => $reservationService !== '' ? $reservationService : 'salles'])) }}" class="reservation-scope-pill {{ ($reservationScope ?? 'all') === 'all' ? 'is-active' : '' }}">
+                Toutes <span>({{ (int) ($reservationScopeInternalCount ?? 0) + (int) ($reservationScopeExternalCount ?? 0) }})</span>
+            </a>
+            <a href="{{ route('reservations.index', array_filter(['service' => $reservationService !== '' ? $reservationService : 'salles', 'scope' => 'interne'])) }}" class="reservation-scope-pill {{ ($reservationScope ?? 'all') === 'interne' ? 'is-active' : '' }}">
+                Interne <span>({{ (int) ($reservationScopeInternalCount ?? 0) }})</span>
+            </a>
+            <a href="{{ route('reservations.index', array_filter(['service' => $reservationService !== '' ? $reservationService : 'salles', 'scope' => 'externe'])) }}" class="reservation-scope-pill {{ ($reservationScope ?? 'all') === 'externe' ? 'is-active' : '' }}">
+                Externe <span>({{ (int) ($reservationScopeExternalCount ?? 0) }})</span>
+            </a>
+        </div>
 
         @if (session('success'))
             <p class="badge badge-success" style="margin-top:10px;">{{ session('success') }}</p>
@@ -366,9 +387,12 @@
     @endif
 
     <script type="application/json" id="reservation-calendar-data">{!! $reservations->map(function($reservation){
+        $scope = ($reservation->service_slug ?? 'salles') === 'salles' ? 'interne' : 'externe';
         return [
             'id' => $reservation->id,
             'service_slug' => $reservation->service_slug ?? 'salles',
+            'scope' => $scope,
+            'scope_label' => $scope === 'interne' ? 'Interne' : 'Externe',
             'title' => $reservation->title,
             'client' => $reservation->client?->name ?? '-',
             'salle' => $reservation->salle?->name ?? '-',
@@ -633,8 +657,10 @@
                 const hour = event.start_time || '--:--';
                 const label = event.title || event.client || `Reservation #${event.id}`;
                 const color = normalizeHexColor(event.salle_color);
+                const scopeClass = event.scope === 'interne' ? 'interne' : 'externe';
+                const scopeLabel = event.scope_label || (scopeClass === 'interne' ? 'Interne' : 'Externe');
                 const link = `${reservationShowBaseUrl}/${event.id}`;
-                return `<a class="reservation-day-event-link" href="${link}"><div class="reservation-day-event" style="border-left-color:${color};">${escapeHtml(hour)} · ${escapeHtml(label)}</div></a>`;
+                return `<a class="reservation-day-event-link" href="${link}"><div class="reservation-day-event" style="border-left-color:${color};"><span class="reservation-scope-badge ${scopeClass}">${escapeHtml(scopeLabel)}</span>${escapeHtml(hour)} · ${escapeHtml(label)}</div></a>`;
             }).join('');
         };
 
