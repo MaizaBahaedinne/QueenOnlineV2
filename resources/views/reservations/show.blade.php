@@ -383,6 +383,55 @@
             gap: 6px;
         }
 
+        .reservation-payment-row {
+            display: grid;
+            grid-template-columns: 40px 1fr;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .reservation-payment-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            background: #e8f1fb;
+            border: 1px solid #c7dbf0;
+            color: #1e4f7b;
+            font-size: 12px;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: .04em;
+        }
+
+        .reservation-payment-main {
+            min-width: 0;
+            display: grid;
+            gap: 4px;
+        }
+
+        .reservation-payment-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #244e76;
+        }
+
+        .reservation-payment-line strong {
+            color: #143b5f;
+        }
+
+        .reservation-payment-sub {
+            font-size: 12px;
+            color: #4f6b86;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .reservation-payment-top {
             display: flex;
             justify-content: space-between;
@@ -677,14 +726,12 @@
             <article class="reservation-card">
                 <div class="reservation-object-head">
                     <h3 class="reservation-object-title">Paiements</h3>
-                    <span class="reservation-chip info">{{ $paymentCount }} element(s)</span>
-                </div>
-
-                <div class="reservation-object-body">
                     @if ($canCreatePayment)
                         <button type="button" class="btn btn-primary" data-open-modal="payment-modal" {{ $remainingAmount <= 0 ? 'disabled' : '' }}>Ajouter paiement</button>
                     @endif
+                </div>
 
+                <div class="reservation-object-body">
                     <div class="reservation-kv"><span class="reservation-kv-key">Total reservation</span><span class="reservation-kv-value">{{ number_format($totalAmount, 2, '.', ' ') }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Total paye</span><span class="reservation-kv-value">{{ number_format($totalPaid, 2, '.', ' ') }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Reste</span><span class="reservation-kv-value">{{ number_format($remainingAmount, 2, '.', ' ') }}</span></div>
@@ -695,33 +742,31 @@
                         <ul class="reservation-payment-list">
                             @foreach ($reservation->payments as $payment)
                                 @php
-                                    $paymentStatus = (string) ($payment->status ?? 'pending');
-                                    $paymentTone = match ($paymentStatus) {
-                                        'paid', 'confirmed', 'completed' => 'ok',
-                                        'cancelled', 'failed' => 'danger',
-                                        default => 'warn',
-                                    };
+                                    $receiverName = trim((string) ($payment->user?->name ?? 'Recepteur'));
+                                    $receiverParts = preg_split('/\s+/', $receiverName) ?: [];
+                                    $receiverInitials = '';
+                                    foreach ($receiverParts as $part) {
+                                        if ($part !== '') {
+                                            $receiverInitials .= mb_strtoupper(mb_substr($part, 0, 1));
+                                        }
+                                        if (mb_strlen($receiverInitials) >= 2) {
+                                            break;
+                                        }
+                                    }
+                                    if ($receiverInitials === '') {
+                                        $receiverInitials = 'R';
+                                    }
                                 @endphp
                                 <li class="reservation-payment-item">
-                                    <div class="reservation-payment-top">
-                                        <span class="reservation-payment-id">{{ $payment->reference ?: ('Paiement #' . $payment->id) }}</span>
-                                        <span class="reservation-chip {{ $paymentTone }}">{{ $payment->status ?? 'pending' }}</span>
-                                    </div>
-                                    <div class="reservation-payment-meta">
-                                        <span>Montant</span>
-                                        <strong>{{ number_format((float) ($payment->amount ?? 0), 2, '.', ' ') }}</strong>
-                                    </div>
-                                    <div class="reservation-payment-meta">
-                                        <span>Date</span>
-                                        <strong>@frDateTime($payment->paid_at)</strong>
-                                    </div>
-                                    <div class="reservation-payment-meta">
-                                        <span>Methode</span>
-                                        <strong>{{ $payment->method ?? '-' }}</strong>
-                                    </div>
-                                    <div class="reservation-payment-meta">
-                                        <span>Recepteur</span>
-                                        <strong>{{ $payment->user?->name ?? '-' }}</strong>
+                                    <div class="reservation-payment-row">
+                                        <div class="reservation-payment-avatar">{{ $receiverInitials }}</div>
+                                        <div class="reservation-payment-main">
+                                            <div class="reservation-payment-line">
+                                                <span>{{ $payment->reference ?: ('Paiement #' . $payment->id) }}</span>
+                                                <strong>{{ number_format((float) ($payment->amount ?? 0), 2, '.', ' ') }}</strong>
+                                            </div>
+                                            <div class="reservation-payment-sub">@frDateTime($payment->paid_at) • {{ $payment->method ?? '-' }}</div>
+                                        </div>
                                     </div>
                                 </li>
                             @endforeach
