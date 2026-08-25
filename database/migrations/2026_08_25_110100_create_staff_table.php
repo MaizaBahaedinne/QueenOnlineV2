@@ -13,7 +13,7 @@ return new class extends Migration
             $table->string('photo_path')->nullable();
             $table->string('first_name');
             $table->string('last_name');
-            $table->string('cin')->unique();
+            $table->string('cin')->nullable()->unique();
             $table->date('hire_date')->nullable();
             $table->string('position_title');
             $table->foreignId('department_id')->nullable()->constrained('departments')->nullOnDelete();

@@ -85,7 +85,7 @@ class StaffController extends MatrixAwareController
             'photo' => ['nullable', 'image', 'max:3072'],
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'cin' => ['required', 'regex:/^[0-9]{8}$/', Rule::unique('staff', 'cin')->ignore($ignoreId)],
+            'cin' => ['nullable', 'regex:/^[0-9]{8}$/', Rule::unique('staff', 'cin')->ignore($ignoreId)],
             'hire_date' => ['nullable', 'date'],
             'position_title' => ['required', 'string', 'max:255'],
             'department_id' => ['nullable', 'exists:departments,id'],
@@ -100,6 +100,8 @@ class StaffController extends MatrixAwareController
 
     private function buildPayload(array $validated, Request $request, ?Staff $staff = null): array
     {
+        $validated['cin'] = filled($validated['cin'] ?? null) ? $validated['cin'] : null;
+
         if (! empty($validated['department_name'])) {
             $department = Department::query()->firstOrCreate(
                 ['name' => $validated['department_name']],

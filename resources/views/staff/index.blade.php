@@ -80,7 +80,7 @@
                             </td>
                             <td>{{ $member->last_name }}</td>
                             <td>{{ $member->first_name }}</td>
-                            <td>{{ $member->cin }}</td>
+                            <td>{{ $member->cin ?: '-' }}</td>
                             <td>{{ $member->hire_date ? $member->hire_date->format('d/m/Y') : '-' }}</td>
                             <td>{{ $member->position_title }}</td>
                             <td>{{ $member->department?->name ?? '-' }}</td>
@@ -130,7 +130,7 @@
                 <div class="full-span"><label>Photo</label><img src="" alt="Apercu photo" class="staff-photo-preview" id="staff-create-photo-preview" style="display:none;margin:0 0 8px;"><input class="search" style="max-width:none;" type="file" name="photo" id="staff-create-photo" accept="image/*"></div>
                 <input class="search" style="max-width:none;" type="text" name="last_name" placeholder="Nom" required>
                 <input class="search" style="max-width:none;" type="text" name="first_name" placeholder="Prenom" required>
-                <input class="search" style="max-width:none;" type="text" name="cin" placeholder="CIN (8 chiffres)" minlength="8" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" required>
+                <input class="search" style="max-width:none;" type="text" name="cin" placeholder="CIN (8 chiffres, optionnel)" minlength="8" maxlength="8" pattern="[0-9]{8}" inputmode="numeric">
                 <input class="search" style="max-width:none;" type="date" name="hire_date" placeholder="Date d'embauche">
                 <input class="search" style="max-width:none;" type="text" name="position_title" placeholder="Poste" required>
                 <select class="search" style="max-width:none;" name="department_id">
@@ -171,7 +171,7 @@
                 <div class="full-span"><label>Photo</label><img src="" alt="Apercu photo" class="staff-photo-preview" id="staff-edit-photo-preview" style="display:none;margin:0 0 8px;"><input class="search" style="max-width:none;" type="file" name="photo" id="staff-edit-photo" accept="image/*"></div>
                 <input class="search" style="max-width:none;" type="text" name="last_name" id="staff-edit-last-name" required>
                 <input class="search" style="max-width:none;" type="text" name="first_name" id="staff-edit-first-name" required>
-                <input class="search" style="max-width:none;" type="text" name="cin" id="staff-edit-cin" minlength="8" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" required>
+                <input class="search" style="max-width:none;" type="text" name="cin" id="staff-edit-cin" minlength="8" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" placeholder="CIN (8 chiffres, optionnel)">
                 <input class="search" style="max-width:none;" type="date" name="hire_date" id="staff-edit-hire-date">
                 <input class="search" style="max-width:none;" type="text" name="position_title" id="staff-edit-position-title" required>
                 <select class="search" style="max-width:none;" name="department_id" id="staff-edit-department-id">

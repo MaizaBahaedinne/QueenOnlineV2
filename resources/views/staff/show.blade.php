@@ -175,7 +175,7 @@
                 <div class="staff-card-body">
                     <div class="staff-kv"><span class="staff-kv-key">Nom</span><span class="staff-kv-value">{{ $staff->last_name }}</span></div>
                     <div class="staff-kv"><span class="staff-kv-key">Prenom</span><span class="staff-kv-value">{{ $staff->first_name }}</span></div>
-                    <div class="staff-kv"><span class="staff-kv-key">CIN</span><span class="staff-kv-value">{{ $staff->cin }}</span></div>
+                    <div class="staff-kv"><span class="staff-kv-key">CIN</span><span class="staff-kv-value">{{ $staff->cin ?: '-' }}</span></div>
                     <div class="staff-kv"><span class="staff-kv-key">Date d embauche</span><span class="staff-kv-value">{{ $staff->hire_date ? $staff->hire_date->format('d/m/Y') : '-' }}</span></div>
                 </div>
             </article>
