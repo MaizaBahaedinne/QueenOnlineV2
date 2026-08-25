@@ -607,6 +607,11 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'create', 'create');
 
+        $request->merge([
+            'start_time' => substr((string) $request->input('start_time', ''), 0, 5),
+            'end_time' => substr((string) $request->input('end_time', ''), 0, 5),
+        ]);
+
         $resolvedClientId = $this->resolveReservationClient($request);
 
         $validated = $request->validate([
@@ -658,6 +663,11 @@ class ReservationController extends MatrixAwareController
     public function update(Request $request, Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'update', 'update');
+
+        $request->merge([
+            'start_time' => substr((string) $request->input('start_time', ''), 0, 5),
+            'end_time' => substr((string) $request->input('end_time', ''), 0, 5),
+        ]);
 
         $validated = $request->validate([
             'client_id' => ['required', 'exists:clients,id'],
@@ -750,6 +760,11 @@ class ReservationController extends MatrixAwareController
     public function availableSalles(Request $request)
     {
         $this->enforcePermission('reservations', 'create', 'create');
+
+        $request->merge([
+            'start_time' => substr((string) $request->input('start_time', ''), 0, 5),
+            'end_time' => substr((string) $request->input('end_time', ''), 0, 5),
+        ]);
 
         $validator = Validator::make($request->all(), [
             'event_date' => ['required', 'date', 'after_or_equal:today'],

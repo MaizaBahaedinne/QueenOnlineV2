@@ -807,11 +807,11 @@
 
                         <div>
                             <label for="slot-start-time">Heure debut</label>
-                            <input id="slot-start-time" name="start_time" type="time" required value="{{ old('start_time', $reservation->start_time) }}">
+                            <input id="slot-start-time" name="start_time" type="time" required value="{{ old('start_time', $reservation->start_time ? \Carbon\Carbon::parse($reservation->start_time)->format('H:i') : '') }}">
                         </div>
                         <div>
                             <label for="slot-end-time">Heure fin</label>
-                            <input id="slot-end-time" name="end_time" type="time" required value="{{ old('end_time', $reservation->end_time) }}">
+                            <input id="slot-end-time" name="end_time" type="time" required value="{{ old('end_time', $reservation->end_time ? \Carbon\Carbon::parse($reservation->end_time)->format('H:i') : '') }}">
                         </div>
                     </div>
 
@@ -853,8 +853,8 @@
                     <input type="hidden" name="service_slug" value="{{ $reservation->service_slug ?? 'salles' }}">
                     <input type="hidden" name="start_date" value="{{ old('start_date', $reservation->start_date) }}">
                     <input type="hidden" name="end_date" value="{{ old('end_date', $reservation->end_date) }}">
-                    <input type="hidden" name="start_time" value="{{ old('start_time', $reservation->start_time) }}">
-                    <input type="hidden" name="end_time" value="{{ old('end_time', $reservation->end_time) }}">
+                    <input type="hidden" name="start_time" value="{{ old('start_time', $reservation->start_time ? \Carbon\Carbon::parse($reservation->start_time)->format('H:i') : '') }}">
+                    <input type="hidden" name="end_time" value="{{ old('end_time', $reservation->end_time ? \Carbon\Carbon::parse($reservation->end_time)->format('H:i') : '') }}">
                     <input type="hidden" name="payment_due_date" value="{{ old('payment_due_date', $reservation->payment_due_date) }}">
                     <input type="hidden" name="status" value="{{ old('status', $reservation->status ?? 'pending') }}">
 
