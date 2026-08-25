@@ -18,18 +18,23 @@ return new class extends Migration
         $module = Module::query()->firstOrCreate(
             ['slug' => 'staff'],
             [
-                'name' => 'Staff',
+                'name' => 'Ressource Humaine',
                 'description' => 'Gestion du personnel et des departements',
                 'sort_order' => 35,
                 'is_active' => true,
             ]
         );
 
+        $module->forceFill([
+            'name' => 'Ressource Humaine',
+            'description' => 'Gestion des ressources humaines et des departements',
+        ])->save();
+
         $features = [
-            ['name' => 'Liste staff', 'slug' => 'list', 'sort_order' => 10],
-            ['name' => 'Creation staff', 'slug' => 'create', 'sort_order' => 20],
-            ['name' => 'Edition staff', 'slug' => 'update', 'sort_order' => 30],
-            ['name' => 'Suppression staff', 'slug' => 'delete', 'sort_order' => 40],
+            ['name' => 'Liste ressources humaines', 'slug' => 'list', 'sort_order' => 10],
+            ['name' => 'Creation ressources humaines', 'slug' => 'create', 'sort_order' => 20],
+            ['name' => 'Edition ressources humaines', 'slug' => 'update', 'sort_order' => 30],
+            ['name' => 'Suppression ressources humaines', 'slug' => 'delete', 'sort_order' => 40],
         ];
 
         foreach ($features as $feature) {
@@ -42,6 +47,11 @@ return new class extends Migration
                     'is_active' => true,
                 ]
             );
+
+            $featureRow->forceFill([
+                'name' => $feature['name'],
+                'sort_order' => $feature['sort_order'],
+            ])->save();
 
             foreach (Role::query()->get() as $role) {
                 $isAdmin = $role->slug === 'admin';

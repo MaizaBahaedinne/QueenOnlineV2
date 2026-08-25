@@ -68,11 +68,11 @@
     <section class="staff-page panel">
         <div class="staff-toolbar">
             <div>
-                <h1 class="panel-title">Fiches staff</h1>
+                <h1 class="panel-title">Fiches Ressource Humaine</h1>
                 <p class="panel-sub">Dossiers RH complets, comptes lies et photo recadree au format carre.</p>
             </div>
             @if ($canCreate)
-                <button type="button" class="btn btn-primary" data-open-modal="staff-create-modal">Nouvelle fiche staff</button>
+                <button type="button" class="btn btn-primary" data-open-modal="staff-create-modal">Nouvelle fiche Ressource Humaine</button>
             @endif
         </div>
 
@@ -92,7 +92,7 @@
         @endif
 
         <div class="staff-summary">
-            <article class="staff-stat"><div class="staff-stat-label">Total staff</div><div class="staff-stat-value">{{ $staffMembers->count() }}</div><div class="staff-stat-note">Membres enregistres</div></article>
+            <article class="staff-stat"><div class="staff-stat-label">Total ressources humaines</div><div class="staff-stat-value">{{ $staffMembers->count() }}</div><div class="staff-stat-note">Membres enregistres</div></article>
             <article class="staff-stat"><div class="staff-stat-label">Actifs</div><div class="staff-stat-value">{{ $activeCount }}</div><div class="staff-stat-note">En poste actuellement</div></article>
             <article class="staff-stat"><div class="staff-stat-label">Suspendus</div><div class="staff-stat-value">{{ $suspendedCount }}</div><div class="staff-stat-note">Temporairement inactifs</div></article>
             <article class="staff-stat"><div class="staff-stat-label">Sortis</div><div class="staff-stat-value">{{ $exitedCount }}</div><div class="staff-stat-note">Historique des sorties</div></article>
@@ -195,7 +195,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="muted">Aucun membre du staff.</td></tr>
+                        <tr><td colspan="8" class="muted">Aucune ressource humaine.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -203,18 +203,18 @@
     </section>
 
     @if ($canCreate)
-        <div class="modal-overlay" id="staff-create-modal"><div class="modal-card"><div class="modal-head"><div><h3 class="modal-title">Nouvelle fiche staff</h3><p class="modal-subtitle">Creation d un dossier RH complet avec informations personnelles, professionnelles et paie.</p></div><button type="button" class="btn" data-close-modal>Fermer</button></div><form method="POST" action="{{ route('staff.store') }}" enctype="multipart/form-data">@csrf @include('staff._form', ['prefix' => 'create']) <div class="action-row" style="margin-top:14px; justify-content:flex-end;"><button type="submit" class="btn btn-primary">Enregistrer la fiche</button></div></form></div></div>
+        <div class="modal-overlay" id="staff-create-modal"><div class="modal-card"><div class="modal-head"><div><h3 class="modal-title">Nouvelle fiche Ressource Humaine</h3><p class="modal-subtitle">Creation d un dossier RH complet avec informations personnelles, professionnelles et paie.</p></div><button type="button" class="btn" data-close-modal>Fermer</button></div><form method="POST" action="{{ route('staff.store') }}" enctype="multipart/form-data">@csrf @include('staff._form', ['prefix' => 'create']) <div class="action-row" style="margin-top:14px; justify-content:flex-end;"><button type="submit" class="btn btn-primary">Enregistrer la fiche</button></div></form></div></div>
     @endif
 
     @if ($canUpdate)
-        <div class="modal-overlay" id="staff-edit-modal"><div class="modal-card"><div class="modal-head"><div><h3 class="modal-title">Modifier la fiche staff</h3><p class="modal-subtitle">Mise a jour des donnees RH, paie, statut et rattachement systeme.</p></div><button type="button" class="btn" data-close-modal>Fermer</button></div><form method="POST" id="staff-edit-form" action="#" enctype="multipart/form-data">@csrf @method('PATCH') @include('staff._form', ['prefix' => 'edit']) <div class="action-row" style="margin-top:14px; justify-content:flex-end;"><button type="submit" class="btn btn-primary">Mettre a jour la fiche</button></div></form></div></div>
+        <div class="modal-overlay" id="staff-edit-modal"><div class="modal-card"><div class="modal-head"><div><h3 class="modal-title">Modifier la fiche Ressource Humaine</h3><p class="modal-subtitle">Mise a jour des donnees RH, paie, statut et rattachement systeme.</p></div><button type="button" class="btn" data-close-modal>Fermer</button></div><form method="POST" id="staff-edit-form" action="#" enctype="multipart/form-data">@csrf @method('PATCH') @include('staff._form', ['prefix' => 'edit']) <div class="action-row" style="margin-top:14px; justify-content:flex-end;"><button type="submit" class="btn btn-primary">Mettre a jour la fiche</button></div></form></div></div>
     @endif
 
     @if ($canDelete)
-        <div class="modal-overlay" id="staff-delete-modal"><div class="modal-card" style="width:min(520px, 100%);"><div class="modal-head"><h3 class="modal-title">Supprimer la fiche staff</h3><button type="button" class="btn" data-close-modal>Fermer</button></div><p id="staff-delete-text" class="panel-sub"></p><form method="POST" id="staff-delete-form" action="#" style="margin-top:10px;">@csrf @method('DELETE')<button type="submit" class="btn">Confirmer suppression</button></form></div></div>
+        <div class="modal-overlay" id="staff-delete-modal"><div class="modal-card" style="width:min(520px, 100%);"><div class="modal-head"><h3 class="modal-title">Supprimer la fiche Ressource Humaine</h3><button type="button" class="btn" data-close-modal>Fermer</button></div><p id="staff-delete-text" class="panel-sub"></p><form method="POST" id="staff-delete-form" action="#" style="margin-top:10px;">@csrf @method('DELETE')<button type="submit" class="btn">Confirmer suppression</button></form></div></div>
     @endif
 
-    <div class="modal-overlay" id="staff-photo-crop-modal"><div class="modal-card crop-modal-card"><div class="modal-head"><div><h3 class="modal-title">Recadrer la photo</h3><p class="modal-subtitle">Format final carre 1:1 pour le profil staff.</p></div><button type="button" class="btn" id="staff-photo-crop-cancel-top">Fermer</button></div><div class="crop-layout"><div class="crop-stage" id="staff-photo-crop-stage"><img src="" alt="Recadrage photo staff" id="staff-photo-crop-image" class="crop-image" style="display:none;"></div><div class="crop-sidebar"><p class="crop-help">Glisse l image pour la positionner dans le cadre, puis ajuste le zoom. La photo enregistree sera recadree en carre 1:1.</p><div><label for="staff-photo-crop-zoom" style="display:block; margin-bottom:8px; font-weight:600;">Zoom</label><input type="range" id="staff-photo-crop-zoom" class="crop-slider" min="100" max="400" step="1" value="100"></div><div class="crop-actions"><button type="button" class="btn" id="staff-photo-crop-reset">Reinitialiser</button><button type="button" class="btn" id="staff-photo-crop-cancel">Annuler</button><button type="button" class="btn btn-primary" id="staff-photo-crop-apply">Utiliser cette photo</button></div></div></div></div></div>
+    <div class="modal-overlay" id="staff-photo-crop-modal"><div class="modal-card crop-modal-card"><div class="modal-head"><div><h3 class="modal-title">Recadrer la photo</h3><p class="modal-subtitle">Format final carre 1:1 pour le profil Ressource Humaine.</p></div><button type="button" class="btn" id="staff-photo-crop-cancel-top">Fermer</button></div><div class="crop-layout"><div class="crop-stage" id="staff-photo-crop-stage"><img src="" alt="Recadrage photo Ressource Humaine" id="staff-photo-crop-image" class="crop-image" style="display:none;"></div><div class="crop-sidebar"><p class="crop-help">Glisse l image pour la positionner dans le cadre, puis ajuste le zoom. La photo enregistree sera recadree en carre 1:1.</p><div><label for="staff-photo-crop-zoom" style="display:block; margin-bottom:8px; font-weight:600;">Zoom</label><input type="range" id="staff-photo-crop-zoom" class="crop-slider" min="100" max="400" step="1" value="100"></div><div class="crop-actions"><button type="button" class="btn" id="staff-photo-crop-reset">Reinitialiser</button><button type="button" class="btn" id="staff-photo-crop-cancel">Annuler</button><button type="button" class="btn btn-primary" id="staff-photo-crop-apply">Utiliser cette photo</button></div></div></div></div></div>
 
     <script>
         const openModalButtons = document.querySelectorAll('[data-open-modal]');

@@ -18,7 +18,7 @@ class StaffController extends MatrixAwareController
         $this->enforcePermission('staff', 'list', 'view');
 
         return view('staff.index', [
-            'title' => 'Staff',
+            'title' => 'Ressource Humaine',
             'staffMembers' => Staff::query()->with(['department', 'manager', 'user.role'])->latest()->get(),
             'departments' => Department::query()->orderBy('name')->get(),
             'managers' => Staff::query()->orderBy('first_name')->orderBy('last_name')->get(['id', 'first_name', 'last_name']),
@@ -34,7 +34,7 @@ class StaffController extends MatrixAwareController
         $staff->load(['department', 'manager', 'user.role', 'documents.uploader']);
 
         return view('staff.show', [
-            'title' => 'Profil staff',
+            'title' => 'Profil Ressource Humaine',
             'staff' => $staff,
             ...$this->formOptions(),
         ]);
@@ -55,7 +55,7 @@ class StaffController extends MatrixAwareController
 
         Staff::query()->create($payload);
 
-        return redirect()->route('staff.index')->with('success', 'Membre du staff cree.');
+        return redirect()->route('staff.index')->with('success', 'Ressource humaine creee.');
     }
 
     public function update(Request $request, Staff $staff)
@@ -67,7 +67,7 @@ class StaffController extends MatrixAwareController
 
         $staff->update($payload);
 
-        return redirect()->route('staff.index')->with('success', 'Membre du staff mis a jour.');
+        return redirect()->route('staff.index')->with('success', 'Ressource humaine mise a jour.');
     }
 
     public function destroy(Staff $staff)
@@ -84,7 +84,7 @@ class StaffController extends MatrixAwareController
 
         $staff->delete();
 
-        return redirect()->route('staff.index')->with('success', 'Membre du staff supprime.');
+        return redirect()->route('staff.index')->with('success', 'Ressource humaine supprimee.');
     }
 
     public function storeDocument(Request $request, Staff $staff)
