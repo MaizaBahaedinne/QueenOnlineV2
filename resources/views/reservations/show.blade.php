@@ -758,10 +758,7 @@
                             <label for="slot-start-date">Date event</label>
                             <input id="slot-start-date" name="start_date" type="date" required value="{{ old('start_date', $reservation->start_date) }}">
                         </div>
-                        <div>
-                            <label for="slot-end-date">Date fin</label>
-                            <input id="slot-end-date" name="end_date" type="date" required value="{{ old('end_date', $reservation->end_date) }}">
-                        </div>
+                        <input id="slot-end-date" name="end_date" type="hidden" value="{{ old('end_date', $reservation->end_date) }}">
 
                         <div>
                             <label for="slot-start-time">Heure debut</label>
@@ -1075,6 +1072,16 @@
 
             if (!slotCheckButton || !slotStartDate || !slotStartTime || !slotEndTime || !slotSalleSelect) {
                 return;
+            }
+
+            const slotEndDate = document.getElementById('slot-end-date');
+            if (slotEndDate) {
+                const syncEndDate = () => {
+                    slotEndDate.value = slotStartDate.value;
+                };
+                slotStartDate.addEventListener('change', syncEndDate);
+                slotStartDate.addEventListener('input', syncEndDate);
+                syncEndDate();
             }
 
             slotCheckButton.addEventListener('click', async () => {
