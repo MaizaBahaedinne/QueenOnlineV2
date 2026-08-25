@@ -785,18 +785,9 @@
                     <button type="button" class="btn" data-close-modal>Fermer</button>
                 </div>
 
-                <form method="POST" action="{{ route('reservations.update', $reservation) }}" id="reservation-slot-form" style="display:grid; gap:10px;">
+                <form method="POST" action="{{ route('reservations.slot.update', $reservation) }}" id="reservation-slot-form" style="display:grid; gap:10px;">
                     @csrf
                     @method('PATCH')
-
-                    <input type="hidden" name="client_id" value="{{ $reservation->client_id }}">
-                    <input type="hidden" name="service_slug" value="{{ $reservation->service_slug ?? 'salles' }}">
-                    <input type="hidden" name="title" value="{{ old('title', $reservation->title) }}">
-                    <input type="hidden" name="event_type" value="{{ old('event_type', $reservation->event_type) }}">
-                    <input type="hidden" name="guest_count" value="{{ old('guest_count', $reservation->guest_count) }}">
-                    <input type="hidden" name="total_amount" value="{{ old('total_amount', $reservation->total_amount) }}">
-                    <input type="hidden" name="note_admin" value="{{ old('note_admin', $reservation->note_admin) }}">
-                    <input type="hidden" name="status" value="{{ old('status', $reservation->status ?? 'pending') }}">
 
                     <div class="client-form-grid">
                         <div>
@@ -842,21 +833,11 @@
                     <button type="button" class="btn" data-close-modal>Fermer</button>
                 </div>
 
-                <form method="POST" action="{{ route('reservations.update', $reservation) }}" style="display:grid; gap:10px;">
+                <form method="POST" action="{{ route('reservations.details.update', $reservation) }}" style="display:grid; gap:10px;">
                     @csrf
                     @method('PATCH')
 
                     <p class="payment-form-help">Toute modification de salle/date/heure est validee contre la disponibilite reelle. En cas de conflit, la mise a jour sera refusee.</p>
-
-                    <input type="hidden" name="client_id" value="{{ $reservation->client_id }}">
-                    <input type="hidden" name="salle_id" value="{{ $reservation->salle_id }}">
-                    <input type="hidden" name="service_slug" value="{{ $reservation->service_slug ?? 'salles' }}">
-                    <input type="hidden" name="start_date" value="{{ old('start_date', $reservation->start_date) }}">
-                    <input type="hidden" name="end_date" value="{{ old('end_date', $reservation->end_date) }}">
-                    <input type="hidden" name="start_time" value="{{ old('start_time', $reservation->start_time ? \Carbon\Carbon::parse($reservation->start_time)->format('H:i') : '') }}">
-                    <input type="hidden" name="end_time" value="{{ old('end_time', $reservation->end_time ? \Carbon\Carbon::parse($reservation->end_time)->format('H:i') : '') }}">
-                    <input type="hidden" name="payment_due_date" value="{{ old('payment_due_date', $reservation->payment_due_date) }}">
-                    <input type="hidden" name="status" value="{{ old('status', $reservation->status ?? 'pending') }}">
 
                     <div class="client-form-grid">
                         <div>
@@ -1336,9 +1317,12 @@
             const hasPaymentErrors = "{{ $errors->has('amount') || $errors->has('phase') || $errors->has('method') || $errors->has('note') ? '1' : '0' }}" === '1';
             const hasClientErrors = "{{ $errors->has('client_type') || $errors->has('first_name') || $errors->has('name') || $errors->has('phone') ? '1' : '0' }}" === '1';
             const hasAdditionalServiceErrors = "{{ $errors->has('module_slug') || $errors->has('service_ref') || $errors->has('service_amount') || $errors->has('service') ? '1' : '0' }}" === '1';
-            const hasReservationErrors = "{{ $errors->has('title') || $errors->has('event_type') || $errors->has('guest_count') || $errors->has('start_date') || $errors->has('end_date') || $errors->has('start_time') || $errors->has('end_time') || $errors->has('status') || $errors->has('total_amount') || $errors->has('note_admin') ? '1' : '0' }}" === '1';
+            const hasReservationErrors = "{{ $errors->has('title') || $errors->has('event_type') || $errors->has('guest_count') || $errors->has('total_amount') || $errors->has('note_admin') ? '1' : '0' }}" === '1';
+            const hasSlotErrors = "{{ $errors->has('salle_id') || $errors->has('start_date') || $errors->has('end_date') || $errors->has('start_time') || $errors->has('end_time') ? '1' : '0' }}" === '1';
 
-            if (hasReservationErrors) {
+            if (hasSlotErrors) {
+                openModal('reservation-slot-modal');
+            } else if (hasReservationErrors) {
                 openModal('reservation-modal');
             } else if (hasPaymentErrors) {
                 openModal('payment-modal');

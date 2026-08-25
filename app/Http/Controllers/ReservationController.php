@@ -660,6 +660,101 @@ class ReservationController extends MatrixAwareController
         return redirect()->route('reservations.index')->with('success', 'Reservation creee.');
     }
 
+    public function updateDetails(Request $request, Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'guest_count' => ['nullable', 'integer', 'min:1'],
+            'event_type' => ['nullable', 'string', 'max:120'],
+            'note_admin' => ['nullable', 'string'],
+            'total_amount' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $reservation->update($validated);
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Informations de la reservation mises a jour.');
+    }
+
+    public function updateSlot(Request $request, Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        $request->merge([
+            'start_time' => substr((string) $request->input('start_time', ''), 0, 5),
+            'end_time' => substr((string) $request->input('end_time', ''), 0, 5),
+        ]);
+
+        $validated = $request->validate([
+            'salle_id' => ['required', 'exists:salles,id'],
+            'start_date' => ['required', 'date', 'after_or_equal:today'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date', 'after_or_equal:today'],
+            'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
+            'end_time' => [
+                'required',
+                'date_format:H:i',
+                'after:start_time',
+                'before_or_equal:23:59',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request) {
+                    $startRaw = substr((string) $request->input('start_time'), 0, 5);
+                    $endRaw = substr((string) $value, 0, 5);
+
+                    $start = Carbon::createFromFormat('H:i', $startRaw);
+                    $end = Carbon::createFromFormat('H:i', $endRaw);
+
+                    if ($start && $end && $start->diffInMinutes($end, false) < 60) {
+                        $fail('Heure fin doit etre au moins heure debut + 1 heure.');
+                    }
+                },
+            ],
+        ]);
+
+        $targetSalleId = (int) $validated['salle_id'];
+        $targetStartDate = (string) $validated['start_date'];
+        $targetEndDate = (string) $validated['end_date'];
+        $targetStartTime = (string) $validated['start_time'];
+        $targetEndTime = (string) $validated['end_time'];
+
+        $hasConflict = Reservation::query()
+            ->where('id', '!=', $reservation->id)
+            ->where('salle_id', $targetSalleId)
+            ->where('status', '!=', 'cancelled')
+            ->whereDate('start_date', '<=', $targetEndDate)
+            ->whereDate('end_date', '>=', $targetStartDate)
+            ->where(function ($timeQuery) use ($targetStartTime, $targetEndTime) {
+                $timeQuery
+                    ->whereNull('start_time')
+                    ->orWhereNull('end_time')
+                    ->orWhere(function ($overlapQuery) use ($targetStartTime, $targetEndTime) {
+                        $overlapQuery
+                            ->where('start_time', '<', $targetEndTime)
+                            ->where('end_time', '>', $targetStartTime);
+                    });
+            })
+            ->exists();
+
+        if ($hasConflict) {
+            return redirect()
+                ->route('reservations.show', $reservation)
+                ->withErrors(['salle_id' => 'Salle indisponible pour la date/heure choisie. Verifie la disponibilite avant modification.'])
+                ->withInput();
+        }
+
+        $validated['payment_due_date'] = Carbon::parse((string) $validated['start_date'])->subDays(30)->toDateString();
+
+        $reservation->update([
+            'salle_id' => $validated['salle_id'],
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'],
+            'start_time' => $validated['start_time'],
+            'end_time' => $validated['end_time'],
+            'payment_due_date' => $validated['payment_due_date'],
+        ]);
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Date, heure et salle mises a jour.');
+    }
+
     public function update(Request $request, Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'update', 'update');
