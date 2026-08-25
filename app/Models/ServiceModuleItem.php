@@ -22,11 +22,11 @@ class ServiceModuleItem extends Model
 
     public function singerPartnershipPrices()
     {
-        return $this->hasMany(SingerTroupePartnershipPrice::class, 'singer_item_id');
+        return $this->hasMany(\App\Models\SingerTroupePartnershipPrice::class, 'singer_item_id');
     }
 
     public function troupePartnershipPrices()
     {
-        return $this->hasMany(SingerTroupePartnershipPrice::class, 'troupe_item_id');
+        return $this->hasMany(\App\Models\SingerTroupePartnershipPrice::class, 'troupe_item_id');
     }
 }

@@ -303,6 +303,9 @@
                     const itemId = button.dataset.itemId;
                     const itemName = button.dataset.itemName || '';
                     const form = document.getElementById('item-partnership-form');
+                    if (!form) {
+                        return;
+                    }
                     form.action = `{{ url('service-modules/'.$moduleSlug.'/items') }}/${itemId}/partnership-prices`;
                     document.getElementById('item-partnership-subtitle').textContent = `Chanteur: ${itemName}`;
 
@@ -314,9 +317,11 @@
                         prices = {};
                     }
 
-                    @foreach ($troupes as $troupe)
-                        document.getElementById('partnership-price-{{ $troupe->id }}').value = prices['{{ $troupe->id }}'] ?? '';
-                    @endforeach
+                    const partnershipInputs = form.querySelectorAll('input[id^="partnership-price-"]');
+                    partnershipInputs.forEach((input) => {
+                        const troupeId = input.id.replace('partnership-price-', '');
+                        input.value = prices[String(troupeId)] ?? '';
+                    });
                 }
             });
         });

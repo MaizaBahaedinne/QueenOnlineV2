@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SingerTroupePartnershipPrice;
 use App\Models\ServiceModuleItem;
 use App\Models\ServiceModulePack;
 use Illuminate\Http\Request;
@@ -47,7 +46,7 @@ class ServiceModuleController extends MatrixAwareController
                 ->orderBy('name')
                 ->get(['id', 'name']);
 
-            $partnershipPricesBySinger = SingerTroupePartnershipPrice::query()
+            $partnershipPricesBySinger = \App\Models\SingerTroupePartnershipPrice::query()
                 ->whereIn('singer_item_id', $items->pluck('id'))
                 ->get(['singer_item_id', 'troupe_item_id', 'partnership_price'])
                 ->groupBy('singer_item_id')
@@ -174,7 +173,7 @@ class ServiceModuleController extends MatrixAwareController
         $prices = $validated['partnership_prices'] ?? [];
 
         DB::transaction(function () use ($item, $prices, $troupeIds) {
-            SingerTroupePartnershipPrice::query()
+            \App\Models\SingerTroupePartnershipPrice::query()
                 ->where('singer_item_id', $item->id)
                 ->delete();
 
@@ -187,7 +186,7 @@ class ServiceModuleController extends MatrixAwareController
                     continue;
                 }
 
-                SingerTroupePartnershipPrice::query()->create([
+                \App\Models\SingerTroupePartnershipPrice::query()->create([
                     'singer_item_id' => $item->id,
                     'troupe_item_id' => (int) $troupeId,
                     'partnership_price' => $price,
