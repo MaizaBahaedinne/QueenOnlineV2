@@ -19,7 +19,18 @@
         .staff-avatar { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; background: #e2e8f0; border: 1px solid #cbd5e1; }
         .staff-avatar-fallback { display:inline-flex; align-items:center; justify-content:center; font-weight:700; color:#1e3a5f; }
         .staff-photo-preview { width: 88px; height: 88px; border-radius: 16px; object-fit: cover; background: #e2e8f0; border: 1px solid #cbd5e1; display:block; }
+        .crop-modal-card { width: min(920px, 100%); }
+        .crop-layout { display: grid; grid-template-columns: minmax(280px, 460px) minmax(220px, 1fr); gap: 18px; align-items: start; }
+        .crop-stage { position: relative; width: min(460px, 100%); aspect-ratio: 1 / 1; overflow: hidden; border-radius: 20px; background: linear-gradient(135deg, #dce8f4 0%, #eef4fa 100%); touch-action: none; }
+        .crop-stage::after { content: ''; position: absolute; inset: 0; border: 2px solid rgba(255,255,255,.9); border-radius: 20px; box-shadow: 0 0 0 9999px rgba(15, 23, 42, .34) inset; pointer-events: none; }
+        .crop-image { position: absolute; top: 0; left: 0; transform-origin: top left; cursor: grab; user-select: none; -webkit-user-drag: none; max-width: none; }
+        .crop-image.dragging { cursor: grabbing; }
+        .crop-sidebar { display: grid; gap: 14px; }
+        .crop-help { margin: 0; color: #5b7187; font-size: 13px; line-height: 1.5; }
+        .crop-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .crop-slider { width: 100%; }
         @media (max-width: 780px) { .form-grid-two { grid-template-columns: 1fr; } }
+        @media (max-width: 860px) { .crop-layout { grid-template-columns: 1fr; } .crop-stage { width: 100%; } }
     </style>
 
     <section class="panel">
@@ -218,15 +229,161 @@
             </form></div></div>
     @endif
 
+    <div class="modal-overlay" id="staff-photo-crop-modal">
+        <div class="modal-card crop-modal-card">
+            <div class="modal-head">
+                <div>
+                    <h3 class="modal-title">Recadrer la photo</h3>
+                    <p class="panel-sub" style="margin:4px 0 0;">Format final carre 1:1 pour le profil staff.</p>
+                </div>
+                <button type="button" class="btn" id="staff-photo-crop-cancel-top">Fermer</button>
+            </div>
+
+            <div class="crop-layout">
+                <div class="crop-stage" id="staff-photo-crop-stage">
+                    <img src="" alt="Recadrage photo staff" id="staff-photo-crop-image" class="crop-image" style="display:none;">
+                </div>
+
+                <div class="crop-sidebar">
+                    <p class="crop-help">Glisse l image pour la positionner dans le cadre, puis ajuste le zoom. La photo enregistree sera recadree en carre 1:1.</p>
+                    <div>
+                        <label for="staff-photo-crop-zoom" style="display:block; margin-bottom:8px; font-weight:600;">Zoom</label>
+                        <input type="range" id="staff-photo-crop-zoom" class="crop-slider" min="100" max="400" step="1" value="100">
+                    </div>
+                    <div class="crop-actions">
+                        <button type="button" class="btn" id="staff-photo-crop-reset">Reinitialiser</button>
+                        <button type="button" class="btn" id="staff-photo-crop-cancel">Annuler</button>
+                        <button type="button" class="btn btn-primary" id="staff-photo-crop-apply">Utiliser cette photo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const openModalButtons = document.querySelectorAll('[data-open-modal]');
         const closeModalButtons = document.querySelectorAll('[data-close-modal]');
         const openModal = (id) => { const m = document.getElementById(id); if (m) m.classList.add('show'); };
         const closeModal = (m) => m.classList.remove('show');
-        const bindPhotoPreview = (inputId, previewId) => {
+        const cropModal = document.getElementById('staff-photo-crop-modal');
+        const cropStage = document.getElementById('staff-photo-crop-stage');
+        const cropImage = document.getElementById('staff-photo-crop-image');
+        const cropZoom = document.getElementById('staff-photo-crop-zoom');
+        const cropApplyButton = document.getElementById('staff-photo-crop-apply');
+        const cropResetButton = document.getElementById('staff-photo-crop-reset');
+        const cropCancelButton = document.getElementById('staff-photo-crop-cancel');
+        const cropCancelTopButton = document.getElementById('staff-photo-crop-cancel-top');
+        const cropState = {
+            activeInput: null,
+            activePreview: null,
+            originalPreviewSrc: '',
+            originalPreviewDisplay: 'none',
+            fileName: 'staff-photo.jpg',
+            image: null,
+            minScale: 1,
+            scale: 1,
+            offsetX: 0,
+            offsetY: 0,
+            dragPointerId: null,
+            dragStartX: 0,
+            dragStartY: 0,
+            dragOffsetX: 0,
+            dragOffsetY: 0,
+        };
+
+        const constrainCropOffsets = () => {
+            if (!cropState.image) {
+                return;
+            }
+
+            const stageSize = cropStage.clientWidth;
+            const scaledWidth = cropState.image.naturalWidth * cropState.scale;
+            const scaledHeight = cropState.image.naturalHeight * cropState.scale;
+            const minX = stageSize - scaledWidth;
+            const minY = stageSize - scaledHeight;
+
+            cropState.offsetX = Math.min(0, Math.max(minX, cropState.offsetX));
+            cropState.offsetY = Math.min(0, Math.max(minY, cropState.offsetY));
+        };
+
+        const renderCropImage = () => {
+            if (!cropState.image) {
+                return;
+            }
+
+            constrainCropOffsets();
+            cropImage.style.display = 'block';
+            cropImage.style.width = `${cropState.image.naturalWidth * cropState.scale}px`;
+            cropImage.style.height = `${cropState.image.naturalHeight * cropState.scale}px`;
+            cropImage.style.transform = `translate(${cropState.offsetX}px, ${cropState.offsetY}px)`;
+        };
+
+        const resetCrop = () => {
+            if (!cropState.image) {
+                return;
+            }
+
+            const stageSize = cropStage.clientWidth;
+            const baseScale = Math.max(stageSize / cropState.image.naturalWidth, stageSize / cropState.image.naturalHeight);
+            cropState.minScale = baseScale;
+            cropState.scale = baseScale;
+            cropState.offsetX = (stageSize - (cropState.image.naturalWidth * cropState.scale)) / 2;
+            cropState.offsetY = (stageSize - (cropState.image.naturalHeight * cropState.scale)) / 2;
+            cropZoom.value = '100';
+            renderCropImage();
+        };
+
+        const closeCropModal = (restorePreview = false) => {
+            if (restorePreview && cropState.activePreview) {
+                cropState.activePreview.src = cropState.originalPreviewSrc;
+                cropState.activePreview.style.display = cropState.originalPreviewDisplay;
+            }
+
+            if (cropState.activeInput && restorePreview) {
+                cropState.activeInput.value = '';
+            }
+
+            cropState.activeInput = null;
+            cropState.activePreview = null;
+            cropState.image = null;
+            cropImage.src = '';
+            cropImage.style.display = 'none';
+            closeModal(cropModal);
+        };
+
+        const openCropModalForInput = (file, input, preview) => {
+            if (!file || !input || !preview) {
+                return;
+            }
+
+            cropState.activeInput = input;
+            cropState.activePreview = preview;
+            cropState.originalPreviewSrc = preview.getAttribute('src') || '';
+            cropState.originalPreviewDisplay = preview.style.display || 'none';
+            cropState.fileName = file.name || 'staff-photo.jpg';
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const image = new Image();
+                image.onload = () => {
+                    cropState.image = image;
+                    cropImage.src = image.src;
+                    openModal('staff-photo-crop-modal');
+                    requestAnimationFrame(() => {
+                        resetCrop();
+                    });
+                };
+                image.src = event.target?.result || '';
+            };
+            reader.readAsDataURL(file);
+        };
+
+        const bindPhotoCropper = (inputId, previewId) => {
             const input = document.getElementById(inputId);
             const preview = document.getElementById(previewId);
-            if (!input || !preview) return;
+            if (!input || !preview) {
+                return;
+            }
 
             input.addEventListener('change', () => {
                 const file = input.files && input.files[0];
@@ -234,14 +391,127 @@
                     return;
                 }
 
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    preview.src = event.target?.result || '';
-                    preview.style.display = preview.src ? 'block' : 'none';
-                };
-                reader.readAsDataURL(file);
+                openCropModalForInput(file, input, preview);
             });
         };
+
+        cropStage.addEventListener('pointerdown', (event) => {
+            if (!cropState.image) {
+                return;
+            }
+
+            cropState.dragPointerId = event.pointerId;
+            cropState.dragStartX = event.clientX;
+            cropState.dragStartY = event.clientY;
+            cropState.dragOffsetX = cropState.offsetX;
+            cropState.dragOffsetY = cropState.offsetY;
+            cropImage.classList.add('dragging');
+            cropStage.setPointerCapture(event.pointerId);
+        });
+
+        cropStage.addEventListener('pointermove', (event) => {
+            if (cropState.dragPointerId !== event.pointerId || !cropState.image) {
+                return;
+            }
+
+            cropState.offsetX = cropState.dragOffsetX + (event.clientX - cropState.dragStartX);
+            cropState.offsetY = cropState.dragOffsetY + (event.clientY - cropState.dragStartY);
+            renderCropImage();
+        });
+
+        const stopCropDrag = (event) => {
+            if (cropState.dragPointerId !== event.pointerId) {
+                return;
+            }
+
+            cropState.dragPointerId = null;
+            cropImage.classList.remove('dragging');
+            if (cropStage.hasPointerCapture(event.pointerId)) {
+                cropStage.releasePointerCapture(event.pointerId);
+            }
+        };
+
+        cropStage.addEventListener('pointerup', stopCropDrag);
+        cropStage.addEventListener('pointercancel', stopCropDrag);
+
+        cropZoom.addEventListener('input', () => {
+            if (!cropState.image) {
+                return;
+            }
+
+            const stageSize = cropStage.clientWidth;
+            const scaleFactor = Number(cropZoom.value) / 100;
+            const nextScale = cropState.minScale * scaleFactor;
+            const centerX = stageSize / 2;
+            const centerY = stageSize / 2;
+            const imageX = (centerX - cropState.offsetX) / cropState.scale;
+            const imageY = (centerY - cropState.offsetY) / cropState.scale;
+
+            cropState.scale = nextScale;
+            cropState.offsetX = centerX - (imageX * cropState.scale);
+            cropState.offsetY = centerY - (imageY * cropState.scale);
+
+            renderCropImage();
+        });
+
+        cropResetButton.addEventListener('click', () => {
+            resetCrop();
+        });
+
+        cropCancelButton.addEventListener('click', () => {
+            closeCropModal(true);
+        });
+
+        cropCancelTopButton.addEventListener('click', () => {
+            closeCropModal(true);
+        });
+
+        cropApplyButton.addEventListener('click', () => {
+            if (!cropState.image || !cropState.activeInput || !cropState.activePreview) {
+                return;
+            }
+
+            const stageSize = cropStage.clientWidth;
+            const sourceX = Math.max(0, (0 - cropState.offsetX) / cropState.scale);
+            const sourceY = Math.max(0, (0 - cropState.offsetY) / cropState.scale);
+            const sourceSize = stageSize / cropState.scale;
+            const canvas = document.createElement('canvas');
+            canvas.width = 720;
+            canvas.height = 720;
+
+            const context = canvas.getContext('2d');
+            if (!context) {
+                return;
+            }
+
+            context.drawImage(
+                cropState.image,
+                sourceX,
+                sourceY,
+                sourceSize,
+                sourceSize,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+            canvas.toBlob((blob) => {
+                if (!blob || !cropState.activeInput || !cropState.activePreview) {
+                    return;
+                }
+
+                const croppedFileName = cropState.fileName.replace(/\.[^.]+$/, '') + '-crop.jpg';
+                const croppedFile = new File([blob], croppedFileName, { type: 'image/jpeg' });
+                const transfer = new DataTransfer();
+                transfer.items.add(croppedFile);
+                cropState.activeInput.files = transfer.files;
+
+                cropState.activePreview.src = URL.createObjectURL(blob);
+                cropState.activePreview.style.display = 'block';
+                closeCropModal(false);
+            }, 'image/jpeg', 0.92);
+        });
 
         openModalButtons.forEach((button) => {
             button.addEventListener('click', () => {
@@ -287,7 +557,13 @@
             });
         });
 
-        bindPhotoPreview('staff-create-photo', 'staff-create-photo-preview');
-        bindPhotoPreview('staff-edit-photo', 'staff-edit-photo-preview');
+        cropModal.addEventListener('click', (event) => {
+            if (event.target === cropModal) {
+                closeCropModal(true);
+            }
+        });
+
+        bindPhotoCropper('staff-create-photo', 'staff-create-photo-preview');
+        bindPhotoCropper('staff-edit-photo', 'staff-edit-photo-preview');
     </script>
 @endsection
