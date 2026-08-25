@@ -7,8 +7,10 @@ use App\Models\ClientCreditLedger;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\ReservationAdditionalService;
+use App\Models\ReservationSalleOption;
 use App\Models\ReservationCancellation;
 use App\Models\Salle;
+use App\Models\SalleOption;
 use App\Models\ServiceModuleItem;
 use App\Models\ServiceModulePack;
 use Illuminate\Http\Request;
@@ -48,11 +50,25 @@ class ReservationController extends MatrixAwareController
     ];
 
     private const SOURCES = [
-        'passager',
-        'reseaux-sociaux-web',
-        'presence-event',
-        'recommandation',
-        'connaissance-queenpark',
+        'connaissance-queenpark' => 'Par des amis ou connaissance de l equipe de Queen Park',
+        'reseaux-sociaux-web' => 'Reseaux sociaux (Facebook, Instagram, tiktok ...)',
+        'publicite-classique' => 'Publicite (TV, radio, affiches...)',
+        'recherche-internet' => 'Recherche sur Internet',
+        'presence-event' => 'Lors d un evenement',
+        'passager' => 'Passager',
+        'recommandation' => 'Recomandation d une connaisance',
+    ];
+
+    private const EVENT_TYPES = [
+        'Marriage',
+        'Finacailles',
+        'Hena',
+        'Outya',
+        'Congret',
+        'Circoncision',
+        'Team Building',
+        'Anniversaire',
+        'Evenement',
     ];
 
     public function index()
@@ -157,6 +173,7 @@ class ReservationController extends MatrixAwareController
             'salles' => Salle::query()->orderBy('name')->get(),
             'governorates' => self::GOVERNORATES,
             'sources' => self::SOURCES,
+            'eventTypes' => self::EVENT_TYPES,
             'reservationService' => $service,
             'reservationServiceLabel' => $service !== 'all' ? self::RESERVATION_SERVICES[$service] : 'Toutes',
             'reservationScope' => $scope,
@@ -175,7 +192,7 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'list', 'view');
 
-        $reservation->load(['client', 'salle', 'user', 'payments.user', 'additionalServices.item', 'additionalServices.pack', 'additionalServices.linkedReservation.payments']);
+        $reservation->load(['client', 'salle', 'user', 'payments.user', 'additionalServices.item', 'additionalServices.pack', 'additionalServices.linkedReservation.payments', 'salleOptionRows.option']);
 
         $currentStart = $this->reservationDateTime($reservation->start_date, $reservation->start_time);
         $currentEnd = $this->reservationDateTime($reservation->end_date, $reservation->end_time);
@@ -280,19 +297,84 @@ class ReservationController extends MatrixAwareController
                 ];
             });
 
+        $availableSalleOptions = collect();
+        if (($reservation->service_slug ?? 'salles') === 'salles' && $reservation->salle_id) {
+            $availableSalleOptions = SalleOption::query()
+                ->where('salle_id', $reservation->salle_id)
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name', 'price']);
+        }
+
         $clientCreditBalance = $this->getClientCreditBalance((int) $reservation->client_id);
         return view('reservations.show', [
             'title' => 'Detail reservation',
             'reservation' => $reservation,
             'governorates' => self::GOVERNORATES,
             'sources' => self::SOURCES,
+            'eventTypes' => self::EVENT_TYPES,
             'nearbyCreneaux' => $nearbyCreneaux,
             'serviceOptionsByModule' => $serviceOptionsByModule,
             'additionalServicesByCategory' => $additionalServicesByCategory,
+            'availableSalleOptions' => $availableSalleOptions,
             'additionalServiceModules' => self::ADDITIONAL_SERVICE_MODULES,
             'clientCreditBalance' => $clientCreditBalance,
             'reservationScopeLabel' => ($reservation->service_slug ?? 'salles') === 'salles' ? 'Interne' : 'Externe',
         ]);
+    }
+
+    public function storeSalleOption(Request $request, Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        if (($reservation->service_slug ?? 'salles') !== 'salles' || ! $reservation->salle_id) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'salle_option' => 'Les options salle sont reservees aux reservations de type salle.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'salle_option_id' => ['required', 'integer', 'exists:salle_options,id'],
+            'amount' => ['nullable', 'numeric', 'min:0'],
+            'note' => ['nullable', 'string'],
+        ]);
+
+        $option = SalleOption::query()
+            ->where('id', (int) $validated['salle_option_id'])
+            ->where('salle_id', $reservation->salle_id)
+            ->where('status', 'active')
+            ->first();
+
+        if (! $option) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'salle_option_id' => 'Option invalide pour cette salle.',
+            ])->withInput();
+        }
+
+        $amount = array_key_exists('amount', $validated) && $validated['amount'] !== null && $validated['amount'] !== ''
+            ? (float) $validated['amount']
+            : (float) $option->price;
+
+        ReservationSalleOption::query()->create([
+            'reservation_id' => $reservation->id,
+            'salle_option_id' => $option->id,
+            'label' => $option->name,
+            'amount' => $amount,
+            'note' => $validated['note'] ?? null,
+        ]);
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Option salle ajoutee a la reservation.');
+    }
+
+    public function destroySalleOption(Reservation $reservation, ReservationSalleOption $salleOptionRow)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        abort_if((int) $salleOptionRow->reservation_id !== (int) $reservation->id, 404);
+
+        $salleOptionRow->delete();
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Option salle retiree de la reservation.');
     }
 
     public function storeAdditionalService(Request $request, Reservation $reservation)
@@ -512,7 +594,7 @@ class ReservationController extends MatrixAwareController
             'phone_label_1' => ['nullable', 'string', 'max:100'],
             'phone_2' => ['nullable', 'string', 'max:50'],
             'phone_label_2' => ['nullable', 'string', 'max:100'],
-            'source' => ['required', Rule::in(self::SOURCES)],
+            'source' => ['required', Rule::in(array_keys(self::SOURCES))],
             'note' => ['nullable', 'string'],
         ]);
 
@@ -935,7 +1017,7 @@ class ReservationController extends MatrixAwareController
             'service_slug' => ['nullable', Rule::in(array_keys(self::RESERVATION_SERVICES))],
             'title' => ['required', 'string', 'max:255'],
             'guest_count' => ['nullable', 'integer', 'min:1'],
-            'event_type' => ['nullable', 'string', 'max:120'],
+            'event_type' => ['required', Rule::in(self::EVENT_TYPES)],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
@@ -983,7 +1065,7 @@ class ReservationController extends MatrixAwareController
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'guest_count' => ['nullable', 'integer', 'min:1'],
-            'event_type' => ['nullable', 'string', 'max:120'],
+            'event_type' => ['required', Rule::in(self::EVENT_TYPES)],
             'note_admin' => ['nullable', 'string'],
             'total_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
@@ -1086,7 +1168,7 @@ class ReservationController extends MatrixAwareController
             'service_slug' => ['nullable', Rule::in(array_keys(self::RESERVATION_SERVICES))],
             'title' => ['required', 'string', 'max:255'],
             'guest_count' => ['nullable', 'integer', 'min:1'],
-            'event_type' => ['nullable', 'string', 'max:120'],
+            'event_type' => ['required', Rule::in(self::EVENT_TYPES)],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
@@ -1420,7 +1502,7 @@ class ReservationController extends MatrixAwareController
             'phone_label_1' => ['nullable', 'string', 'max:100'],
             'phone_2' => ['nullable', 'string', 'max:50'],
             'phone_label_2' => ['nullable', 'string', 'max:100'],
-            'source' => ['required', Rule::in(self::SOURCES)],
+            'source' => ['required', Rule::in(array_keys(self::SOURCES))],
             'note' => ['nullable', 'string'],
         ]);
 

@@ -48,4 +48,9 @@ class Reservation extends Model
     {
         return $this->hasMany(ReservationAdditionalService::class);
     }
+
+    public function salleOptionRows()
+    {
+        return $this->hasMany(ReservationSalleOption::class);
+    }
 }

@@ -21,4 +21,9 @@ class Salle extends Model
     {
         return $this->hasMany(Reservation::class);
     }
+
+    public function options()
+    {
+        return $this->hasMany(SalleOption::class);
+    }
 }

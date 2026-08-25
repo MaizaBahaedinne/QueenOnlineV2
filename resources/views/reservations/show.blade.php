@@ -752,7 +752,10 @@
                 <div class="reservation-object-head">
                     <h3 class="reservation-object-title">Services supplementaires</h3>
                     @if ($canUpdateReservation && $isSalleReservation)
-                        <button type="button" class="btn" data-open-modal="additional-service-modal">Ajouter service</button>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <button type="button" class="btn" data-open-modal="reservation-salle-option-modal">Ajouter option salle</button>
+                            <button type="button" class="btn" data-open-modal="additional-service-modal">Ajouter service</button>
+                        </div>
                     @endif
                 </div>
                 <div class="reservation-object-body">
@@ -774,6 +777,29 @@
                     @if (! $isSalleReservation)
                         <p class="reservation-empty">Les services supplementaires sont disponibles uniquement pour les reservations de type salle.</p>
                     @else
+                        <div class="additional-service-category">
+                            <h4>Options de la salle</h4>
+                            @if ($reservation->salleOptionRows->isEmpty())
+                                <p class="reservation-empty">Aucune option salle liee a cette reservation.</p>
+                            @else
+                                @foreach ($reservation->salleOptionRows as $optionRow)
+                                    <div class="additional-service-item">
+                                        <div>
+                                            <strong>{{ $optionRow->label }}</strong>
+                                            <small>{{ number_format((float) $optionRow->amount, 2, '.', ' ') }} @if(!empty($optionRow->note)) - {{ $optionRow->note }} @endif</small>
+                                        </div>
+                                        @if ($canUpdateReservation)
+                                            <form method="POST" action="{{ route('reservations.salle-options.destroy', [$reservation, $optionRow]) }}" onsubmit="return confirm('Retirer cette option de la reservation ?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn">Retirer</button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            @endif
+                        </div>
+
                         @foreach ($additionalServiceModules as $moduleSlug => $moduleLabel)
                             @php
                                 $rows = $additionalServicesByCategory[$moduleSlug]['rows'] ?? collect();
@@ -1002,7 +1028,12 @@
                         </div>
                         <div>
                             <label for="reservation-event-type">Type de l event</label>
-                            <input id="reservation-event-type" name="event_type" type="text" maxlength="120" value="{{ old('event_type', $reservation->event_type) }}">
+                            <select id="reservation-event-type" name="event_type" required>
+                                <option value=""></option>
+                                @foreach (($eventTypes ?? []) as $eventType)
+                                    <option value="{{ $eventType }}" {{ old('event_type', $reservation->event_type) === $eventType ? 'selected' : '' }}>{{ $eventType }}</option>
+                                @endforeach
+                            </select>
                         </div>
 
                         <div>
@@ -1116,10 +1147,11 @@
                         </div>
 
                         <div>
-                            <label for="client-source">Source</label>
+                            <label for="client-source">D ou avez-vous connu Queen PARK Tunisie ?</label>
                             <select id="client-source" name="source" required>
-                                @foreach ($sources as $source)
-                                    <option value="{{ $source }}" {{ old('source', $reservation->client?->source) === $source ? 'selected' : '' }}>{{ $source }}</option>
+                                <option value="">Selectionner</option>
+                                @foreach ($sources as $sourceValue => $sourceLabel)
+                                    <option value="{{ $sourceValue }}" {{ old('source', $reservation->client?->source) === $sourceValue ? 'selected' : '' }}>{{ $sourceLabel }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -1138,6 +1170,46 @@
     @endif
 
     @if ($canUpdateReservation && $isSalleReservation)
+        <div class="modal-overlay" id="reservation-salle-option-modal">
+            <div class="modal-card">
+                <div class="modal-head">
+                    <h3 class="modal-title">Ajouter une option salle</h3>
+                    <button type="button" class="btn" data-close-modal>Fermer</button>
+                </div>
+
+                <form method="POST" action="{{ route('reservations.salle-options.store', $reservation) }}" class="payment-form">
+                    @csrf
+
+                    <div class="payment-form-row">
+                        <div>
+                            <label for="reservation-salle-option-id">Option</label>
+                            <select id="reservation-salle-option-id" name="salle_option_id" required>
+                                <option value="">Selectionner</option>
+                                @foreach (($availableSalleOptions ?? collect()) as $option)
+                                    <option value="{{ $option->id }}" data-default-amount="{{ (float) $option->price }}">{{ $option->name }} ({{ number_format((float) $option->price, 2, '.', ' ') }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label for="reservation-salle-option-amount">Montant</label>
+                            <input id="reservation-salle-option-amount" name="amount" type="number" step="0.01" min="0" placeholder="Laisser vide = prix option">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="reservation-salle-option-note">Note</label>
+                        <input id="reservation-salle-option-note" name="note" type="text" value="{{ old('note') }}" placeholder="Optionnel">
+                    </div>
+
+                    <p class="payment-form-help">Prix autorise a 0 pour une option gratuite.</p>
+
+                    <div class="reservation-actions-row">
+                        <button type="submit" class="btn btn-primary">Ajouter option</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="modal-overlay" id="additional-service-modal">
             <div class="modal-card">
                 <div class="modal-head">
@@ -1464,6 +1536,8 @@
             }
 
             const additionalServiceOptionsData = document.getElementById('additional-service-options-data');
+            const reservationSalleOptionSelect = document.getElementById('reservation-salle-option-id');
+            const reservationSalleOptionAmount = document.getElementById('reservation-salle-option-amount');
             let serviceOptionsByModule = {};
             if (additionalServiceOptionsData) {
                 try {
@@ -1476,6 +1550,20 @@
             const additionalServiceRef = document.getElementById('additional-service-ref');
             const additionalServiceAmount = document.getElementById('additional-service-amount');
             const additionalServiceHelp = document.getElementById('additional-service-help');
+
+            if (reservationSalleOptionSelect && reservationSalleOptionAmount) {
+                reservationSalleOptionSelect.addEventListener('change', () => {
+                    const selected = reservationSalleOptionSelect.options[reservationSalleOptionSelect.selectedIndex];
+                    if (!selected) {
+                        return;
+                    }
+
+                    const defaultAmount = selected.getAttribute('data-default-amount');
+                    if (defaultAmount !== null && reservationSalleOptionAmount.value === '') {
+                        reservationSalleOptionAmount.placeholder = `Prix option: ${Number(defaultAmount).toFixed(2)}`;
+                    }
+                });
+            }
 
             const renderAdditionalServiceOptions = () => {
                 if (!additionalServiceModule || !additionalServiceRef) {

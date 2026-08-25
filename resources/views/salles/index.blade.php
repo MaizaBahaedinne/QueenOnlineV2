@@ -68,6 +68,7 @@
                                         data-salle-location="{{ $salle->location }}"
                                         data-salle-description="{{ $salle->description }}"
                                     >Modifier</button>
+                                    <a href="{{ route('salles.options.index', $salle) }}" class="btn">Options</a>
                                 @endif
                                 @if ($canDelete)
                                     <button type="button" class="btn" data-open-modal="salle-delete-modal"

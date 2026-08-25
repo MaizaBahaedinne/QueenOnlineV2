@@ -175,7 +175,12 @@
                     <div class="reservation-inline-grid" style="margin-top:10px;">
                         <div class="reservation-field">
                             <label for="reservation-create-event-type">Type de l event</label>
-                            <input class="search" id="reservation-create-event-type" style="max-width:none;" type="text" name="event_type" maxlength="120" placeholder="Mariage, Fiance, Anniversaire...">
+                            <select class="search" id="reservation-create-event-type" style="max-width:none;" name="event_type" required>
+                                <option value=""></option>
+                                @foreach (($eventTypes ?? []) as $eventType)
+                                    <option value="{{ $eventType }}" {{ old('event_type') === $eventType ? 'selected' : '' }}>{{ $eventType }}</option>
+                                @endforeach
+                            </select>
                         </div>
                         <div class="reservation-field">
                             <label for="reservation-create-guest-count">Nombre des invites</label>
@@ -326,11 +331,11 @@
                     </div>
 
                     <div class="reservation-field" style="margin-top:10px;">
-                        <label for="reservation-client-source">Source</label>
+                        <label for="reservation-client-source">D ou avez-vous connu Queen PARK Tunisie ?</label>
                         <select class="search" style="max-width:none;" name="source" id="reservation-client-source" required>
-                            <option value="">Source</option>
-                            @foreach ($sources as $source)
-                                <option value="{{ $source }}">{{ $source }}</option>
+                            <option value="">Selectionner</option>
+                            @foreach ($sources as $sourceValue => $sourceLabel)
+                                <option value="{{ $sourceValue }}">{{ $sourceLabel }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -362,7 +367,12 @@
         <div class="modal-overlay" id="reservation-edit-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Modifier reservation</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
             <form method="POST" id="reservation-edit-form" action="#" style="display:grid; gap:10px;">@csrf @method('PATCH')
                 <input class="search" style="max-width:none;" type="text" name="title" id="reservation-edit-title" maxlength="255" required placeholder="Titre de l event">
-                <input class="search" style="max-width:none;" type="text" name="event_type" id="reservation-edit-event-type" maxlength="120" placeholder="Type de l event">
+                <select class="search" style="max-width:none;" name="event_type" id="reservation-edit-event-type" required>
+                    <option value="">Type de l event</option>
+                    @foreach (($eventTypes ?? []) as $eventType)
+                        <option value="{{ $eventType }}">{{ $eventType }}</option>
+                    @endforeach
+                </select>
                 <input class="search" style="max-width:none;" type="number" min="1" step="1" name="guest_count" id="reservation-edit-guest-count" placeholder="Nombre des invites">
                 <select class="search" style="max-width:none;" name="client_id" id="reservation-edit-client-id" required><option value="">Client</option>@foreach ($clients as $client)<option value="{{ $client->id }}">{{ $client->name }}</option>@endforeach</select>
                 <select class="search" style="max-width:none;" name="salle_id" id="reservation-edit-salle-id" required><option value="">Salle</option>@foreach ($salles as $salle)<option value="{{ $salle->id }}">{{ $salle->name }}</option>@endforeach</select>

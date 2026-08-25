@@ -10,6 +10,7 @@ use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ServiceModuleController;
 use App\Http\Controllers\SalleController;
+use App\Http\Controllers\SalleOptionController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ModuleController;
@@ -36,6 +37,10 @@ Route::middleware('auth')->group(function () {
 	Route::delete('staff/{staff}/documents/{document}', [StaffController::class, 'destroyDocument'])->name('staff.documents.destroy');
 	Route::resource('staff', StaffController::class);
 	Route::resource('salles', SalleController::class);
+	Route::get('salles/{salle}/options', [SalleOptionController::class, 'index'])->name('salles.options.index');
+	Route::post('salles/{salle}/options', [SalleOptionController::class, 'store'])->name('salles.options.store');
+	Route::patch('salles/{salle}/options/{option}', [SalleOptionController::class, 'update'])->name('salles.options.update');
+	Route::delete('salles/{salle}/options/{option}', [SalleOptionController::class, 'destroy'])->name('salles.options.destroy');
 	Route::get('reservations/availability', [ReservationController::class, 'availableSalles'])->name('reservations.availability');
 	Route::get('reservations/{reservation}/available-salles', [ReservationController::class, 'availableSallesForReservation'])->name('reservations.available-salles');
 	Route::get('reservations/clients/search', [ReservationController::class, 'searchClients'])->name('reservations.clients.search');
@@ -51,6 +56,8 @@ Route::middleware('auth')->group(function () {
 	Route::post('reservations/{reservation}/additional-services', [ReservationController::class, 'storeAdditionalService'])->name('reservations.additional-services.store');
 	Route::delete('reservations/{reservation}/additional-services/{additionalService}', [ReservationController::class, 'destroyAdditionalService'])->name('reservations.additional-services.destroy');
 	Route::patch('reservations/{reservation}/additional-services/{additionalService}/start-time', [ReservationController::class, 'updateAdditionalServiceStartTime'])->name('reservations.additional-services.start-time.update');
+	Route::post('reservations/{reservation}/salle-options', [ReservationController::class, 'storeSalleOption'])->name('reservations.salle-options.store');
+	Route::delete('reservations/{reservation}/salle-options/{salleOptionRow}', [ReservationController::class, 'destroySalleOption'])->name('reservations.salle-options.destroy');
 	Route::resource('reservations', ReservationController::class);
 	Route::resource('payments', PaymentController::class);
 
