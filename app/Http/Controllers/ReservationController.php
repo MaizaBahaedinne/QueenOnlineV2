@@ -214,11 +214,6 @@ class ReservationController extends MatrixAwareController
             });
 
         $clientCreditBalance = $this->getClientCreditBalance((int) $reservation->client_id);
-        $otherClients = Client::query()
-            ->where('id', '!=', $reservation->client_id)
-            ->orderBy('name')
-            ->get(['id', 'first_name', 'name', 'cin']);
-
         return view('reservations.show', [
             'title' => 'Detail reservation',
             'reservation' => $reservation,
@@ -229,7 +224,6 @@ class ReservationController extends MatrixAwareController
             'additionalServicesByCategory' => $additionalServicesByCategory,
             'additionalServiceModules' => self::ADDITIONAL_SERVICE_MODULES,
             'clientCreditBalance' => $clientCreditBalance,
-            'otherClients' => $otherClients,
         ]);
     }
 
@@ -584,7 +578,7 @@ class ReservationController extends MatrixAwareController
 
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'gt:0'],
-            'method' => ['required', 'string', 'max:50'],
+            'method' => ['required', Rule::in(['cash', 'virement', 'carte', 'cheque', 'avoir'])],
             'phase' => ['required', Rule::in(['avance', 'partie-1', 'partie-2', 'partie-3', 'reste'])],
             'note' => ['nullable', 'string'],
         ]);
@@ -637,6 +631,32 @@ class ReservationController extends MatrixAwareController
             'partie-3' => 'Partie 3',
             default => 'Reste',
         };
+
+        if ($validated['method'] === 'avoir') {
+            if (! Schema::hasTable('client_credit_ledgers')) {
+                return redirect()
+                    ->route('reservations.show', $reservation)
+                    ->withErrors(['method' => 'Module solde client indisponible. Lance les migrations.'])
+                    ->withInput();
+            }
+
+            $clientBalance = $this->getClientCreditBalance((int) $reservation->client_id);
+            if ($amount > $clientBalance) {
+                return redirect()
+                    ->route('reservations.show', $reservation)
+                    ->withErrors(['amount' => 'Le montant depasse le solde disponible du client.'])
+                    ->withInput();
+            }
+
+            ClientCreditLedger::query()->create([
+                'client_id' => $reservation->client_id,
+                'reservation_id' => $reservation->id,
+                'user_id' => Auth::id(),
+                'type' => 'debit',
+                'amount' => $amount,
+                'description' => 'Utilisation avoir via paiement reservation #' . $reservation->id,
+            ]);
+        }
 
         Payment::query()->create([
             'reservation_id' => $reservation->id,

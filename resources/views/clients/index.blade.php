@@ -5,6 +5,18 @@
         $canCreate = auth()->user()?->canFeature('clients', 'create', 'create') ?? false;
         $canUpdate = auth()->user()?->canFeature('clients', 'update', 'update') ?? false;
         $canDelete = auth()->user()?->canFeature('clients', 'delete', 'delete') ?? false;
+        $transferClients = $clients->map(function ($client) {
+            $name = trim((string) (($client->first_name ?? '') . ' ' . ($client->name ?? '')));
+            $label = $name !== '' ? $name : ($client->name ?? ('Client #' . $client->id));
+            if (! empty($client->cin)) {
+                $label .= ' - CIN: ' . $client->cin;
+            }
+
+            return [
+                'id' => (int) $client->id,
+                'label' => $label,
+            ];
+        })->values();
     @endphp
 
     <style>
@@ -54,6 +66,7 @@
                         <th>Mobile 1</th>
                         <th>Ville</th>
                         <th>Gouvernorat</th>
+                        <th>Solde</th>
                         <th>Statut</th>
                         <th>Actions</th>
                     </tr>
@@ -69,9 +82,17 @@
                             <td>{{ $client->phone ?? '-' }}</td>
                             <td>{{ $client->city ?? '-' }}</td>
                             <td>{{ $client->governorate ?? '-' }}</td>
+                            <td>{{ number_format((float) ($clientCreditBalances[$client->id] ?? 0), 2, '.', ' ') }}</td>
                             <td>{{ $client->status ?? 'active' }}</td>
                             <td>
                                 <div class="action-row">
+                                    @if ($canUpdate)
+                                        <button type="button" class="btn" data-open-modal="client-transfer-credit-modal"
+                                            data-client-id="{{ $client->id }}"
+                                            data-client-name="{{ trim((string) (($client->first_name ?? '') . ' ' . ($client->name ?? ''))) ?: $client->name }}"
+                                            data-client-balance="{{ number_format((float) ($clientCreditBalances[$client->id] ?? 0), 2, '.', '') }}"
+                                        >Transferer solde</button>
+                                    @endif
                                     @if ($canUpdate)
                                         <button type="button" class="btn" data-open-modal="client-edit-modal"
                                             data-client-id="{{ $client->id }}"
@@ -105,7 +126,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="10" class="muted">Aucun client.</td></tr>
+                        <tr><td colspan="11" class="muted">Aucun client.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -228,9 +249,39 @@
             </form></div></div>
     @endif
 
+    @if ($canUpdate)
+        <div class="modal-overlay" id="client-transfer-credit-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Transferer solde client</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
+            <p class="panel-sub" id="client-transfer-credit-context"></p>
+            <form method="POST" id="client-transfer-credit-form" action="#" class="form-grid-two">@csrf
+                <div class="full-span">
+                    <label>Client destinataire</label>
+                    <select class="search" style="max-width:none;" id="client-transfer-target" name="target_client_id" required></select>
+                </div>
+                <div>
+                    <label>Montant a transferer</label>
+                    <input class="search" style="max-width:none;" id="client-transfer-amount" name="amount" type="number" step="0.01" min="0.01" required>
+                </div>
+                <div>
+                    <label>Motif</label>
+                    <input class="search" style="max-width:none;" id="client-transfer-note" name="note" type="text" placeholder="Optionnel">
+                </div>
+                <button type="submit" class="btn btn-primary full-span">Confirmer transfert</button>
+            </form></div></div>
+    @endif
+
+    <script type="application/json" id="clients-transfer-data">{!! json_encode($transferClients, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}</script>
     <script>
         const openModalButtons = document.querySelectorAll('[data-open-modal]');
         const closeModalButtons = document.querySelectorAll('[data-close-modal]');
+        const transferClientsData = document.getElementById('clients-transfer-data');
+        let transferClients = [];
+        if (transferClientsData) {
+            try {
+                transferClients = JSON.parse(transferClientsData.textContent || '[]');
+            } catch (error) {
+                transferClients = [];
+            }
+        }
         const openModal = (id) => { const m = document.getElementById(id); if (m) m.classList.add('show'); };
         const closeModal = (m) => m.classList.remove('show');
 
@@ -282,6 +333,45 @@
             button.addEventListener('click', () => {
                 const modalId = button.getAttribute('data-open-modal');
                 openModal(modalId);
+                if (modalId === 'client-transfer-credit-modal') {
+                    const sourceClientId = button.dataset.clientId;
+                    const sourceClientName = button.dataset.clientName || `Client #${sourceClientId}`;
+                    const sourceBalance = Number(button.dataset.clientBalance || '0');
+
+                    const form = document.getElementById('client-transfer-credit-form');
+                    const context = document.getElementById('client-transfer-credit-context');
+                    const targetSelect = document.getElementById('client-transfer-target');
+                    const amountInput = document.getElementById('client-transfer-amount');
+
+                    if (form) {
+                        form.action = `{{ url('clients') }}/${sourceClientId}/transfer-credit`;
+                    }
+
+                    if (context) {
+                        context.textContent = `Source: ${sourceClientName} | Solde disponible: ${sourceBalance.toFixed(2)}`;
+                    }
+
+                    if (amountInput) {
+                        amountInput.value = '';
+                        amountInput.max = sourceBalance > 0 ? String(sourceBalance) : '0';
+                    }
+
+                    if (targetSelect) {
+                        targetSelect.innerHTML = '<option value="">Selectionner...</option>';
+                        const sourceIdNum = Number(sourceClientId);
+
+                        transferClients.forEach((client) => {
+                            if (Number(client.id) === sourceIdNum) {
+                                return;
+                            }
+
+                            const opt = document.createElement('option');
+                            opt.value = String(client.id);
+                            opt.textContent = client.label || `Client #${client.id}`;
+                            targetSelect.appendChild(opt);
+                        });
+                    }
+                }
                 if (modalId === 'client-edit-modal') {
                     document.getElementById('client-edit-form').action = `{{ url('clients') }}/${button.dataset.clientId}`;
                     document.querySelectorAll('#client-edit-type input[name="client_type"]').forEach((radio) => {

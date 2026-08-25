@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
+use App\Models\ClientCreditLedger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
@@ -48,12 +51,71 @@ class ClientController extends MatrixAwareController
     {
         $this->enforcePermission('clients', 'list', 'view');
 
+        $clients = Client::query()->latest()->get();
+        $balances = [];
+        foreach ($clients as $client) {
+            $balances[$client->id] = $this->getClientCreditBalance((int) $client->id);
+        }
+
         return view('clients.index', [
             'title' => 'Clients',
-            'clients' => Client::query()->latest()->get(),
+            'clients' => $clients,
+            'clientCreditBalances' => $balances,
             'governorates' => self::GOVERNORATES,
             'sources' => self::SOURCES,
         ]);
+    }
+
+    public function transferCredit(Request $request, Client $client)
+    {
+        $this->enforcePermission('clients', 'update', 'update');
+
+        if (! Schema::hasTable('client_credit_ledgers')) {
+            return redirect()->route('clients.index')->withErrors([
+                'client_transfer' => 'Module transfert de solde indisponible. Lance les migrations.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'target_client_id' => ['required', 'integer', 'exists:clients,id', 'different:' . $client->id],
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'note' => ['nullable', 'string'],
+        ]);
+
+        $amount = (float) $validated['amount'];
+        $sourceBalance = $this->getClientCreditBalance((int) $client->id);
+
+        if ($amount > $sourceBalance) {
+            return redirect()->route('clients.index')->withErrors([
+                'client_transfer_amount' => 'Le montant depasse le solde disponible du client source.',
+            ])->withInput();
+        }
+
+        $targetClientId = (int) $validated['target_client_id'];
+
+        DB::transaction(function () use ($client, $validated, $amount, $targetClientId): void {
+            ClientCreditLedger::query()->create([
+                'client_id' => $client->id,
+                'reservation_id' => null,
+                'user_id' => Auth::id(),
+                'type' => 'transfer_out',
+                'amount' => $amount,
+                'related_client_id' => $targetClientId,
+                'description' => $validated['note'] ?? ('Transfert sortant vers client #' . $targetClientId),
+            ]);
+
+            ClientCreditLedger::query()->create([
+                'client_id' => $targetClientId,
+                'reservation_id' => null,
+                'user_id' => Auth::id(),
+                'type' => 'transfer_in',
+                'amount' => $amount,
+                'related_client_id' => $client->id,
+                'description' => $validated['note'] ?? ('Transfert entrant depuis client #' . $client->id),
+            ]);
+        });
+
+        return redirect()->route('clients.index')->with('success', 'Transfert de solde enregistre avec succes.');
     }
 
     public function create()
@@ -170,5 +232,24 @@ class ClientController extends MatrixAwareController
         }
 
         return $validated;
+    }
+
+    private function getClientCreditBalance(int $clientId): float
+    {
+        if (! Schema::hasTable('client_credit_ledgers')) {
+            return 0.0;
+        }
+
+        $credit = (float) ClientCreditLedger::query()
+            ->where('client_id', $clientId)
+            ->whereIn('type', ['credit', 'transfer_in'])
+            ->sum('amount');
+
+        $debit = (float) ClientCreditLedger::query()
+            ->where('client_id', $clientId)
+            ->whereIn('type', ['debit', 'transfer_out'])
+            ->sum('amount');
+
+        return max($credit - $debit, 0);
     }
 }

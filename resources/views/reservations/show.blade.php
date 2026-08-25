@@ -793,10 +793,6 @@
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         @if ($canCreatePayment)
                             <button type="button" class="btn btn-primary" data-open-modal="payment-modal" {{ $remainingAmount <= 0 ? 'disabled' : '' }}>Ajouter paiement</button>
-                            <button type="button" class="btn" data-open-modal="apply-credit-modal" {{ $clientCreditBalance <= 0 || $remainingAmount <= 0 ? 'disabled' : '' }}>Utiliser solde client</button>
-                        @endif
-                        @if ($canUpdateReservation)
-                            <button type="button" class="btn" data-open-modal="transfer-credit-modal" {{ $clientCreditBalance <= 0 ? 'disabled' : '' }}>Transferer solde</button>
                         @endif
                     </div>
                 </div>
@@ -1104,72 +1100,6 @@
         </div>
     @endif
 
-    @if ($canCreatePayment)
-        <div class="modal-overlay" id="apply-credit-modal">
-            <div class="modal-card">
-                <div class="modal-head">
-                    <h3 class="modal-title">Utiliser le solde client</h3>
-                    <button type="button" class="btn" data-close-modal>Fermer</button>
-                </div>
-
-                <form method="POST" action="{{ route('reservations.apply-credit', $reservation) }}" style="display:grid; gap:10px;">
-                    @csrf
-                    <p class="payment-form-help">Le solde client peut couvrir cette reservation. Solde dispo: {{ number_format($clientCreditBalance, 2, '.', ' ') }} | Reste reservation: {{ number_format($remainingAmount, 2, '.', ' ') }}</p>
-                    <div>
-                        <label for="credit-amount">Montant a utiliser</label>
-                        <input id="credit-amount" name="amount" type="number" step="0.01" min="0.01" value="{{ old('amount') }}" required>
-                    </div>
-                    <div>
-                        <label for="credit-note">Note</label>
-                        <textarea id="credit-note" name="note" rows="2">{{ old('note') }}</textarea>
-                    </div>
-                    <div class="reservation-actions-row">
-                        <button type="submit" class="btn btn-primary">Appliquer le solde</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    @endif
-
-    @if ($canUpdateReservation)
-        <div class="modal-overlay" id="transfer-credit-modal">
-            <div class="modal-card">
-                <div class="modal-head">
-                    <h3 class="modal-title">Transferer le solde client</h3>
-                    <button type="button" class="btn" data-close-modal>Fermer</button>
-                </div>
-
-                <form method="POST" action="{{ route('reservations.transfer-credit', $reservation) }}" style="display:grid; gap:10px;">
-                    @csrf
-                    <p class="payment-form-help">Le solde du client actuel peut etre transfere vers un autre compte client.</p>
-                    <div>
-                        <label for="target-client-id">Client destinataire</label>
-                        <select id="target-client-id" name="target_client_id" required>
-                            <option value="">Selectionner...</option>
-                            @foreach (($otherClients ?? collect()) as $otherClient)
-                                @php
-                                    $otherName = trim((string) (($otherClient->first_name ?? '') . ' ' . ($otherClient->name ?? '')));
-                                @endphp
-                                <option value="{{ $otherClient->id }}" {{ (string) old('target_client_id') === (string) $otherClient->id ? 'selected' : '' }}>{{ $otherName !== '' ? $otherName : ($otherClient->name ?? ('Client #' . $otherClient->id)) }}{{ !empty($otherClient->cin) ? ' - CIN: ' . $otherClient->cin : '' }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label for="transfer-amount">Montant a transferer</label>
-                        <input id="transfer-amount" name="amount" type="number" step="0.01" min="0.01" value="{{ old('amount') }}" required>
-                    </div>
-                    <div>
-                        <label for="transfer-note">Motif</label>
-                        <textarea id="transfer-note" name="note" rows="2">{{ old('note') }}</textarea>
-                    </div>
-                    <div class="reservation-actions-row">
-                        <button type="submit" class="btn">Transferer le solde</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    @endif
-
     @if ($canUpdateReservation && $isSalleReservation)
         <div class="modal-overlay" id="additional-service-modal">
             <div class="modal-card">
@@ -1251,6 +1181,7 @@
                                 <option value="virement" {{ old('method') === 'virement' ? 'selected' : '' }}>Virement</option>
                                 <option value="carte" {{ old('method') === 'carte' ? 'selected' : '' }}>Carte</option>
                                 <option value="cheque" {{ old('method') === 'cheque' ? 'selected' : '' }}>Cheque</option>
+                                <option value="avoir" {{ old('method') === 'avoir' ? 'selected' : '' }}>Avoir client</option>
                             </select>
                         </div>
                         <div>
@@ -1264,7 +1195,7 @@
                         <textarea id="payment-note" name="note" rows="2" placeholder="Note optionnelle">{{ old('note') }}</textarea>
                     </div>
 
-                    <p class="payment-form-help" id="payment-form-help">Controle: le premier paiement doit etre "Avance". Reste actuel: {{ number_format($remainingAmount, 2, '.', ' ') }}.</p>
+                    <p class="payment-form-help" id="payment-form-help">Controle: le premier paiement doit etre "Avance". Reste actuel: {{ number_format($remainingAmount, 2, '.', ' ') }}. Solde client disponible: {{ number_format($clientCreditBalance, 2, '.', ' ') }}.</p>
 
                     <div class="reservation-actions-row">
                         <button type="submit" class="btn btn-primary" {{ $remainingAmount <= 0 ? 'disabled' : '' }}>Ajouter paiement</button>
@@ -1560,10 +1491,6 @@
 
             if (hasCancelErrors) {
                 openModal('cancel-reservation-modal');
-            } else if (hasCreditTransferErrors) {
-                openModal('transfer-credit-modal');
-            } else if (hasCreditErrors) {
-                openModal('apply-credit-modal');
             } else if (hasSlotErrors) {
                 openModal('reservation-slot-modal');
             } else if (hasReservationErrors) {

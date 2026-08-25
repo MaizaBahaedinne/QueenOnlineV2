@@ -30,6 +30,7 @@ Route::middleware('auth')->group(function () {
 
 	Route::resource('users', UserController::class);
 	Route::resource('clients', ClientController::class);
+	Route::post('clients/{client}/transfer-credit', [ClientController::class, 'transferCredit'])->name('clients.transfer-credit');
 	Route::resource('salles', SalleController::class);
 	Route::get('reservations/availability', [ReservationController::class, 'availableSalles'])->name('reservations.availability');
 	Route::get('reservations/{reservation}/available-salles', [ReservationController::class, 'availableSallesForReservation'])->name('reservations.available-salles');
