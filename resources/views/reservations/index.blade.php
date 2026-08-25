@@ -164,7 +164,19 @@
     @if ($canCreate)
         <div class="modal-overlay" id="reservation-create-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Ajouter reservation</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
             <form method="POST" action="{{ route('reservations.store') }}" id="reservation-create-form" style="display:grid; gap:10px;">@csrf
-                <input type="hidden" name="service_slug" value="{{ $reservationService !== '' ? $reservationService : 'salles' }}">
+                @php
+                    $effectiveCreateServiceSlug = in_array((string) $reservationService, ['', 'all'], true) ? 'salles' : (string) $reservationService;
+                    $effectiveCreateServiceLabel = $effectiveCreateServiceSlug === 'salles'
+                        ? 'Salles'
+                        : ($reservationServiceLabel ?? ucfirst(str_replace('-', ' ', $effectiveCreateServiceSlug)));
+                @endphp
+                <input type="hidden" name="service_slug" value="{{ $effectiveCreateServiceSlug }}">
+                <p class="reservation-hint" style="margin-top:0;">
+                    Service de cette reservation: <strong>{{ $effectiveCreateServiceLabel }}</strong>
+                    @if (($reservationScope ?? 'all') !== 'all')
+                        | Portee: <strong>{{ $reservationScopeLabel }}</strong>
+                    @endif
+                </p>
                 <div class="reservation-intro">Planifie un evenement en 2 etapes: verification du creneau puis choix ou creation du client.</div>
 
                 <div class="reservation-helper-box" style="padding-top:12px; padding-bottom:12px;">
