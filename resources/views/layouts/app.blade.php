@@ -18,6 +18,7 @@
         $reservationService = (string) request()->query('service', '');
         $isPilotage = $current === 'dashboard';
         $isExploitation = str_starts_with((string) $current, 'clients.')
+            || str_starts_with((string) $current, 'staff.')
             || str_starts_with((string) $current, 'reservations.')
             || str_starts_with((string) $current, 'payments.');
         $isAdministration = str_starts_with((string) $current, 'users.')
@@ -55,6 +56,7 @@
                 <div class="menu-section-content">
                     <ul class="menu">
                         <li><a class="{{ str_starts_with((string) $current, 'clients.') ? 'active' : '' }}" href="{{ route('clients.index') }}"><i class="fa fa-users menu-icon" aria-hidden="true"></i><span>Clients</span></a></li>
+                        <li><a class="{{ str_starts_with((string) $current, 'staff.') ? 'active' : '' }}" href="{{ route('staff.index') }}"><i class="fa fa-id-badge menu-icon" aria-hidden="true"></i><span>Staff</span></a></li>
                         <li><a class="{{ str_starts_with((string) $current, 'payments.') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa fa-credit-card menu-icon" aria-hidden="true"></i><span>Paiements</span></a></li>
                         <li>
                             <a class="{{ str_starts_with((string) $current, 'reservations.') ? 'active' : '' }}" href="{{ route('reservations.index') }}"><i class="fa fa-calendar menu-icon" aria-hidden="true"></i><span>Reservations</span></a>

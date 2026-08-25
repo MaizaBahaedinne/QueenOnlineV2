@@ -732,15 +732,17 @@
 
             <article class="reservation-card">
                 <div class="reservation-object-head">
-                    <h3 class="reservation-object-title">Reservation detail</h3>
+                    <h3 class="reservation-object-title">Informations client</h3>
                     @if ($canUpdateReservation)
-                        <button type="button" class="btn" data-open-modal="reservation-modal">Modifier reservation</button>
+                        <button type="button" class="btn" data-open-modal="client-modal">Modifier donnees client</button>
                     @endif
                 </div>
                 <div class="reservation-object-body">
-                    <div class="reservation-kv"><span class="reservation-kv-key">Type reservation</span><span class="reservation-kv-value">{{ $reservationTypeLabel }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Total reservation</span><span class="reservation-kv-value">{{ number_format($totalAmount, 2, '.', ' ') }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Statut</span><span class="reservation-kv-value">{{ $statusLabel }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Nom complet</span><span class="reservation-kv-value">{{ $clientFullName }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">CIN</span><span class="reservation-kv-value">{{ $reservation->client?->cin ?? '-' }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Mobile 1</span><span class="reservation-kv-value">{{ $reservation->client?->phone ?? '-' }}{{ $reservation->client?->phone_label_1 ? ' (' . $reservation->client->phone_label_1 . ')' : '' }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Mobile 2</span><span class="reservation-kv-value">{{ $reservation->client?->phone_2 ?? '-' }}{{ $reservation->client?->phone_label_2 ? ' (' . $reservation->client->phone_label_2 . ')' : '' }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Adresse</span><span class="reservation-kv-value">{{ $clientAddress }}</span></div>
                 </div>
             </article>
 

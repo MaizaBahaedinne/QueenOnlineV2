@@ -10,6 +10,7 @@ use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ServiceModuleController;
 use App\Http\Controllers\SalleController;
+use App\Http\Controllers\StaffController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ModuleController;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +32,7 @@ Route::middleware('auth')->group(function () {
 	Route::resource('users', UserController::class);
 	Route::resource('clients', ClientController::class);
 	Route::post('clients/{client}/transfer-credit', [ClientController::class, 'transferCredit'])->name('clients.transfer-credit');
+	Route::resource('staff', StaffController::class);
 	Route::resource('salles', SalleController::class);
 	Route::get('reservations/availability', [ReservationController::class, 'availableSalles'])->name('reservations.availability');
 	Route::get('reservations/{reservation}/available-salles', [ReservationController::class, 'availableSallesForReservation'])->name('reservations.available-salles');
