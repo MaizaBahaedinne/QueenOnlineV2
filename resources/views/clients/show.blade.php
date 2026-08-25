@@ -147,6 +147,55 @@
             color: #5b7690;
         }
 
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 19, 26, 0.56);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            z-index: 80;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-card {
+            max-height: 88vh;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #dbe7f4;
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: 0 20px 40px rgba(17, 40, 68, 0.18);
+        }
+
+        .modal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .modal-title {
+            margin: 0;
+            color: #163651;
+            font-size: 18px;
+        }
+
+        .payment-form-help {
+            margin: 0;
+            font-size: 12px;
+            color: #516b85;
+            background: #eef5fd;
+            border: 1px solid #d5e4f3;
+            border-radius: 9px;
+            padding: 8px;
+        }
+
         @media (max-width: 960px) {
             .client-grid { grid-template-columns: 1fr; }
         }
@@ -184,7 +233,7 @@
                 <p class="client-balance-label">Solde de compte</p>
                 <p class="client-balance-value">{{ number_format($balance, 2, '.', ' ') }}</p>
                 @if ($canUpdate)
-                    <button type="button" class="btn" data-open-modal="client-transfer-credit-modal" {{ $balance <= 0 ? 'disabled' : '' }}>Transferer vers un autre client</button>
+                    <button type="button" class="btn" data-open-modal="client-transfer-credit-modal">Transferer vers un autre client</button>
                 @endif
                 <a href="{{ route('clients.index') }}" class="btn">Retour clients</a>
             </div>
@@ -271,7 +320,7 @@
                         <textarea id="transfer-note" name="note" rows="2"></textarea>
                     </div>
                     <div style="display:flex;justify-content:flex-end;">
-                        <button type="submit" class="btn btn-primary">Confirmer transfert</button>
+                        <button type="submit" class="btn btn-primary" {{ $balance <= 0 ? 'disabled' : '' }}>Confirmer transfert</button>
                     </div>
                 </form>
             </div>
