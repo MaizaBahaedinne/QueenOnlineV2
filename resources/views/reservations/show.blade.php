@@ -22,6 +22,7 @@
         $totalAmount = (float) ($reservation->total_amount ?? 0);
         $totalPaid = (float) $reservation->payments->sum('amount');
         $remainingAmount = max($totalAmount - $totalPaid, 0);
+        $clientCreditBalance = (float) ($clientCreditBalance ?? 0);
         $paymentCount = $reservation->payments->count();
         $nextPhase = match (true) {
             $paymentCount === 0 => 'avance',
@@ -687,11 +688,7 @@
                     <button type="button" class="btn btn-primary" data-open-modal="reservation-modal">Modifier reservation</button>
                     <button type="button" class="btn" data-open-modal="reservation-slot-modal">Modifier date/heure/salle</button>
                     @if (($reservation->status ?? null) !== 'cancelled')
-                        <form method="POST" action="{{ route('reservations.cancel', $reservation) }}" onsubmit="return confirm('Confirmer l annulation de cette reservation ?');" style="display:inline;">
-                            @csrf
-                            @method('PATCH')
-                            <button type="submit" class="btn" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Annuler la reservation</button>
-                        </form>
+                        <button type="button" class="btn" data-open-modal="cancel-reservation-modal" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Annuler la reservation</button>
                     @endif
                 @endif
                 <a href="{{ route('reservations.index') }}" class="btn">Retour au calendrier</a>
@@ -793,15 +790,22 @@
             <article class="reservation-card">
                 <div class="reservation-object-head">
                     <h3 class="reservation-object-title">Paiements</h3>
-                    @if ($canCreatePayment)
-                        <button type="button" class="btn btn-primary" data-open-modal="payment-modal" {{ $remainingAmount <= 0 ? 'disabled' : '' }}>Ajouter paiement</button>
-                    @endif
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        @if ($canCreatePayment)
+                            <button type="button" class="btn btn-primary" data-open-modal="payment-modal" {{ $remainingAmount <= 0 ? 'disabled' : '' }}>Ajouter paiement</button>
+                            <button type="button" class="btn" data-open-modal="apply-credit-modal" {{ $clientCreditBalance <= 0 || $remainingAmount <= 0 ? 'disabled' : '' }}>Utiliser solde client</button>
+                        @endif
+                        @if ($canUpdateReservation)
+                            <button type="button" class="btn" data-open-modal="transfer-credit-modal" {{ $clientCreditBalance <= 0 ? 'disabled' : '' }}>Transferer solde</button>
+                        @endif
+                    </div>
                 </div>
 
                 <div class="reservation-object-body">
                     <div class="reservation-kv"><span class="reservation-kv-key">Total reservation</span><span class="reservation-kv-value">{{ number_format($totalAmount, 2, '.', ' ') }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Total paye</span><span class="reservation-kv-value">{{ number_format($totalPaid, 2, '.', ' ') }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Reste</span><span class="reservation-kv-value">{{ number_format($remainingAmount, 2, '.', ' ') }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Solde client (avoir)</span><span class="reservation-kv-value">{{ number_format($clientCreditBalance, 2, '.', ' ') }}</span></div>
 
                     @if ($reservation->payments->isEmpty())
                         <p class="reservation-empty">Aucun paiement lie a cette reservation.</p>
@@ -846,6 +850,50 @@
     </section>
 
     @if ($canUpdateReservation)
+        <div class="modal-overlay" id="cancel-reservation-modal">
+            <div class="modal-card">
+                <div class="modal-head">
+                    <h3 class="modal-title">Annuler la reservation</h3>
+                    <button type="button" class="btn" data-close-modal>Fermer</button>
+                </div>
+
+                <form method="POST" action="{{ route('reservations.cancel', $reservation) }}" style="display:grid; gap:10px;">
+                    @csrf
+                    @method('PATCH')
+
+                    <p class="payment-form-help">L annulation exige la presence du client sur site, la signature du contrat de resiliation, et la creation d un avoir correspondant au montant deja verse.</p>
+
+                    <div>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#244e76;">
+                            <input type="checkbox" name="present_on_site" value="1" {{ old('present_on_site') ? 'checked' : '' }} required>
+                            Le client est present sur site.
+                        </label>
+                    </div>
+
+                    <div>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#244e76;">
+                            <input type="checkbox" name="termination_signed" value="1" {{ old('termination_signed') ? 'checked' : '' }} required>
+                            Le contrat de resiliation est signe.
+                        </label>
+                    </div>
+
+                    <div>
+                        <label>Montant qui sera credite en avoir</label>
+                        <input type="text" readonly value="{{ number_format($totalPaid, 2, '.', ' ') }}">
+                    </div>
+
+                    <div>
+                        <label for="cancel-note">Note</label>
+                        <textarea id="cancel-note" name="note" rows="3">{{ old('note') }}</textarea>
+                    </div>
+
+                    <div class="reservation-actions-row">
+                        <button type="submit" class="btn" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Confirmer annulation et creer avoir</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="modal-overlay" id="reservation-slot-modal">
             <div class="modal-card">
                 <div class="modal-head">
@@ -1050,6 +1098,72 @@
                     </div>
                     <div class="reservation-actions-row">
                         <button type="submit" class="btn btn-primary">Enregistrer client</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    @if ($canCreatePayment)
+        <div class="modal-overlay" id="apply-credit-modal">
+            <div class="modal-card">
+                <div class="modal-head">
+                    <h3 class="modal-title">Utiliser le solde client</h3>
+                    <button type="button" class="btn" data-close-modal>Fermer</button>
+                </div>
+
+                <form method="POST" action="{{ route('reservations.apply-credit', $reservation) }}" style="display:grid; gap:10px;">
+                    @csrf
+                    <p class="payment-form-help">Le solde client peut couvrir cette reservation. Solde dispo: {{ number_format($clientCreditBalance, 2, '.', ' ') }} | Reste reservation: {{ number_format($remainingAmount, 2, '.', ' ') }}</p>
+                    <div>
+                        <label for="credit-amount">Montant a utiliser</label>
+                        <input id="credit-amount" name="amount" type="number" step="0.01" min="0.01" value="{{ old('amount') }}" required>
+                    </div>
+                    <div>
+                        <label for="credit-note">Note</label>
+                        <textarea id="credit-note" name="note" rows="2">{{ old('note') }}</textarea>
+                    </div>
+                    <div class="reservation-actions-row">
+                        <button type="submit" class="btn btn-primary">Appliquer le solde</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    @if ($canUpdateReservation)
+        <div class="modal-overlay" id="transfer-credit-modal">
+            <div class="modal-card">
+                <div class="modal-head">
+                    <h3 class="modal-title">Transferer le solde client</h3>
+                    <button type="button" class="btn" data-close-modal>Fermer</button>
+                </div>
+
+                <form method="POST" action="{{ route('reservations.transfer-credit', $reservation) }}" style="display:grid; gap:10px;">
+                    @csrf
+                    <p class="payment-form-help">Le solde du client actuel peut etre transfere vers un autre compte client.</p>
+                    <div>
+                        <label for="target-client-id">Client destinataire</label>
+                        <select id="target-client-id" name="target_client_id" required>
+                            <option value="">Selectionner...</option>
+                            @foreach (($otherClients ?? collect()) as $otherClient)
+                                @php
+                                    $otherName = trim((string) (($otherClient->first_name ?? '') . ' ' . ($otherClient->name ?? '')));
+                                @endphp
+                                <option value="{{ $otherClient->id }}" {{ (string) old('target_client_id') === (string) $otherClient->id ? 'selected' : '' }}>{{ $otherName !== '' ? $otherName : ($otherClient->name ?? ('Client #' . $otherClient->id)) }}{{ !empty($otherClient->cin) ? ' - CIN: ' . $otherClient->cin : '' }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="transfer-amount">Montant a transferer</label>
+                        <input id="transfer-amount" name="amount" type="number" step="0.01" min="0.01" value="{{ old('amount') }}" required>
+                    </div>
+                    <div>
+                        <label for="transfer-note">Motif</label>
+                        <textarea id="transfer-note" name="note" rows="2">{{ old('note') }}</textarea>
+                    </div>
+                    <div class="reservation-actions-row">
+                        <button type="submit" class="btn">Transferer le solde</button>
                     </div>
                 </form>
             </div>
@@ -1440,8 +1554,17 @@
             const hasAdditionalServiceErrors = "{{ $errors->has('module_slug') || $errors->has('service_ref') || $errors->has('service_amount') || $errors->has('service') ? '1' : '0' }}" === '1';
             const hasReservationErrors = "{{ $errors->has('title') || $errors->has('event_type') || $errors->has('guest_count') || $errors->has('total_amount') || $errors->has('note_admin') ? '1' : '0' }}" === '1';
             const hasSlotErrors = "{{ $errors->has('salle_id') || $errors->has('start_date') || $errors->has('end_date') || $errors->has('start_time') || $errors->has('end_time') ? '1' : '0' }}" === '1';
+            const hasCancelErrors = "{{ $errors->has('present_on_site') || $errors->has('termination_signed') || $errors->has('cancel') ? '1' : '0' }}" === '1';
+            const hasCreditErrors = "{{ $errors->has('credit') || $errors->has('credit_amount') ? '1' : '0' }}" === '1';
+            const hasCreditTransferErrors = "{{ $errors->has('credit_transfer') || $errors->has('credit_transfer_amount') || $errors->has('target_client_id') ? '1' : '0' }}" === '1';
 
-            if (hasSlotErrors) {
+            if (hasCancelErrors) {
+                openModal('cancel-reservation-modal');
+            } else if (hasCreditTransferErrors) {
+                openModal('transfer-credit-modal');
+            } else if (hasCreditErrors) {
+                openModal('apply-credit-modal');
+            } else if (hasSlotErrors) {
                 openModal('reservation-slot-modal');
             } else if (hasReservationErrors) {
                 openModal('reservation-modal');

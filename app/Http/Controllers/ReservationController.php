@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
+use App\Models\ClientCreditLedger;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\ReservationAdditionalService;
+use App\Models\ReservationCancellation;
 use App\Models\Salle;
 use App\Models\ServiceModuleItem;
 use App\Models\ServiceModulePack;
@@ -211,6 +213,12 @@ class ReservationController extends MatrixAwareController
                 ];
             });
 
+        $clientCreditBalance = $this->getClientCreditBalance((int) $reservation->client_id);
+        $otherClients = Client::query()
+            ->where('id', '!=', $reservation->client_id)
+            ->orderBy('name')
+            ->get(['id', 'first_name', 'name', 'cin']);
+
         return view('reservations.show', [
             'title' => 'Detail reservation',
             'reservation' => $reservation,
@@ -220,6 +228,8 @@ class ReservationController extends MatrixAwareController
             'serviceOptionsByModule' => $serviceOptionsByModule,
             'additionalServicesByCategory' => $additionalServicesByCategory,
             'additionalServiceModules' => self::ADDITIONAL_SERVICE_MODULES,
+            'clientCreditBalance' => $clientCreditBalance,
+            'otherClients' => $otherClients,
         ]);
     }
 
@@ -651,19 +661,174 @@ class ReservationController extends MatrixAwareController
         return redirect()->route('reservations.show', $reservation)->with('success', 'Paiement ajoute a la reservation.');
     }
 
-    public function cancel(Reservation $reservation)
+    public function cancel(Request $request, Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'update', 'update');
+
+        if (! Schema::hasTable('client_credit_ledgers') || ! Schema::hasTable('reservation_cancellations')) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'cancel' => 'Le workflow d annulation avec avoir n est pas encore initialise. Lance les migrations.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'present_on_site' => ['required', 'accepted'],
+            'termination_signed' => ['required', 'accepted'],
+            'note' => ['nullable', 'string'],
+        ]);
 
         if ((string) $reservation->status === 'cancelled') {
             return redirect()->route('reservations.show', $reservation)->with('success', 'La reservation est deja annulee.');
         }
 
-        $reservation->update([
-            'status' => 'cancelled',
+        $paidAmount = (float) $reservation->payments()->sum('amount');
+
+        DB::transaction(function () use ($reservation, $validated, $paidAmount): void {
+            $reservation->update([
+                'status' => 'cancelled',
+            ]);
+
+            ReservationCancellation::query()->updateOrCreate(
+                ['reservation_id' => $reservation->id],
+                [
+                    'client_id' => $reservation->client_id,
+                    'user_id' => Auth::id(),
+                    'present_on_site' => true,
+                    'termination_signed' => true,
+                    'credit_amount' => $paidAmount,
+                    'note' => $validated['note'] ?? null,
+                ]
+            );
+
+            if ($paidAmount > 0) {
+                ClientCreditLedger::query()->create([
+                    'client_id' => $reservation->client_id,
+                    'reservation_id' => $reservation->id,
+                    'user_id' => Auth::id(),
+                    'type' => 'credit',
+                    'amount' => $paidAmount,
+                    'description' => 'Avoir suite annulation reservation #' . $reservation->id,
+                ]);
+            }
+        });
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Reservation annulee. Contrat de resiliation enregistre et avoir client cree.');
+    }
+
+    public function applyClientCredit(Request $request, Reservation $reservation)
+    {
+        $this->enforcePermission('payments', 'create', 'create');
+
+        if (! Schema::hasTable('client_credit_ledgers')) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'credit' => 'Module avoir indisponible. Lance les migrations.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'note' => ['nullable', 'string'],
         ]);
 
-        return redirect()->route('reservations.show', $reservation)->with('success', 'Reservation annulee.');
+        $amount = (float) $validated['amount'];
+        $balance = $this->getClientCreditBalance((int) $reservation->client_id);
+        $totalAmount = (float) ($reservation->total_amount ?? 0);
+        $alreadyPaid = (float) $reservation->payments()->sum('amount');
+        $remaining = max($totalAmount - $alreadyPaid, 0);
+
+        if ($amount > $balance) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'credit_amount' => 'Le montant depasse le solde disponible du client.',
+            ])->withInput();
+        }
+
+        if ($amount > $remaining) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'credit_amount' => 'Le montant depasse le reste a payer de la reservation.',
+            ])->withInput();
+        }
+
+        DB::transaction(function () use ($reservation, $amount, $validated): void {
+            ClientCreditLedger::query()->create([
+                'client_id' => $reservation->client_id,
+                'reservation_id' => $reservation->id,
+                'user_id' => Auth::id(),
+                'type' => 'debit',
+                'amount' => $amount,
+                'description' => 'Utilisation avoir sur reservation #' . $reservation->id,
+            ]);
+
+            Payment::query()->create([
+                'reservation_id' => $reservation->id,
+                'user_id' => Auth::id(),
+                'amount' => $amount,
+                'method' => 'avoir',
+                'reference' => 'Avoir client',
+                'status' => 'paid',
+                'paid_at' => now()->format('Y-m-d H:i:s'),
+                'note' => $validated['note'] ?? null,
+            ]);
+        });
+
+        $totalPaidAfter = (float) $reservation->payments()->sum('amount');
+        $remainingAfter = max($totalAmount - $totalPaidAfter, 0);
+        if ($remainingAfter <= 0.009 && ! in_array((string) $reservation->status, ['cancelled', 'completed'], true)) {
+            $reservation->update(['status' => 'confirmed']);
+        }
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Avoir applique sur la reservation.');
+    }
+
+    public function transferClientCredit(Request $request, Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        if (! Schema::hasTable('client_credit_ledgers')) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'credit_transfer' => 'Module transfert d avoir indisponible. Lance les migrations.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'target_client_id' => ['required', 'integer', 'exists:clients,id', 'different:' . $reservation->client_id],
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'note' => ['nullable', 'string'],
+        ]);
+
+        $amount = (float) $validated['amount'];
+        $sourceClientId = (int) $reservation->client_id;
+        $targetClientId = (int) $validated['target_client_id'];
+        $sourceBalance = $this->getClientCreditBalance($sourceClientId);
+
+        if ($amount > $sourceBalance) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'credit_transfer_amount' => 'Le montant depasse le solde disponible a transferer.',
+            ])->withInput();
+        }
+
+        DB::transaction(function () use ($reservation, $validated, $amount, $sourceClientId, $targetClientId): void {
+            ClientCreditLedger::query()->create([
+                'client_id' => $sourceClientId,
+                'reservation_id' => $reservation->id,
+                'user_id' => Auth::id(),
+                'type' => 'transfer_out',
+                'amount' => $amount,
+                'related_client_id' => $targetClientId,
+                'description' => $validated['note'] ?? ('Transfert sortant vers client #' . $targetClientId),
+            ]);
+
+            ClientCreditLedger::query()->create([
+                'client_id' => $targetClientId,
+                'reservation_id' => null,
+                'user_id' => Auth::id(),
+                'type' => 'transfer_in',
+                'amount' => $amount,
+                'related_client_id' => $sourceClientId,
+                'description' => $validated['note'] ?? ('Transfert entrant depuis client #' . $sourceClientId),
+            ]);
+        });
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Solde transfere vers le compte client cible.');
     }
 
     public function store(Request $request)
@@ -1184,6 +1349,25 @@ class ReservationController extends MatrixAwareController
         $extendedValidated['status'] = 'active';
         $createdClient = Client::query()->create($extendedValidated);
         return $createdClient->id;
+    }
+
+    private function getClientCreditBalance(int $clientId): float
+    {
+        if (! Schema::hasTable('client_credit_ledgers')) {
+            return 0.0;
+        }
+
+        $credit = (float) ClientCreditLedger::query()
+            ->where('client_id', $clientId)
+            ->whereIn('type', ['credit', 'transfer_in'])
+            ->sum('amount');
+
+        $debit = (float) ClientCreditLedger::query()
+            ->where('client_id', $clientId)
+            ->whereIn('type', ['debit', 'transfer_out'])
+            ->sum('amount');
+
+        return max($credit - $debit, 0);
     }
 
     private function reservationDateTime(?string $dateValue, ?string $timeValue): ?Carbon
