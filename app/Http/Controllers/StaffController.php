@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Department;
 use App\Models\Staff;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -16,9 +17,22 @@ class StaffController extends MatrixAwareController
 
         return view('staff.index', [
             'title' => 'Staff',
-            'staffMembers' => Staff::query()->with(['department', 'manager'])->latest()->get(),
+            'staffMembers' => Staff::query()->with(['department', 'manager', 'user.role'])->latest()->get(),
             'departments' => Department::query()->orderBy('name')->get(),
             'managers' => Staff::query()->orderBy('first_name')->orderBy('last_name')->get(['id', 'first_name', 'last_name']),
+            'users' => User::query()->with('role')->orderBy('name')->get(['id', 'name', 'email', 'role_id']),
+        ]);
+    }
+
+    public function show(Staff $staff)
+    {
+        $this->enforcePermission('staff', 'list', 'view');
+
+        $staff->load(['department', 'manager', 'user.role']);
+
+        return view('staff.show', [
+            'title' => 'Profil staff',
+            'staff' => $staff,
         ]);
     }
 
@@ -79,6 +93,7 @@ class StaffController extends MatrixAwareController
             'employment_type' => ['required', Rule::in(['permanent', 'part-time'])],
             'contract_type' => ['required', Rule::in(['CDI', 'CDD', 'Freelance'])],
             'manager_id' => ['nullable', 'exists:staff,id'],
+            'user_id' => ['nullable', 'exists:users,id', Rule::unique('staff', 'user_id')->ignore($ignoreId)],
             'status' => ['nullable', Rule::in(['active', 'inactive'])],
         ]);
     }

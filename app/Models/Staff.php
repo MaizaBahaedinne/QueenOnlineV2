@@ -17,6 +17,7 @@ class Staff extends Model
         'employment_type',
         'contract_type',
         'manager_id',
+        'user_id',
         'status',
     ];
 
@@ -32,5 +33,15 @@ class Staff extends Model
     public function manager()
     {
         return $this->belongsTo(Staff::class, 'manager_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function getFullNameAttribute(): string
+    {
+        return trim((string) ($this->first_name . ' ' . $this->last_name));
     }
 }

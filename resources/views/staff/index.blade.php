@@ -18,6 +18,7 @@
         .full-span { grid-column: 1 / -1; }
         .staff-avatar { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; background: #e2e8f0; border: 1px solid #cbd5e1; }
         .staff-avatar-fallback { display:inline-flex; align-items:center; justify-content:center; font-weight:700; color:#1e3a5f; }
+        .staff-photo-preview { width: 88px; height: 88px; border-radius: 16px; object-fit: cover; background: #e2e8f0; border: 1px solid #cbd5e1; display:block; }
         @media (max-width: 780px) { .form-grid-two { grid-template-columns: 1fr; } }
     </style>
 
@@ -88,6 +89,7 @@
                             <td>{{ $managerName !== '' ? $managerName : '-' }}</td>
                             <td>
                                 <div class="action-row">
+                                    <a href="{{ route('staff.show', $member) }}" class="btn">Profil</a>
                                     @if ($canUpdate)
                                         <button type="button" class="btn" data-open-modal="staff-edit-modal"
                                             data-staff-id="{{ $member->id }}"
@@ -100,7 +102,9 @@
                                             data-staff-employment-type="{{ $member->employment_type }}"
                                             data-staff-contract-type="{{ $member->contract_type }}"
                                             data-staff-manager-id="{{ $member->manager_id }}"
+                                            data-staff-user-id="{{ $member->user_id }}"
                                             data-staff-status="{{ $member->status ?? 'active' }}"
+                                            data-staff-photo-url="{{ $member->photo_path ? asset('storage/' . $member->photo_path) : '' }}"
                                         >Modifier</button>
                                     @endif
                                     @if ($canDelete)
@@ -123,7 +127,7 @@
     @if ($canCreate)
         <div class="modal-overlay" id="staff-create-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Ajouter staff</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
             <form method="POST" action="{{ route('staff.store') }}" enctype="multipart/form-data" class="form-grid-two">@csrf
-                <div class="full-span"><label>Photo</label><input class="search" style="max-width:none;" type="file" name="photo" accept="image/*"></div>
+                <div class="full-span"><label>Photo</label><img src="" alt="Apercu photo" class="staff-photo-preview" id="staff-create-photo-preview" style="display:none;margin:0 0 8px;"><input class="search" style="max-width:none;" type="file" name="photo" id="staff-create-photo" accept="image/*"></div>
                 <input class="search" style="max-width:none;" type="text" name="last_name" placeholder="Nom" required>
                 <input class="search" style="max-width:none;" type="text" name="first_name" placeholder="Prenom" required>
                 <input class="search" style="max-width:none;" type="text" name="cin" placeholder="CIN (8 chiffres)" minlength="8" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" required>
@@ -151,6 +155,12 @@
                         <option value="{{ $manager->id }}">{{ trim((string) ($manager->first_name . ' ' . $manager->last_name)) }}</option>
                     @endforeach
                 </select>
+                <select class="search full-span" style="max-width:none;" name="user_id">
+                    <option value="">Compte utilisateur lie (optionnel)</option>
+                    @foreach ($users as $user)
+                        <option value="{{ $user->id }}">{{ $user->name }} - {{ $user->email }}{{ $user->role?->name ? ' - ' . $user->role->name : '' }}</option>
+                    @endforeach
+                </select>
                 <button type="submit" class="btn btn-primary full-span">Enregistrer</button>
             </form></div></div>
     @endif
@@ -158,7 +168,7 @@
     @if ($canUpdate)
         <div class="modal-overlay" id="staff-edit-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Modifier staff</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
             <form method="POST" id="staff-edit-form" action="#" enctype="multipart/form-data" class="form-grid-two">@csrf @method('PATCH')
-                <div class="full-span"><label>Photo</label><input class="search" style="max-width:none;" type="file" name="photo" accept="image/*"></div>
+                <div class="full-span"><label>Photo</label><img src="" alt="Apercu photo" class="staff-photo-preview" id="staff-edit-photo-preview" style="display:none;margin:0 0 8px;"><input class="search" style="max-width:none;" type="file" name="photo" id="staff-edit-photo" accept="image/*"></div>
                 <input class="search" style="max-width:none;" type="text" name="last_name" id="staff-edit-last-name" required>
                 <input class="search" style="max-width:none;" type="text" name="first_name" id="staff-edit-first-name" required>
                 <input class="search" style="max-width:none;" type="text" name="cin" id="staff-edit-cin" minlength="8" maxlength="8" pattern="[0-9]{8}" inputmode="numeric" required>
@@ -190,6 +200,12 @@
                         <option value="{{ $manager->id }}">{{ trim((string) ($manager->first_name . ' ' . $manager->last_name)) }}</option>
                     @endforeach
                 </select>
+                <select class="search full-span" style="max-width:none;" name="user_id" id="staff-edit-user-id">
+                    <option value="">Compte utilisateur lie (optionnel)</option>
+                    @foreach ($users as $user)
+                        <option value="{{ $user->id }}">{{ $user->name }} - {{ $user->email }}{{ $user->role?->name ? ' - ' . $user->role->name : '' }}</option>
+                    @endforeach
+                </select>
                 <button type="submit" class="btn btn-primary full-span">Mettre a jour</button>
             </form></div></div>
     @endif
@@ -207,6 +223,25 @@
         const closeModalButtons = document.querySelectorAll('[data-close-modal]');
         const openModal = (id) => { const m = document.getElementById(id); if (m) m.classList.add('show'); };
         const closeModal = (m) => m.classList.remove('show');
+        const bindPhotoPreview = (inputId, previewId) => {
+            const input = document.getElementById(inputId);
+            const preview = document.getElementById(previewId);
+            if (!input || !preview) return;
+
+            input.addEventListener('change', () => {
+                const file = input.files && input.files[0];
+                if (!file) {
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    preview.src = event.target?.result || '';
+                    preview.style.display = preview.src ? 'block' : 'none';
+                };
+                reader.readAsDataURL(file);
+            });
+        };
 
         openModalButtons.forEach((button) => {
             button.addEventListener('click', () => {
@@ -225,7 +260,13 @@
                     document.getElementById('staff-edit-employment-type').value = button.dataset.staffEmploymentType ?? 'permanent';
                     document.getElementById('staff-edit-contract-type').value = button.dataset.staffContractType ?? 'CDI';
                     document.getElementById('staff-edit-manager-id').value = button.dataset.staffManagerId ?? '';
+                    document.getElementById('staff-edit-user-id').value = button.dataset.staffUserId ?? '';
                     document.getElementById('staff-edit-status').value = button.dataset.staffStatus ?? 'active';
+                    const preview = document.getElementById('staff-edit-photo-preview');
+                    if (preview) {
+                        preview.src = button.dataset.staffPhotoUrl ?? '';
+                        preview.style.display = preview.src ? 'block' : 'none';
+                    }
                 }
 
                 if (modalId === 'staff-delete-modal') {
@@ -245,5 +286,8 @@
                 if (event.target === modal) closeModal(modal);
             });
         });
+
+        bindPhotoPreview('staff-create-photo', 'staff-create-photo-preview');
+        bindPhotoPreview('staff-edit-photo', 'staff-edit-photo-preview');
     </script>
 @endsection

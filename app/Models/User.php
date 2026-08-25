@@ -55,6 +55,11 @@ class User extends Authenticatable
         return $this->hasOne(Client::class);
     }
 
+    public function staff()
+    {
+        return $this->hasOne(Staff::class);
+    }
+
     public function canFeature(string $moduleSlug, string $featureSlug, string $action): bool
     {
         if (! in_array($action, ['view', 'create', 'update', 'delete'], true)) {
