@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\ClientCreditLedger;
+use App\Models\Payment;
+use App\Models\Reservation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -66,6 +68,43 @@ class ClientController extends MatrixAwareController
         ]);
     }
 
+    public function show(Client $client)
+    {
+        $this->enforcePermission('clients', 'list', 'view');
+
+        $client->load('reservations.salle');
+
+        $reservations = Reservation::query()
+            ->with(['salle'])
+            ->where('client_id', $client->id)
+            ->latest('start_date')
+            ->latest('id')
+            ->get();
+
+        $payments = Payment::query()
+            ->with(['reservation:id,title,start_date,end_date', 'user:id,name'])
+            ->whereHas('reservation', function ($query) use ($client) {
+                $query->where('client_id', $client->id);
+            })
+            ->latest('paid_at')
+            ->latest('id')
+            ->get();
+
+        $otherClients = Client::query()
+            ->where('id', '!=', $client->id)
+            ->orderBy('name')
+            ->get(['id', 'first_name', 'name', 'cin']);
+
+        return view('clients.show', [
+            'title' => 'Profil client',
+            'client' => $client,
+            'reservations' => $reservations,
+            'payments' => $payments,
+            'clientCreditBalance' => $this->getClientCreditBalance((int) $client->id),
+            'otherClients' => $otherClients,
+        ]);
+    }
+
     public function transferCredit(Request $request, Client $client)
     {
         $this->enforcePermission('clients', 'update', 'update');
@@ -115,7 +154,7 @@ class ClientController extends MatrixAwareController
             ]);
         });
 
-        return redirect()->route('clients.index')->with('success', 'Transfert de solde enregistre avec succes.');
+        return redirect()->back()->with('success', 'Transfert de solde enregistre avec succes.');
     }
 
     public function create()

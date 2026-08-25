@@ -86,6 +86,7 @@
                             <td>{{ $client->status ?? 'active' }}</td>
                             <td>
                                 <div class="action-row">
+                                    <a href="{{ route('clients.show', $client) }}" class="btn">Profil</a>
                                     @if ($canUpdate)
                                         <button type="button" class="btn" data-open-modal="client-transfer-credit-modal"
                                             data-client-id="{{ $client->id }}"
