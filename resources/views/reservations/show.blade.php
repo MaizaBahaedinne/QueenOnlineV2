@@ -39,6 +39,7 @@
             $reservation->client?->governorate,
         ])->filter()->implode(', '));
         $clientAddress = $clientAddress !== '' ? $clientAddress : '-';
+        $currentSalleColor = (string) ($reservation->salle?->color_code ?? '#8ea9c4');
         $reservationTypeLabel = match ((string) ($reservation->service_slug ?? 'salles')) {
             'salles' => 'Salle',
             'troupe-musicale' => 'Troupe musicale',
@@ -826,7 +827,7 @@
                         <div class="salle-card-grid" id="slot-salle-cards">
                             <button type="button" class="salle-card is-selected" data-salle-id="{{ $reservation->salle_id }}">
                                 <span class="salle-card-title">
-                                    <span class="salle-color-dot" style="background-color: {{ $reservation->salle?->color_code ?? '#8ea9c4' }}"></span>
+                                    <span class="salle-color-dot js-salle-dot" data-color="{{ $currentSalleColor }}"></span>
                                     {{ $reservation->salle?->name ?? 'Salle actuelle' }}
                                 </span>
                                 <span class="salle-card-meta">Salle actuelle</span>
@@ -1045,6 +1046,10 @@
     <script type="application/json" id="additional-service-options-data">{!! json_encode($serviceOptionsByModule ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}</script>
     <script>
         (function () {
+            document.querySelectorAll('.js-salle-dot').forEach((dot) => {
+                dot.style.backgroundColor = dot.dataset.color || '#8ea9c4';
+            });
+
             const slotCheckButton = document.getElementById('slot-check-availability');
             const slotStartDate = document.getElementById('slot-start-date');
             const slotStartTime = document.getElementById('slot-start-time');
