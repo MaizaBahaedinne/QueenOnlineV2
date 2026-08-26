@@ -78,6 +78,8 @@ Route::middleware('auth')->group(function () {
 	Route::patch('migration-mappings/{migrationMapping}', [MigrationMappingController::class, 'update'])->name('migration-mappings.update');
 	Route::delete('migration-mappings/{migrationMapping}', [MigrationMappingController::class, 'destroy'])->name('migration-mappings.destroy');
 	Route::get('migration-mappings/export/file', [MigrationMappingController::class, 'export'])->name('migration-mappings.export');
+	Route::get('migration-mappings/schema/tables', [MigrationMappingController::class, 'schemaTables'])->name('migration-mappings.schema.tables');
+	Route::get('migration-mappings/schema/columns', [MigrationMappingController::class, 'schemaColumns'])->name('migration-mappings.schema.columns');
 
 	Route::get('permissions/matrix', [RolePermissionController::class, 'index'])->name('permissions.matrix');
 	Route::post('permissions/matrix', [RolePermissionController::class, 'update'])->name('permissions.matrix.update');

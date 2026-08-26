@@ -3,11 +3,40 @@
 namespace App\Http\Controllers;
 
 use App\Models\MigrationMapping;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 
 class MigrationMappingController extends MatrixAwareController
 {
+    private const DEFAULT_SOURCE_CONNECTION = 'legacy';
+    private const DEFAULT_TARGET_CONNECTION = 'mysql';
+
+    private function allowedConnections(): array
+    {
+        $names = array_keys((array) config('database.connections', []));
+
+        return array_values(array_filter($names, function (string $name): bool {
+            return in_array($name, ['mysql', 'legacy', 'mariadb'], true);
+        }));
+    }
+
+    private function resolveConnection(string $requested, array $allowed): string
+    {
+        if (in_array($requested, $allowed, true)) {
+            return $requested;
+        }
+
+        if (in_array(self::DEFAULT_TARGET_CONNECTION, $allowed, true)) {
+            return self::DEFAULT_TARGET_CONNECTION;
+        }
+
+        return $allowed[0] ?? 'mysql';
+    }
+
     public function index(Request $request)
     {
         $this->enforcePermission('reservations', 'list', 'view');
@@ -25,11 +54,18 @@ class MigrationMappingController extends MatrixAwareController
             ->orderBy('id')
             ->get();
 
+        $allowedConnections = $this->allowedConnections();
+        $defaultSourceConnection = $this->resolveConnection(self::DEFAULT_SOURCE_CONNECTION, $allowedConnections);
+        $defaultTargetConnection = $this->resolveConnection(self::DEFAULT_TARGET_CONNECTION, $allowedConnections);
+
         return view('migration-mappings.index', [
             'title' => 'Mapping migration',
             'mappings' => $rows,
             'sourceTableFilter' => $sourceTableFilter,
             'sourceTables' => MigrationMapping::query()->select('source_table')->distinct()->orderBy('source_table')->pluck('source_table'),
+            'dbConnections' => $allowedConnections,
+            'defaultSourceConnection' => $defaultSourceConnection,
+            'defaultTargetConnection' => $defaultTargetConnection,
         ]);
     }
 
@@ -168,5 +204,62 @@ class MigrationMappingController extends MatrixAwareController
 
             fclose($out);
         }, $name, $headers);
+    }
+
+    public function schemaTables(Request $request)
+    {
+        $this->enforcePermission('reservations', 'list', 'view');
+
+        $allowedConnections = $this->allowedConnections();
+        $validated = $request->validate([
+            'connection' => ['required', Rule::in($allowedConnections)],
+        ]);
+
+        try {
+            $tables = collect(Schema::connection($validated['connection'])->getTableListing())
+                ->map(fn ($value) => (string) $value)
+                ->sort()
+                ->values()
+                ->all();
+        } catch (QueryException $exception) {
+            return response()->json([
+                'message' => 'Connexion base indisponible ou non configuree.',
+                'error' => $exception->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'connection' => $validated['connection'],
+            'tables' => $tables,
+        ]);
+    }
+
+    public function schemaColumns(Request $request)
+    {
+        $this->enforcePermission('reservations', 'list', 'view');
+
+        $allowedConnections = $this->allowedConnections();
+        $validated = $request->validate([
+            'connection' => ['required', Rule::in($allowedConnections)],
+            'table' => ['required', 'string', 'max:150'],
+        ]);
+
+        try {
+            $columns = collect(Schema::connection($validated['connection'])->getColumnListing($validated['table']))
+                ->map(fn ($value) => (string) $value)
+                ->values()
+                ->all();
+        } catch (QueryException $exception) {
+            return response()->json([
+                'message' => 'Table introuvable ou connexion indisponible.',
+                'error' => $exception->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'connection' => $validated['connection'],
+            'table' => $validated['table'],
+            'columns' => $columns,
+        ]);
     }
 }
