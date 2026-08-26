@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\MigrationMappingController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\RoleController;
@@ -71,6 +72,12 @@ Route::middleware('auth')->group(function () {
 	Route::post('modules/{module}/features', [ModuleController::class, 'storeFeature'])->name('modules.features.store');
 	Route::patch('modules/{module}/toggle', [ModuleController::class, 'toggleModule'])->name('modules.toggle');
 	Route::patch('module-features/{feature}/toggle', [ModuleController::class, 'toggleFeature'])->name('modules.features.toggle');
+
+	Route::get('migration-mappings', [MigrationMappingController::class, 'index'])->name('migration-mappings.index');
+	Route::post('migration-mappings', [MigrationMappingController::class, 'store'])->name('migration-mappings.store');
+	Route::patch('migration-mappings/{migrationMapping}', [MigrationMappingController::class, 'update'])->name('migration-mappings.update');
+	Route::delete('migration-mappings/{migrationMapping}', [MigrationMappingController::class, 'destroy'])->name('migration-mappings.destroy');
+	Route::get('migration-mappings/export/file', [MigrationMappingController::class, 'export'])->name('migration-mappings.export');
 
 	Route::get('permissions/matrix', [RolePermissionController::class, 'index'])->name('permissions.matrix');
 	Route::post('permissions/matrix', [RolePermissionController::class, 'update'])->name('permissions.matrix.update');
