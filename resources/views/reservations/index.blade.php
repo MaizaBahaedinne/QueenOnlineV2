@@ -179,32 +179,6 @@
                 </p>
                 <div class="reservation-intro">Planifie un evenement en 2 etapes: verification du creneau puis choix ou creation du client.</div>
 
-                <div class="reservation-helper-box" style="padding-top:12px; padding-bottom:12px;">
-                    <div class="reservation-field">
-                        <label for="reservation-create-title">Titre de l event</label>
-                        <input class="search" id="reservation-create-title" style="max-width:none;" type="text" name="title" maxlength="255" required>
-                    </div>
-                    <div class="reservation-inline-grid" style="margin-top:10px;">
-                        <div class="reservation-field">
-                            <label for="reservation-create-event-type">Type de l event</label>
-                            <select class="search" id="reservation-create-event-type" style="max-width:none;" name="event_type" required>
-                                <option value=""></option>
-                                @foreach (($eventTypes ?? []) as $eventType)
-                                    <option value="{{ $eventType }}" {{ old('event_type') === $eventType ? 'selected' : '' }}>{{ $eventType }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="reservation-field">
-                            <label for="reservation-create-guest-count">Nombre des invites</label>
-                            <input class="search" id="reservation-create-guest-count" style="max-width:none;" type="number" min="1" step="1" name="guest_count" placeholder="Ex: 250">
-                        </div>
-                        <div class="reservation-field">
-                            <label for="reservation-create-payment-due-date">Date echeance paiement (J-30)</label>
-                            <input class="search" id="reservation-create-payment-due-date" style="max-width:none;" type="date" name="payment_due_date" readonly>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="reservation-helper-box">
                     <div class="reservation-step-head">
                         <span class="reservation-step-badge">1</span>
@@ -355,6 +329,36 @@
                     <div class="reservation-field" style="margin-top:10px;">
                         <label for="reservation-client-note">Note</label>
                         <textarea class="search" style="max-width:none; min-height:72px;" name="note" id="reservation-client-note" placeholder="Note client"></textarea>
+                    </div>
+                </div>
+
+                <div class="reservation-helper-box" style="padding-top:12px; padding-bottom:12px;">
+                    <div class="reservation-step-head">
+                        <span class="reservation-step-badge">3</span>
+                        <p class="reservation-helper-title">Informations de l event</p>
+                    </div>
+                    <div class="reservation-field">
+                        <label for="reservation-create-title">Titre de l event</label>
+                        <input class="search" id="reservation-create-title" style="max-width:none;" type="text" name="title" maxlength="255" required>
+                    </div>
+                    <div class="reservation-inline-grid" style="margin-top:10px;">
+                        <div class="reservation-field">
+                            <label for="reservation-create-event-type">Type de l event</label>
+                            <select class="search" id="reservation-create-event-type" style="max-width:none;" name="event_type" required>
+                                <option value=""></option>
+                                @foreach (($eventTypes ?? []) as $eventType)
+                                    <option value="{{ $eventType }}" {{ old('event_type') === $eventType ? 'selected' : '' }}>{{ $eventType }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="reservation-field">
+                            <label for="reservation-create-guest-count">Nombre des invites</label>
+                            <input class="search" id="reservation-create-guest-count" style="max-width:none;" type="number" min="1" step="1" name="guest_count" placeholder="Ex: 250">
+                        </div>
+                        <div class="reservation-field">
+                            <label for="reservation-create-payment-due-date">Date echeance paiement (J-30)</label>
+                            <input class="search" id="reservation-create-payment-due-date" style="max-width:none;" type="date" name="payment_due_date" readonly>
+                        </div>
                     </div>
                 </div>
 
