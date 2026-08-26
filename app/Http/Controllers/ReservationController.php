@@ -166,6 +166,49 @@ class ReservationController extends MatrixAwareController
             default => 'Toutes',
         };
 
+        $indexServiceItems = ServiceModuleItem::query()
+            ->whereIn('module_slug', ['photographe', 'troupe-musicale', 'chanteur', 'notaire', 'animation'])
+            ->where('status', 'active')
+            ->orderBy('module_slug')
+            ->orderBy('name')
+            ->get(['id', 'module_slug', 'name', 'base_price']);
+
+        $indexServicePacks = ServiceModulePack::query()
+            ->whereIn('module_slug', ['photographe', 'troupe-musicale'])
+            ->where('status', 'active')
+            ->orderBy('module_slug')
+            ->orderBy('name')
+            ->get(['id', 'module_slug', 'name', 'price']);
+
+        $indexProvidersByModule = [
+            'photographe' => [],
+            'troupe-musicale' => [],
+            'chanteur' => [],
+            'notaire' => [],
+            'animation' => [],
+        ];
+
+        foreach ($indexServiceItems as $item) {
+            $indexProvidersByModule[$item->module_slug][] = [
+                'id' => (int) $item->id,
+                'name' => $item->name,
+                'base_price' => (float) $item->base_price,
+            ];
+        }
+
+        $indexPacksByModule = [
+            'photographe' => [],
+            'troupe-musicale' => [],
+        ];
+
+        foreach ($indexServicePacks as $pack) {
+            $indexPacksByModule[$pack->module_slug][] = [
+                'id' => (int) $pack->id,
+                'name' => $pack->name,
+                'price' => (float) $pack->price,
+            ];
+        }
+
         return view('reservations.index', [
             'title' => 'Reservations',
             'reservations' => $reservationsQuery->latest()->get(),
@@ -180,6 +223,8 @@ class ReservationController extends MatrixAwareController
             'reservationScopeLabel' => $scopeLabel,
             'reservationScopeInternalCount' => $internalCount,
             'reservationScopeExternalCount' => $externalCount,
+            'serviceProvidersByModule' => $indexProvidersByModule,
+            'servicePacksByModule' => $indexPacksByModule,
         ]);
     }
 
@@ -1011,6 +1056,100 @@ class ReservationController extends MatrixAwareController
         ]);
 
         $resolvedClientId = $this->resolveReservationClient($request);
+        $requestServiceSlug = trim((string) $request->input('service_slug', 'salles'));
+        $serviceSlugForValidation = in_array($requestServiceSlug, array_keys(self::RESERVATION_SERVICES), true) ? $requestServiceSlug : 'salles';
+
+        $serviceSpecificLines = [];
+
+        if ($serviceSlugForValidation === 'photographe') {
+            $serviceValidated = $request->validate([
+                'service_pack_id' => [
+                    'required',
+                    'integer',
+                    Rule::exists('service_module_packs', 'id')->where(function ($query) {
+                        $query
+                            ->where('module_slug', 'photographe')
+                            ->where('status', 'active');
+                    }),
+                ],
+            ]);
+
+            $selectedPack = ServiceModulePack::query()->find((int) $serviceValidated['service_pack_id']);
+            if ($selectedPack) {
+                $serviceSpecificLines[] = 'Pack photographe: ' . $selectedPack->name;
+            }
+        }
+
+        if ($serviceSlugForValidation === 'troupe-musicale') {
+            $serviceValidated = $request->validate([
+                'service_pack_id' => [
+                    'required',
+                    'integer',
+                    Rule::exists('service_module_packs', 'id')->where(function ($query) {
+                        $query
+                            ->where('module_slug', 'troupe-musicale')
+                            ->where('status', 'active');
+                    }),
+                ],
+                'partner_artist_ids' => ['required', 'array', 'min:1'],
+                'partner_artist_ids.*' => [
+                    'required',
+                    'integer',
+                    'distinct',
+                    Rule::exists('service_module_items', 'id')->where(function ($query) {
+                        $query
+                            ->where('module_slug', 'chanteur')
+                            ->where('status', 'active');
+                    }),
+                ],
+            ]);
+
+            $selectedPack = ServiceModulePack::query()->find((int) $serviceValidated['service_pack_id']);
+            $artistNames = ServiceModuleItem::query()
+                ->whereIn('id', $serviceValidated['partner_artist_ids'])
+                ->pluck('name')
+                ->all();
+
+            if ($selectedPack) {
+                $serviceSpecificLines[] = 'Pack troupe: ' . $selectedPack->name;
+            }
+            if (! empty($artistNames)) {
+                $serviceSpecificLines[] = 'Artistes partenaires: ' . implode(', ', $artistNames);
+            }
+        }
+
+        if ($serviceSlugForValidation === 'voiture') {
+            $serviceValidated = $request->validate([
+                'itinerary_departure' => ['required', 'string', 'max:255'],
+                'itinerary_stops' => ['nullable', 'string', 'max:1000'],
+                'itinerary_arrival' => ['required', 'string', 'max:255'],
+            ]);
+
+            $serviceSpecificLines[] = 'Itineraire voiture - Depart: ' . $serviceValidated['itinerary_departure'];
+            if (! empty($serviceValidated['itinerary_stops'])) {
+                $serviceSpecificLines[] = 'Itineraire voiture - Arrets: ' . $serviceValidated['itinerary_stops'];
+            }
+            $serviceSpecificLines[] = 'Itineraire voiture - Arrivee: ' . $serviceValidated['itinerary_arrival'];
+        }
+
+        if (in_array($serviceSlugForValidation, ['chanteur', 'notaire', 'animation'], true)) {
+            $serviceValidated = $request->validate([
+                'service_provider_id' => [
+                    'required',
+                    'integer',
+                    Rule::exists('service_module_items', 'id')->where(function ($query) use ($serviceSlugForValidation) {
+                        $query
+                            ->where('module_slug', $serviceSlugForValidation)
+                            ->where('status', 'active');
+                    }),
+                ],
+            ]);
+
+            $selectedProvider = ServiceModuleItem::query()->find((int) $serviceValidated['service_provider_id']);
+            if ($selectedProvider) {
+                $serviceSpecificLines[] = 'Prestataire: ' . $selectedProvider->name;
+            }
+        }
 
         $validated = $request->validate([
             'salle_id' => ['required', 'exists:salles,id'],
@@ -1049,6 +1188,14 @@ class ReservationController extends MatrixAwareController
             $validated['service_slug'] = $validated['service_slug'] ?? 'salles';
         } else {
             unset($validated['service_slug']);
+        }
+
+        if (! empty($serviceSpecificLines)) {
+            $serviceSpecificNote = '[Details service]' . PHP_EOL . implode(PHP_EOL, $serviceSpecificLines);
+            $existingAdminNote = trim((string) ($validated['note_admin'] ?? ''));
+            $validated['note_admin'] = $existingAdminNote !== ''
+                ? ($existingAdminNote . PHP_EOL . PHP_EOL . $serviceSpecificNote)
+                : $serviceSpecificNote;
         }
 
         $validated['client_id'] = $resolvedClientId;

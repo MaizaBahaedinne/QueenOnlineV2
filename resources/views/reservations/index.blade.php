@@ -66,6 +66,8 @@
         .reservation-scope-badge { display: inline-flex; margin-right: 3px; padding: 1px 4px; border-radius: 999px; font-size: 9px; line-height: 1.2; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
         .reservation-scope-badge.interne { color: #1e5f9d; background: #deefff; }
         .reservation-scope-badge.externe { color: #1d6a3d; background: #dff8e9; }
+        .reservation-service-specific-box { margin-top: 12px; border: 1px dashed #c8d9ea; border-radius: 10px; padding: 10px; background: #f8fbff; }
+        .reservation-service-specific-title { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: #1e456c; }
         .salle-cards-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
         .salle-card { border: 1px solid #d7dee8; border-radius: 12px; padding: 11px; cursor: pointer; background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%); transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; text-align: left; }
         .salle-card:hover { border-color: #8ca6c1; box-shadow: 0 6px 14px rgba(8, 24, 48, 0.08); transform: translateY(-1px); }
@@ -177,7 +179,7 @@
                         | Portee: <strong>{{ $reservationScopeLabel }}</strong>
                     @endif
                 </p>
-                <div class="reservation-intro">Planifie un evenement en 2 etapes: verification du creneau puis choix ou creation du client.</div>
+                <div class="reservation-intro">Planifie un evenement en 3 etapes: disponibilite, fiche client, puis informations service/event.</div>
 
                 <div class="reservation-helper-box">
                     <div class="reservation-step-head">
@@ -360,6 +362,73 @@
                             <input class="search" id="reservation-create-payment-due-date" style="max-width:none;" type="date" name="payment_due_date" readonly>
                         </div>
                     </div>
+
+                    @if ($effectiveCreateServiceSlug === 'photographe')
+                        <div class="reservation-service-specific-box">
+                            <p class="reservation-service-specific-title">Formulaire Photographe</p>
+                            <div class="reservation-field">
+                                <label for="reservation-create-photographe-pack">Pack photographe</label>
+                                <select class="search" id="reservation-create-photographe-pack" style="max-width:none;" name="service_pack_id" required>
+                                    <option value="">Selectionner un pack</option>
+                                    @foreach (($servicePacksByModule['photographe'] ?? []) as $pack)
+                                        <option value="{{ $pack['id'] }}">{{ $pack['name'] }} ({{ number_format((float) $pack['price'], 2, '.', ' ') }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    @elseif ($effectiveCreateServiceSlug === 'troupe-musicale')
+                        <div class="reservation-service-specific-box">
+                            <p class="reservation-service-specific-title">Formulaire Troupe musicale</p>
+                            <div class="reservation-inline-grid-2">
+                                <div class="reservation-field">
+                                    <label for="reservation-create-troupe-pack">Pack troupe</label>
+                                    <select class="search" id="reservation-create-troupe-pack" style="max-width:none;" name="service_pack_id" required>
+                                        <option value="">Selectionner un pack</option>
+                                        @foreach (($servicePacksByModule['troupe-musicale'] ?? []) as $pack)
+                                            <option value="{{ $pack['id'] }}">{{ $pack['name'] }} ({{ number_format((float) $pack['price'], 2, '.', ' ') }})</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="reservation-field">
+                                    <label for="reservation-create-troupe-partners">Artistes partenaires (un ou plusieurs)</label>
+                                    <select class="search" id="reservation-create-troupe-partners" style="max-width:none; min-height:110px;" name="partner_artist_ids[]" multiple required>
+                                        @foreach (($serviceProvidersByModule['chanteur'] ?? []) as $artist)
+                                            <option value="{{ $artist['id'] }}">{{ $artist['name'] }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    @elseif ($effectiveCreateServiceSlug === 'voiture')
+                        <div class="reservation-service-specific-box">
+                            <p class="reservation-service-specific-title">Formulaire Voiture</p>
+                            <div class="reservation-field">
+                                <label for="reservation-create-itinerary-departure">Point de depart</label>
+                                <input class="search" id="reservation-create-itinerary-departure" style="max-width:none;" type="text" name="itinerary_departure" placeholder="Adresse de depart" required>
+                            </div>
+                            <div class="reservation-field" style="margin-top:10px;">
+                                <label for="reservation-create-itinerary-stops">Arrets intermediaires</label>
+                                <textarea class="search" id="reservation-create-itinerary-stops" style="max-width:none; min-height:64px;" name="itinerary_stops" placeholder="Optionnel - separer par virgule"></textarea>
+                            </div>
+                            <div class="reservation-field" style="margin-top:10px;">
+                                <label for="reservation-create-itinerary-arrival">Point d arrivee</label>
+                                <input class="search" id="reservation-create-itinerary-arrival" style="max-width:none;" type="text" name="itinerary_arrival" placeholder="Adresse d arrivee" required>
+                            </div>
+                        </div>
+                    @elseif (in_array($effectiveCreateServiceSlug, ['chanteur', 'notaire', 'animation'], true))
+                        <div class="reservation-service-specific-box">
+                            <p class="reservation-service-specific-title">Formulaire {{ $effectiveCreateServiceLabel }}</p>
+                            <div class="reservation-field">
+                                <label for="reservation-create-provider">Prestataire</label>
+                                <select class="search" id="reservation-create-provider" style="max-width:none;" name="service_provider_id" required>
+                                    <option value="">Selectionner un prestataire</option>
+                                    @foreach (($serviceProvidersByModule[$effectiveCreateServiceSlug] ?? []) as $provider)
+                                        <option value="{{ $provider['id'] }}">{{ $provider['name'] }} @if((float) $provider['base_price'] > 0)(Base {{ number_format((float) $provider['base_price'], 2, '.', ' ') }})@endif</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="reservation-helper-box" style="padding-top:12px; padding-bottom:12px;">
