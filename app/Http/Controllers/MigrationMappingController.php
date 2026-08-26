@@ -10,7 +10,7 @@ class MigrationMappingController extends MatrixAwareController
 {
     public function index(Request $request)
     {
-        $this->enforcePermission('modules', 'list', 'view');
+        $this->enforcePermission('reservations', 'list', 'view');
 
         $sourceTableFilter = trim((string) $request->query('source_table', ''));
 
@@ -35,7 +35,7 @@ class MigrationMappingController extends MatrixAwareController
 
     public function store(Request $request)
     {
-        $this->enforcePermission('modules', 'create', 'create');
+        $this->enforcePermission('reservations', 'create', 'create');
 
         $validated = $request->validate([
             'source_table' => ['required', 'string', 'max:150'],
@@ -58,7 +58,7 @@ class MigrationMappingController extends MatrixAwareController
 
     public function update(Request $request, MigrationMapping $migrationMapping)
     {
-        $this->enforcePermission('modules', 'update', 'update');
+        $this->enforcePermission('reservations', 'update', 'update');
 
         $validated = $request->validate([
             'source_table' => ['required', 'string', 'max:150'],
@@ -81,7 +81,7 @@ class MigrationMappingController extends MatrixAwareController
 
     public function destroy(MigrationMapping $migrationMapping)
     {
-        $this->enforcePermission('modules', 'delete', 'delete');
+        $this->enforcePermission('reservations', 'delete', 'delete');
 
         $migrationMapping->delete();
 
@@ -90,7 +90,7 @@ class MigrationMappingController extends MatrixAwareController
 
     public function export(Request $request)
     {
-        $this->enforcePermission('modules', 'list', 'view');
+        $this->enforcePermission('reservations', 'list', 'view');
 
         $format = trim((string) $request->query('format', 'csv'));
         $sourceTable = trim((string) $request->query('source_table', ''));

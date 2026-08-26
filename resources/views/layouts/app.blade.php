@@ -102,7 +102,9 @@
                         <li><a class="{{ str_starts_with((string) $current, 'users.') ? 'active' : '' }}" href="{{ route('users.index') }}"><i class="fa fa-user menu-icon" aria-hidden="true"></i><span>Utilisateurs</span></a></li>
                         <li><a class="{{ str_starts_with((string) $current, 'roles.') ? 'active' : '' }}" href="{{ route('roles.index') }}"><i class="fa fa-shield menu-icon" aria-hidden="true"></i><span>Roles utilisateurs</span></a></li>
                         <li><a class="{{ str_starts_with((string) $current, 'modules.') ? 'active' : '' }}" href="{{ route('modules.index') }}"><i class="fa fa-th-large menu-icon" aria-hidden="true"></i><span>Modules</span></a></li>
-                        <li><a class="{{ str_starts_with((string) $current, 'migration-mappings.') ? 'active' : '' }}" href="{{ route('migration-mappings.index') }}"><i class="fa fa-random menu-icon" aria-hidden="true"></i><span>Mapping migration</span></a></li>
+                        @if (auth()->user()?->canFeature('reservations', 'list', 'view'))
+                            <li><a class="{{ str_starts_with((string) $current, 'migration-mappings.') ? 'active' : '' }}" href="{{ route('migration-mappings.index') }}"><i class="fa fa-random menu-icon" aria-hidden="true"></i><span>Mapping migration</span></a></li>
+                        @endif
                         <li><a class="{{ str_starts_with((string) $current, 'permissions.') ? 'active' : '' }}" href="{{ route('permissions.matrix') }}"><i class="fa fa-lock menu-icon" aria-hidden="true"></i><span>Matrice roles</span></a></li>
                     </ul>
                 </div>

@@ -2,9 +2,9 @@
 
 @section('content')
     @php
-        $canCreate = auth()->user()?->canFeature('modules', 'create', 'create') ?? false;
-        $canUpdate = auth()->user()?->canFeature('modules', 'update', 'update') ?? false;
-        $canDelete = auth()->user()?->canFeature('modules', 'delete', 'delete') ?? false;
+        $canCreate = auth()->user()?->canFeature('reservations', 'create', 'create') ?? false;
+        $canUpdate = auth()->user()?->canFeature('reservations', 'update', 'update') ?? false;
+        $canDelete = auth()->user()?->canFeature('reservations', 'delete', 'delete') ?? false;
     @endphp
 
     <style>
