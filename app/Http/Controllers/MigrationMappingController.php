@@ -13,7 +13,6 @@ use Illuminate\Validation\Rule;
 class MigrationMappingController extends MatrixAwareController
 {
     private const DEFAULT_SOURCE_CONNECTION = 'legacy';
-    private const DEFAULT_TARGET_CONNECTION = 'mysql';
 
     private function allowedConnections(): array
     {
@@ -30,8 +29,8 @@ class MigrationMappingController extends MatrixAwareController
             return $requested;
         }
 
-        if (in_array(self::DEFAULT_TARGET_CONNECTION, $allowed, true)) {
-            return self::DEFAULT_TARGET_CONNECTION;
+        if (in_array(self::DEFAULT_SOURCE_CONNECTION, $allowed, true)) {
+            return self::DEFAULT_SOURCE_CONNECTION;
         }
 
         return $allowed[0] ?? 'mysql';
@@ -56,16 +55,13 @@ class MigrationMappingController extends MatrixAwareController
 
         $allowedConnections = $this->allowedConnections();
         $defaultSourceConnection = $this->resolveConnection(self::DEFAULT_SOURCE_CONNECTION, $allowedConnections);
-        $defaultTargetConnection = $this->resolveConnection(self::DEFAULT_TARGET_CONNECTION, $allowedConnections);
 
         return view('migration-mappings.index', [
             'title' => 'Mapping migration',
             'mappings' => $rows,
             'sourceTableFilter' => $sourceTableFilter,
             'sourceTables' => MigrationMapping::query()->select('source_table')->distinct()->orderBy('source_table')->pluck('source_table'),
-            'dbConnections' => $allowedConnections,
             'defaultSourceConnection' => $defaultSourceConnection,
-            'defaultTargetConnection' => $defaultTargetConnection,
         ]);
     }
 
@@ -76,8 +72,8 @@ class MigrationMappingController extends MatrixAwareController
         $validated = $request->validate([
             'source_table' => ['required', 'string', 'max:150'],
             'source_column' => ['required', 'string', 'max:150'],
-            'target_table' => ['required', 'string', 'max:150'],
-            'target_column' => ['required', 'string', 'max:150'],
+            'target_table' => ['nullable', 'string', 'max:150'],
+            'target_column' => ['nullable', 'string', 'max:150'],
             'condition_value' => ['nullable', 'string', 'max:255'],
             'signification' => ['nullable', 'string'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
@@ -86,6 +82,14 @@ class MigrationMappingController extends MatrixAwareController
 
         $validated['sort_order'] = (int) ($validated['sort_order'] ?? 0);
         $validated['is_active'] = ((string) ($validated['is_active'] ?? '1')) === '1';
+        $validated['target_table'] = trim((string) ($validated['target_table'] ?? ''));
+        $validated['target_column'] = trim((string) ($validated['target_column'] ?? ''));
+        if ($validated['target_table'] === '') {
+            $validated['target_table'] = $validated['source_table'];
+        }
+        if ($validated['target_column'] === '') {
+            $validated['target_column'] = $validated['source_column'];
+        }
 
         MigrationMapping::query()->create($validated);
 
@@ -99,8 +103,8 @@ class MigrationMappingController extends MatrixAwareController
         $validated = $request->validate([
             'source_table' => ['required', 'string', 'max:150'],
             'source_column' => ['required', 'string', 'max:150'],
-            'target_table' => ['required', 'string', 'max:150'],
-            'target_column' => ['required', 'string', 'max:150'],
+            'target_table' => ['nullable', 'string', 'max:150'],
+            'target_column' => ['nullable', 'string', 'max:150'],
             'condition_value' => ['nullable', 'string', 'max:255'],
             'signification' => ['nullable', 'string'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
@@ -109,6 +113,14 @@ class MigrationMappingController extends MatrixAwareController
 
         $validated['sort_order'] = (int) ($validated['sort_order'] ?? 0);
         $validated['is_active'] = ((string) ($validated['is_active'] ?? '1')) === '1';
+        $validated['target_table'] = trim((string) ($validated['target_table'] ?? ''));
+        $validated['target_column'] = trim((string) ($validated['target_column'] ?? ''));
+        if ($validated['target_table'] === '') {
+            $validated['target_table'] = $validated['source_table'];
+        }
+        if ($validated['target_column'] === '') {
+            $validated['target_column'] = $validated['source_column'];
+        }
 
         $migrationMapping->update($validated);
 

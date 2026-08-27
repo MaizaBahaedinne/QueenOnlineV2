@@ -25,7 +25,7 @@
 
     <section class="panel">
         <h1 class="panel-title">Mapping migration</h1>
-        <p class="panel-sub">Table par table, colonne par colonne, avec condition/valeur et signification.</p>
+        <p class="panel-sub">Saisie base legacy uniquement (table/colonne source), avec condition/valeur et signification.</p>
 
         @if (session('success'))
             <p class="badge badge-success" style="margin-top:10px;">{{ session('success') }}</p>
@@ -68,8 +68,6 @@
                     <tr>
                         <th>Table source</th>
                         <th>Colonne source</th>
-                        <th>Table cible</th>
-                        <th>Colonne cible</th>
                         <th>Condition / Valeur</th>
                         <th>Signification</th>
                         <th>Ordre</th>
@@ -82,15 +80,13 @@
                     @forelse ($mappings as $row)
                         @if ($lastTable !== $row->source_table)
                             <tr>
-                                <td colspan="9" class="mapping-group-title">{{ $row->source_table }}</td>
+                                <td colspan="7" class="mapping-group-title">{{ $row->source_table }}</td>
                             </tr>
                             @php $lastTable = $row->source_table; @endphp
                         @endif
                         <tr>
                             <td>{{ $row->source_table }}</td>
                             <td>{{ $row->source_column }}</td>
-                            <td>{{ $row->target_table }}</td>
-                            <td>{{ $row->target_column }}</td>
                             <td>{{ $row->condition_value ?: '-' }}</td>
                             <td>{{ $row->signification ?: '-' }}</td>
                             <td>{{ $row->sort_order }}</td>
@@ -105,8 +101,6 @@
                                             data-map-id="{{ $row->id }}"
                                             data-map-source-table="{{ $row->source_table }}"
                                             data-map-source-column="{{ $row->source_column }}"
-                                            data-map-target-table="{{ $row->target_table }}"
-                                            data-map-target-column="{{ $row->target_column }}"
                                             data-map-condition-value="{{ $row->condition_value }}"
                                             data-map-signification="{{ $row->signification }}"
                                             data-map-sort-order="{{ $row->sort_order }}"
@@ -127,7 +121,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="9" class="muted">Aucune ligne de mapping.</td></tr>
+                        <tr><td colspan="7" class="muted">Aucune ligne de mapping.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -137,45 +131,20 @@
     @if ($canCreate)
         <div class="modal-overlay" id="mapping-create-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Ajouter ligne de mapping</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
             <form method="POST" action="{{ route('migration-mappings.store') }}" style="display:grid; gap:10px;">@csrf
+                <input type="hidden" name="source_connection" id="mapping-create-source-connection" value="{{ $defaultSourceConnection ?? 'legacy' }}">
+                <input type="hidden" name="target_table" id="mapping-create-target-table" value="">
+                <input type="hidden" name="target_column" id="mapping-create-target-column" value="">
                 <div class="mapping-form-grid">
-                    <div>
-                        <label>Connexion source</label>
-                        <select class="search" style="max-width:none;" name="source_connection" id="mapping-create-source-connection" required>
-                            @foreach (($dbConnections ?? []) as $connectionName)
-                                <option value="{{ $connectionName }}" {{ (($defaultSourceConnection ?? 'legacy') === $connectionName) ? 'selected' : '' }}>{{ $connectionName }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label>Connexion cible</label>
-                        <select class="search" style="max-width:none;" name="target_connection" id="mapping-create-target-connection" required>
-                            @foreach (($dbConnections ?? []) as $connectionName)
-                                <option value="{{ $connectionName }}" {{ (($defaultTargetConnection ?? 'mysql') === $connectionName) ? 'selected' : '' }}>{{ $connectionName }}</option>
-                            @endforeach
-                        </select>
-                    </div>
                     <div>
                         <label>Table source</label>
                         <select class="search" style="max-width:none;" name="source_table" id="mapping-create-source-table" required>
-                            <option value="">Selectionner table source</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Table cible</label>
-                        <select class="search" style="max-width:none;" name="target_table" id="mapping-create-target-table" required>
-                            <option value="">Selectionner table cible</option>
+                            <option value="">Chargement...</option>
                         </select>
                     </div>
                     <div>
                         <label>Colonne source</label>
                         <select class="search" style="max-width:none;" name="source_column" id="mapping-create-source-column" required>
-                            <option value="">Selectionner colonne source</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Colonne cible</label>
-                        <select class="search" style="max-width:none;" name="target_column" id="mapping-create-target-column" required>
-                            <option value="">Selectionner colonne cible</option>
+                            <option value="">Selectionner table d'abord</option>
                         </select>
                     </div>
                     <div>
@@ -206,45 +175,20 @@
     @if ($canUpdate)
         <div class="modal-overlay" id="mapping-edit-modal"><div class="modal-card"><div class="modal-head"><h3 class="modal-title">Modifier ligne de mapping</h3><button type="button" class="btn" data-close-modal>Fermer</button></div>
             <form method="POST" id="mapping-edit-form" action="#" style="display:grid; gap:10px;">@csrf @method('PATCH')
+                <input type="hidden" id="mapping-edit-source-connection" name="source_connection" value="{{ $defaultSourceConnection ?? 'legacy' }}">
+                <input type="hidden" id="mapping-edit-target-table" name="target_table" value="">
+                <input type="hidden" id="mapping-edit-target-column" name="target_column" value="">
                 <div class="mapping-form-grid">
-                    <div>
-                        <label>Connexion source</label>
-                        <select class="search" style="max-width:none;" id="mapping-edit-source-connection" name="source_connection" required>
-                            @foreach (($dbConnections ?? []) as $connectionName)
-                                <option value="{{ $connectionName }}" {{ (($defaultSourceConnection ?? 'legacy') === $connectionName) ? 'selected' : '' }}>{{ $connectionName }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label>Connexion cible</label>
-                        <select class="search" style="max-width:none;" id="mapping-edit-target-connection" name="target_connection" required>
-                            @foreach (($dbConnections ?? []) as $connectionName)
-                                <option value="{{ $connectionName }}" {{ (($defaultTargetConnection ?? 'mysql') === $connectionName) ? 'selected' : '' }}>{{ $connectionName }}</option>
-                            @endforeach
-                        </select>
-                    </div>
                     <div>
                         <label>Table source</label>
                         <select class="search" style="max-width:none;" id="mapping-edit-source-table" name="source_table" required>
-                            <option value="">Selectionner table source</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Table cible</label>
-                        <select class="search" style="max-width:none;" id="mapping-edit-target-table" name="target_table" required>
-                            <option value="">Selectionner table cible</option>
+                            <option value="">Chargement...</option>
                         </select>
                     </div>
                     <div>
                         <label>Colonne source</label>
                         <select class="search" style="max-width:none;" id="mapping-edit-source-column" name="source_column" required>
-                            <option value="">Selectionner colonne source</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Colonne cible</label>
-                        <select class="search" style="max-width:none;" id="mapping-edit-target-column" name="target_column" required>
-                            <option value="">Selectionner colonne cible</option>
+                            <option value="">Selectionner table d'abord</option>
                         </select>
                     </div>
                     <div>
@@ -305,14 +249,16 @@
             return payload.columns || [];
         };
 
-        const fillSelect = (select, values, placeholder, selectedValue = '') => {
+        const fillSelect = (select, values, { placeholder, selectedValue = '', allowEmpty = true } = {}) => {
             if (!select) return;
 
             select.innerHTML = '';
-            const placeholderOption = document.createElement('option');
-            placeholderOption.value = '';
-            placeholderOption.textContent = placeholder;
-            select.appendChild(placeholderOption);
+            if (allowEmpty) {
+                const placeholderOption = document.createElement('option');
+                placeholderOption.value = '';
+                placeholderOption.textContent = placeholder;
+                select.appendChild(placeholderOption);
+            }
 
             values.forEach((value) => {
                 const option = document.createElement('option');
@@ -323,71 +269,87 @@
                 }
                 select.appendChild(option);
             });
+
+            if (!selectedValue && !allowEmpty && values.length > 0) {
+                select.value = values[0];
+            }
         };
 
         const wireSchemaSelectors = (prefix) => {
             const sourceConnection = document.getElementById(`${prefix}-source-connection`);
-            const targetConnection = document.getElementById(`${prefix}-target-connection`);
             const sourceTable = document.getElementById(`${prefix}-source-table`);
-            const targetTable = document.getElementById(`${prefix}-target-table`);
             const sourceColumn = document.getElementById(`${prefix}-source-column`);
+            const targetTable = document.getElementById(`${prefix}-target-table`);
             const targetColumn = document.getElementById(`${prefix}-target-column`);
 
-            if (!sourceConnection || !targetConnection || !sourceTable || !targetTable || !sourceColumn || !targetColumn) {
+            if (!sourceConnection || !sourceTable || !sourceColumn || !targetTable || !targetColumn) {
                 return {
                     syncWithValues: async () => {},
                 };
             }
 
-            const loadSourceTables = async (selected = '') => {
-                const tables = await fetchSchemaTables(sourceConnection.value);
-                fillSelect(sourceTable, tables, 'Selectionner table source', selected);
-                fillSelect(sourceColumn, [], 'Selectionner colonne source');
+            const syncTargetFields = () => {
+                targetTable.value = sourceTable.value || '';
+                targetColumn.value = sourceColumn.value || '';
             };
 
-            const loadTargetTables = async (selected = '') => {
-                const tables = await fetchSchemaTables(targetConnection.value);
-                fillSelect(targetTable, tables, 'Selectionner table cible', selected);
-                fillSelect(targetColumn, [], 'Selectionner colonne cible');
+            const loadSourceTables = async (selected = '') => {
+                const tables = await fetchSchemaTables(sourceConnection.value);
+                fillSelect(sourceTable, tables, {
+                    placeholder: 'Selectionner table source',
+                    selectedValue: selected,
+                    allowEmpty: false,
+                });
+                fillSelect(sourceColumn, [], {
+                    placeholder: 'Selectionner colonne source',
+                    allowEmpty: false,
+                });
+                syncTargetFields();
             };
 
             const loadSourceColumns = async (selected = '') => {
                 if (!sourceTable.value) {
-                    fillSelect(sourceColumn, [], 'Selectionner colonne source');
+                    fillSelect(sourceColumn, [], {
+                        placeholder: 'Selectionner colonne source',
+                        allowEmpty: false,
+                    });
+                    syncTargetFields();
                     return;
                 }
                 const columns = await fetchSchemaColumns(sourceConnection.value, sourceTable.value);
-                fillSelect(sourceColumn, columns, 'Selectionner colonne source', selected);
-            };
-
-            const loadTargetColumns = async (selected = '') => {
-                if (!targetTable.value) {
-                    fillSelect(targetColumn, [], 'Selectionner colonne cible');
-                    return;
-                }
-                const columns = await fetchSchemaColumns(targetConnection.value, targetTable.value);
-                fillSelect(targetColumn, columns, 'Selectionner colonne cible', selected);
+                fillSelect(sourceColumn, columns, {
+                    placeholder: 'Selectionner colonne source',
+                    selectedValue: selected,
+                    allowEmpty: false,
+                });
+                syncTargetFields();
             };
 
             sourceConnection.addEventListener('change', () => {
-                loadSourceTables().catch(() => fillSelect(sourceTable, [], 'Selectionner table source'));
-            });
-            targetConnection.addEventListener('change', () => {
-                loadTargetTables().catch(() => fillSelect(targetTable, [], 'Selectionner table cible'));
+                loadSourceTables()
+                    .then(() => loadSourceColumns())
+                    .catch(() => {
+                        fillSelect(sourceTable, [], {
+                            placeholder: 'Selectionner table source',
+                            allowEmpty: false,
+                        });
+                    });
             });
             sourceTable.addEventListener('change', () => {
-                loadSourceColumns().catch(() => fillSelect(sourceColumn, [], 'Selectionner colonne source'));
+                loadSourceColumns().catch(() => {
+                    fillSelect(sourceColumn, [], {
+                        placeholder: 'Selectionner colonne source',
+                        allowEmpty: false,
+                    });
+                });
             });
-            targetTable.addEventListener('change', () => {
-                loadTargetColumns().catch(() => fillSelect(targetColumn, [], 'Selectionner colonne cible'));
-            });
+            sourceColumn.addEventListener('change', syncTargetFields);
 
             return {
-                syncWithValues: async ({ sourceTableValue = '', sourceColumnValue = '', targetTableValue = '', targetColumnValue = '' } = {}) => {
+                syncWithValues: async ({ sourceTableValue = '', sourceColumnValue = '' } = {}) => {
                     await loadSourceTables(sourceTableValue);
-                    await loadTargetTables(targetTableValue);
                     await loadSourceColumns(sourceColumnValue);
-                    await loadTargetColumns(targetColumnValue);
+                    syncTargetFields();
                 },
             };
         };
@@ -413,8 +375,6 @@
                     editSelectors.syncWithValues({
                         sourceTableValue: button.dataset.mapSourceTable ?? '',
                         sourceColumnValue: button.dataset.mapSourceColumn ?? '',
-                        targetTableValue: button.dataset.mapTargetTable ?? '',
-                        targetColumnValue: button.dataset.mapTargetColumn ?? '',
                     }).catch(() => {});
                     document.getElementById('mapping-edit-condition-value').value = button.dataset.mapConditionValue ?? '';
                     document.getElementById('mapping-edit-signification').value = button.dataset.mapSignification ?? '';
