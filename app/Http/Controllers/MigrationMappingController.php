@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\MigrationMapping;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
@@ -13,6 +12,47 @@ use Illuminate\Validation\Rule;
 class MigrationMappingController extends MatrixAwareController
 {
     private const DEFAULT_SOURCE_CONNECTION = 'legacy';
+
+    private function readLegacySchemaFallback(): array
+    {
+        $path = base_path('database/legacy_schema_fallback.json');
+        if (! is_file($path)) {
+            return [];
+        }
+
+        $raw = @file_get_contents($path);
+        if ($raw === false || trim($raw) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded)) {
+            return [];
+        }
+
+        $tables = (array) ($decoded['tables'] ?? []);
+        $normalized = [];
+        foreach ($tables as $table => $columns) {
+            $tableName = trim((string) $table);
+            if ($tableName === '') {
+                continue;
+            }
+
+            $columnList = [];
+            foreach ((array) $columns as $column) {
+                $columnName = trim((string) $column);
+                if ($columnName !== '') {
+                    $columnList[] = $columnName;
+                }
+            }
+
+            $normalized[$tableName] = array_values(array_unique($columnList));
+        }
+
+        ksort($normalized);
+
+        return $normalized;
+    }
 
     private function allowedConnections(): array
     {
@@ -233,7 +273,16 @@ class MigrationMappingController extends MatrixAwareController
                 ->sort()
                 ->values()
                 ->all();
-        } catch (QueryException $exception) {
+        } catch (\Throwable $exception) {
+            $fallbackSchema = $this->readLegacySchemaFallback();
+            if (! empty($fallbackSchema)) {
+                return response()->json([
+                    'connection' => $validated['connection'],
+                    'tables' => array_keys($fallbackSchema),
+                    'source' => 'fallback_json',
+                ]);
+            }
+
             return response()->json([
                 'message' => 'Connexion base indisponible ou non configuree.',
                 'error' => $exception->getMessage(),
@@ -261,7 +310,18 @@ class MigrationMappingController extends MatrixAwareController
                 ->map(fn ($value) => (string) $value)
                 ->values()
                 ->all();
-        } catch (QueryException $exception) {
+        } catch (\Throwable $exception) {
+            $fallbackSchema = $this->readLegacySchemaFallback();
+            $table = (string) $validated['table'];
+            if (isset($fallbackSchema[$table])) {
+                return response()->json([
+                    'connection' => $validated['connection'],
+                    'table' => $table,
+                    'columns' => $fallbackSchema[$table],
+                    'source' => 'fallback_json',
+                ]);
+            }
+
             return response()->json([
                 'message' => 'Table introuvable ou connexion indisponible.',
                 'error' => $exception->getMessage(),
