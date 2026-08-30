@@ -10,6 +10,7 @@ class ClientCreditLedger extends Model
         'client_id',
         'reservation_id',
         'user_id',
+        'service_slug',
         'type',
         'amount',
         'related_client_id',

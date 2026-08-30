@@ -14,6 +14,16 @@ use Illuminate\Validation\Rule;
 
 class ClientController extends MatrixAwareController
 {
+    private const CREDIT_SERVICE_LABELS = [
+        'salles' => 'Salles',
+        'troupe-musicale' => 'Troupe musicale',
+        'photographe' => 'Photographe',
+        'chanteur' => 'Chanteur',
+        'notaire' => 'Notaire',
+        'animation' => 'Animation',
+        'voiture' => 'Voiture',
+    ];
+
     private const GOVERNORATES = [
         'Ariana',
         'Beja',
@@ -55,14 +65,18 @@ class ClientController extends MatrixAwareController
 
         $clients = Client::query()->latest()->get();
         $balances = [];
+        $balancesByService = [];
         foreach ($clients as $client) {
             $balances[$client->id] = $this->getClientCreditBalance((int) $client->id);
+            $balancesByService[$client->id] = $this->getClientCreditBalancesByService((int) $client->id);
         }
 
         return view('clients.index', [
             'title' => 'Clients',
             'clients' => $clients,
             'clientCreditBalances' => $balances,
+            'clientCreditBalancesByService' => $balancesByService,
+            'creditServiceLabels' => self::CREDIT_SERVICE_LABELS,
             'governorates' => self::GOVERNORATES,
             'sources' => self::SOURCES,
         ]);
@@ -101,6 +115,8 @@ class ClientController extends MatrixAwareController
             'reservations' => $reservations,
             'payments' => $payments,
             'clientCreditBalance' => $this->getClientCreditBalance((int) $client->id),
+            'clientCreditBalancesByService' => $this->getClientCreditBalancesByService((int) $client->id),
+            'creditServiceLabels' => self::CREDIT_SERVICE_LABELS,
             'otherClients' => $otherClients,
         ]);
     }
@@ -117,12 +133,14 @@ class ClientController extends MatrixAwareController
 
         $validated = $request->validate([
             'target_client_id' => ['required', 'integer', 'exists:clients,id', 'different:' . $client->id],
+            'service_slug' => ['required', Rule::in(array_keys(self::CREDIT_SERVICE_LABELS))],
             'amount' => ['required', 'numeric', 'gt:0'],
             'note' => ['nullable', 'string'],
         ]);
 
         $amount = (float) $validated['amount'];
-        $sourceBalance = $this->getClientCreditBalance((int) $client->id);
+        $serviceSlug = (string) $validated['service_slug'];
+        $sourceBalance = $this->getClientCreditBalance((int) $client->id, $serviceSlug);
 
         if ($amount > $sourceBalance) {
             return redirect()->route('clients.index')->withErrors([
@@ -132,8 +150,8 @@ class ClientController extends MatrixAwareController
 
         $targetClientId = (int) $validated['target_client_id'];
 
-        DB::transaction(function () use ($client, $validated, $amount, $targetClientId): void {
-            ClientCreditLedger::query()->create([
+        DB::transaction(function () use ($client, $validated, $amount, $targetClientId, $serviceSlug): void {
+            $transferOutPayload = [
                 'client_id' => $client->id,
                 'reservation_id' => null,
                 'user_id' => Auth::id(),
@@ -141,9 +159,9 @@ class ClientController extends MatrixAwareController
                 'amount' => $amount,
                 'related_client_id' => $targetClientId,
                 'description' => $validated['note'] ?? ('Transfert sortant vers client #' . $targetClientId),
-            ]);
+            ];
 
-            ClientCreditLedger::query()->create([
+            $transferInPayload = [
                 'client_id' => $targetClientId,
                 'reservation_id' => null,
                 'user_id' => Auth::id(),
@@ -151,7 +169,16 @@ class ClientController extends MatrixAwareController
                 'amount' => $amount,
                 'related_client_id' => $client->id,
                 'description' => $validated['note'] ?? ('Transfert entrant depuis client #' . $client->id),
-            ]);
+            ];
+
+            if (Schema::hasColumn('client_credit_ledgers', 'service_slug')) {
+                $transferOutPayload['service_slug'] = $serviceSlug;
+                $transferInPayload['service_slug'] = $serviceSlug;
+            }
+
+            ClientCreditLedger::query()->create($transferOutPayload);
+
+            ClientCreditLedger::query()->create($transferInPayload);
         });
 
         return redirect()->back()->with('success', 'Transfert de solde enregistre avec succes.');
@@ -273,22 +300,40 @@ class ClientController extends MatrixAwareController
         return $validated;
     }
 
-    private function getClientCreditBalance(int $clientId): float
+    private function getClientCreditBalance(int $clientId, ?string $serviceSlug = null): float
     {
         if (! Schema::hasTable('client_credit_ledgers')) {
             return 0.0;
         }
 
-        $credit = (float) ClientCreditLedger::query()
+        $creditQuery = ClientCreditLedger::query()
             ->where('client_id', $clientId)
-            ->whereIn('type', ['credit', 'transfer_in'])
-            ->sum('amount');
+            ->whereIn('type', ['credit', 'transfer_in']);
 
-        $debit = (float) ClientCreditLedger::query()
+        $debitQuery = ClientCreditLedger::query()
             ->where('client_id', $clientId)
-            ->whereIn('type', ['debit', 'transfer_out'])
-            ->sum('amount');
+            ->whereIn('type', ['debit', 'transfer_out']);
+
+        if ($serviceSlug !== null && Schema::hasColumn('client_credit_ledgers', 'service_slug')) {
+            $creditQuery->where('service_slug', $serviceSlug);
+            $debitQuery->where('service_slug', $serviceSlug);
+        }
+
+        $credit = (float) $creditQuery->sum('amount');
+
+        $debit = (float) $debitQuery->sum('amount');
 
         return max($credit - $debit, 0);
+    }
+
+    private function getClientCreditBalancesByService(int $clientId): array
+    {
+        $balances = [];
+
+        foreach (array_keys(self::CREDIT_SERVICE_LABELS) as $serviceSlug) {
+            $balances[$serviceSlug] = $this->getClientCreditBalance($clientId, $serviceSlug);
+        }
+
+        return $balances;
     }
 }

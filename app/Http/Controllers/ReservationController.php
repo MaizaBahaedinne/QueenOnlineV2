@@ -351,7 +351,8 @@ class ReservationController extends MatrixAwareController
                 ->get(['id', 'name', 'price']);
         }
 
-        $clientCreditBalance = $this->getClientCreditBalance((int) $reservation->client_id);
+        $reservationServiceSlug = $this->reservationServiceSlug($reservation);
+        $clientCreditBalance = $this->getClientCreditBalance((int) $reservation->client_id, $reservationServiceSlug);
         return view('reservations.show', [
             'title' => 'Detail reservation',
             'reservation' => $reservation,
@@ -365,6 +366,7 @@ class ReservationController extends MatrixAwareController
             'availableSalleOptions' => $availableSalleOptions,
             'additionalServiceModules' => self::ADDITIONAL_SERVICE_MODULES,
             'clientCreditBalance' => $clientCreditBalance,
+            'creditServiceLabel' => self::RESERVATION_SERVICES[$reservationServiceSlug] ?? 'Service',
             'reservationScopeLabel' => ($reservation->service_slug ?? 'salles') === 'salles' ? 'Interne' : 'Externe',
         ]);
     }
@@ -836,22 +838,29 @@ class ReservationController extends MatrixAwareController
                     ->withInput();
             }
 
-            $clientBalance = $this->getClientCreditBalance((int) $reservation->client_id);
+            $serviceSlug = $this->reservationServiceSlug($reservation);
+            $clientBalance = $this->getClientCreditBalance((int) $reservation->client_id, $serviceSlug);
             if ($amount > $clientBalance) {
                 return redirect()
                     ->route('reservations.show', $reservation)
-                    ->withErrors(['amount' => 'Le montant depasse le solde disponible du client.'])
+                    ->withErrors(['amount' => 'Le montant depasse le solde disponible du client pour ce type de service.'])
                     ->withInput();
             }
 
-            ClientCreditLedger::query()->create([
+            $ledgerPayload = [
                 'client_id' => $reservation->client_id,
                 'reservation_id' => $reservation->id,
                 'user_id' => Auth::id(),
                 'type' => 'debit',
                 'amount' => $amount,
                 'description' => 'Utilisation avoir via paiement reservation #' . $reservation->id,
-            ]);
+            ];
+
+            if (Schema::hasColumn('client_credit_ledgers', 'service_slug')) {
+                $ledgerPayload['service_slug'] = $serviceSlug;
+            }
+
+            ClientCreditLedger::query()->create($ledgerPayload);
         }
 
         Payment::query()->create([
@@ -917,14 +926,20 @@ class ReservationController extends MatrixAwareController
             );
 
             if ($paidAmount > 0) {
-                ClientCreditLedger::query()->create([
+                $ledgerPayload = [
                     'client_id' => $reservation->client_id,
                     'reservation_id' => $reservation->id,
                     'user_id' => Auth::id(),
                     'type' => 'credit',
                     'amount' => $paidAmount,
                     'description' => 'Avoir suite annulation reservation #' . $reservation->id,
-                ]);
+                ];
+
+                if (Schema::hasColumn('client_credit_ledgers', 'service_slug')) {
+                    $ledgerPayload['service_slug'] = $this->reservationServiceSlug($reservation);
+                }
+
+                ClientCreditLedger::query()->create($ledgerPayload);
             }
         });
 
@@ -1114,14 +1129,15 @@ class ReservationController extends MatrixAwareController
         ]);
 
         $amount = (float) $validated['amount'];
-        $balance = $this->getClientCreditBalance((int) $reservation->client_id);
+        $serviceSlug = $this->reservationServiceSlug($reservation);
+        $balance = $this->getClientCreditBalance((int) $reservation->client_id, $serviceSlug);
         $totalAmount = (float) ($reservation->total_amount ?? 0);
         $alreadyPaid = (float) $reservation->payments()->sum('amount');
         $remaining = max($totalAmount - $alreadyPaid, 0);
 
         if ($amount > $balance) {
             return redirect()->route('reservations.show', $reservation)->withErrors([
-                'credit_amount' => 'Le montant depasse le solde disponible du client.',
+                'credit_amount' => 'Le montant depasse le solde disponible du client pour ce type de service.',
             ])->withInput();
         }
 
@@ -1131,15 +1147,21 @@ class ReservationController extends MatrixAwareController
             ])->withInput();
         }
 
-        DB::transaction(function () use ($reservation, $amount, $validated): void {
-            ClientCreditLedger::query()->create([
+        DB::transaction(function () use ($reservation, $amount, $validated, $serviceSlug): void {
+            $ledgerPayload = [
                 'client_id' => $reservation->client_id,
                 'reservation_id' => $reservation->id,
                 'user_id' => Auth::id(),
                 'type' => 'debit',
                 'amount' => $amount,
                 'description' => 'Utilisation avoir sur reservation #' . $reservation->id,
-            ]);
+            ];
+
+            if (Schema::hasColumn('client_credit_ledgers', 'service_slug')) {
+                $ledgerPayload['service_slug'] = $serviceSlug;
+            }
+
+            ClientCreditLedger::query()->create($ledgerPayload);
 
             Payment::query()->create([
                 'reservation_id' => $reservation->id,
@@ -1181,7 +1203,8 @@ class ReservationController extends MatrixAwareController
         $amount = (float) $validated['amount'];
         $sourceClientId = (int) $reservation->client_id;
         $targetClientId = (int) $validated['target_client_id'];
-        $sourceBalance = $this->getClientCreditBalance($sourceClientId);
+        $serviceSlug = $this->reservationServiceSlug($reservation);
+        $sourceBalance = $this->getClientCreditBalance($sourceClientId, $serviceSlug);
 
         if ($amount > $sourceBalance) {
             return redirect()->route('reservations.show', $reservation)->withErrors([
@@ -1189,8 +1212,8 @@ class ReservationController extends MatrixAwareController
             ])->withInput();
         }
 
-        DB::transaction(function () use ($reservation, $validated, $amount, $sourceClientId, $targetClientId): void {
-            ClientCreditLedger::query()->create([
+        DB::transaction(function () use ($reservation, $validated, $amount, $sourceClientId, $targetClientId, $serviceSlug): void {
+            $transferOutPayload = [
                 'client_id' => $sourceClientId,
                 'reservation_id' => $reservation->id,
                 'user_id' => Auth::id(),
@@ -1198,9 +1221,9 @@ class ReservationController extends MatrixAwareController
                 'amount' => $amount,
                 'related_client_id' => $targetClientId,
                 'description' => $validated['note'] ?? ('Transfert sortant vers client #' . $targetClientId),
-            ]);
+            ];
 
-            ClientCreditLedger::query()->create([
+            $transferInPayload = [
                 'client_id' => $targetClientId,
                 'reservation_id' => null,
                 'user_id' => Auth::id(),
@@ -1208,7 +1231,16 @@ class ReservationController extends MatrixAwareController
                 'amount' => $amount,
                 'related_client_id' => $sourceClientId,
                 'description' => $validated['note'] ?? ('Transfert entrant depuis client #' . $sourceClientId),
-            ]);
+            ];
+
+            if (Schema::hasColumn('client_credit_ledgers', 'service_slug')) {
+                $transferOutPayload['service_slug'] = $serviceSlug;
+                $transferInPayload['service_slug'] = $serviceSlug;
+            }
+
+            ClientCreditLedger::query()->create($transferOutPayload);
+
+            ClientCreditLedger::query()->create($transferInPayload);
         });
 
         return redirect()->route('reservations.show', $reservation)->with('success', 'Solde transfere vers le compte client cible.');
@@ -1836,23 +1868,41 @@ class ReservationController extends MatrixAwareController
         return $createdClient->id;
     }
 
-    private function getClientCreditBalance(int $clientId): float
+    private function getClientCreditBalance(int $clientId, ?string $serviceSlug = null): float
     {
         if (! Schema::hasTable('client_credit_ledgers')) {
             return 0.0;
         }
 
-        $credit = (float) ClientCreditLedger::query()
+        $creditQuery = ClientCreditLedger::query()
             ->where('client_id', $clientId)
-            ->whereIn('type', ['credit', 'transfer_in'])
-            ->sum('amount');
+            ->whereIn('type', ['credit', 'transfer_in']);
 
-        $debit = (float) ClientCreditLedger::query()
+        $debitQuery = ClientCreditLedger::query()
             ->where('client_id', $clientId)
-            ->whereIn('type', ['debit', 'transfer_out'])
-            ->sum('amount');
+            ->whereIn('type', ['debit', 'transfer_out']);
+
+        if ($serviceSlug !== null && Schema::hasColumn('client_credit_ledgers', 'service_slug')) {
+            $creditQuery->where('service_slug', $serviceSlug);
+            $debitQuery->where('service_slug', $serviceSlug);
+        }
+
+        $credit = (float) $creditQuery->sum('amount');
+
+        $debit = (float) $debitQuery->sum('amount');
 
         return max($credit - $debit, 0);
+    }
+
+    private function reservationServiceSlug(Reservation $reservation): string
+    {
+        $serviceSlug = trim((string) ($reservation->service_slug ?? 'salles'));
+
+        if ($serviceSlug === '' || ! array_key_exists($serviceSlug, self::RESERVATION_SERVICES)) {
+            return 'salles';
+        }
+
+        return $serviceSlug;
     }
 
     private function reservationDateTime(?string $dateValue, ?string $timeValue): ?Carbon

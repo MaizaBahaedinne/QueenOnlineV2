@@ -53,6 +53,7 @@
             default => 'Autre',
         };
         $reservationScopeLabel = (string) ($reservationScopeLabel ?? (($reservation->service_slug ?? 'salles') === 'salles' ? 'Interne' : 'Externe'));
+        $creditServiceLabel = (string) ($creditServiceLabel ?? $reservationTypeLabel);
     @endphp
 
     <style>
@@ -902,7 +903,7 @@
                     <div class="reservation-kv"><span class="reservation-kv-key">Total reservation</span><span class="reservation-kv-value">{{ number_format($totalAmount, 2, '.', ' ') }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Total paye</span><span class="reservation-kv-value">{{ number_format($totalPaid, 2, '.', ' ') }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Reste</span><span class="reservation-kv-value">{{ number_format($remainingAmount, 2, '.', ' ') }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Solde client (avoir)</span><span class="reservation-kv-value">{{ number_format($clientCreditBalance, 2, '.', ' ') }}</span></div>
+                    <div class="reservation-kv"><span class="reservation-kv-key">Solde client (avoir - {{ $creditServiceLabel }})</span><span class="reservation-kv-value">{{ number_format($clientCreditBalance, 2, '.', ' ') }}</span></div>
 
                     @if ($reservation->payments->isEmpty())
                         <p class="reservation-empty">Aucun paiement lie a cette reservation.</p>
@@ -1432,7 +1433,7 @@
                         <textarea id="payment-note" name="note" rows="2" placeholder="Note optionnelle">{{ old('note') }}</textarea>
                     </div>
 
-                    <p class="payment-form-help" id="payment-form-help">Controle: le premier paiement doit etre "Avance". Reste actuel: {{ number_format($remainingAmount, 2, '.', ' ') }}. Solde client disponible: {{ number_format($clientCreditBalance, 2, '.', ' ') }}.</p>
+                    <p class="payment-form-help" id="payment-form-help">Controle: le premier paiement doit etre "Avance". Reste actuel: {{ number_format($remainingAmount, 2, '.', ' ') }}. Solde client disponible ({{ $creditServiceLabel }}): {{ number_format($clientCreditBalance, 2, '.', ' ') }}.</p>
 
                     <div class="reservation-actions-row">
                         <button type="submit" class="btn btn-primary" {{ $remainingAmount <= 0 ? 'disabled' : '' }}>Ajouter paiement</button>

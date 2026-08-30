@@ -9,6 +9,8 @@
         $reservationCount = $reservations->count();
         $paymentCount = $payments->count();
         $paidTotal = (float) $payments->sum('amount');
+        $balancesByService = is_array($clientCreditBalancesByService ?? null) ? $clientCreditBalancesByService : [];
+        $creditServiceLabels = is_array($creditServiceLabels ?? null) ? $creditServiceLabels : [];
     @endphp
 
     <style>
@@ -232,6 +234,16 @@
             <div class="client-balance-card">
                 <p class="client-balance-label">Solde de compte</p>
                 <p class="client-balance-value">{{ number_format($balance, 2, '.', ' ') }}</p>
+                @if (!empty($balancesByService))
+                    <div style="display:grid;gap:4px;">
+                        @foreach ($creditServiceLabels as $serviceSlug => $serviceLabel)
+                            <small style="color:#4e6a85;display:flex;justify-content:space-between;gap:8px;">
+                                <span>{{ $serviceLabel }}</span>
+                                <strong>{{ number_format((float) ($balancesByService[$serviceSlug] ?? 0), 2, '.', ' ') }}</strong>
+                            </small>
+                        @endforeach
+                    </div>
+                @endif
                 @if ($canUpdate)
                     <button type="button" class="btn" data-open-modal="client-transfer-credit-modal">Transferer vers un autre client</button>
                 @endif
@@ -298,6 +310,16 @@
 
                 <form method="POST" action="{{ route('clients.transfer-credit', $client) }}" style="display:grid;gap:10px;">@csrf
                     <p class="payment-form-help">Source: {{ $fullName }} | Solde disponible: {{ number_format($balance, 2, '.', ' ') }}</p>
+                    <div>
+                        <label for="transfer-service-slug">Type de service</label>
+                        <select id="transfer-service-slug" name="service_slug" required>
+                            @foreach ($creditServiceLabels as $serviceSlug => $serviceLabel)
+                                <option value="{{ $serviceSlug }}" {{ old('service_slug', 'salles') === $serviceSlug ? 'selected' : '' }}>
+                                    {{ $serviceLabel }} ({{ number_format((float) ($balancesByService[$serviceSlug] ?? 0), 2, '.', ' ') }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div>
                         <label for="target-client-id">Client destinataire</label>
                         <select id="target-client-id" name="target_client_id" required>

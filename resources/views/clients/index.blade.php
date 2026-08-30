@@ -17,6 +17,8 @@
                 'label' => $label,
             ];
         })->values();
+        $creditServiceLabels = is_array($creditServiceLabels ?? null) ? $creditServiceLabels : [];
+        $clientCreditBalancesByService = is_array($clientCreditBalancesByService ?? null) ? $clientCreditBalancesByService : [];
     @endphp
 
     <style>
@@ -255,6 +257,14 @@
             <p class="panel-sub" id="client-transfer-credit-context"></p>
             <form method="POST" id="client-transfer-credit-form" action="#" class="form-grid-two">@csrf
                 <div class="full-span">
+                    <label>Type de service</label>
+                    <select class="search" style="max-width:none;" id="client-transfer-service-slug" name="service_slug" required>
+                        @foreach ($creditServiceLabels as $serviceSlug => $serviceLabel)
+                            <option value="{{ $serviceSlug }}">{{ $serviceLabel }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="full-span">
                     <label>Client destinataire</label>
                     <select class="search" style="max-width:none;" id="client-transfer-target" name="target_client_id" required></select>
                 </div>
@@ -271,16 +281,26 @@
     @endif
 
     <script type="application/json" id="clients-transfer-data">{!! json_encode($transferClients, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}</script>
+    <script type="application/json" id="clients-transfer-balances-by-service-data">{!! json_encode($clientCreditBalancesByService, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}</script>
     <script>
         const openModalButtons = document.querySelectorAll('[data-open-modal]');
         const closeModalButtons = document.querySelectorAll('[data-close-modal]');
         const transferClientsData = document.getElementById('clients-transfer-data');
+        const transferBalancesByServiceData = document.getElementById('clients-transfer-balances-by-service-data');
         let transferClients = [];
+        let transferBalancesByService = {};
         if (transferClientsData) {
             try {
                 transferClients = JSON.parse(transferClientsData.textContent || '[]');
             } catch (error) {
                 transferClients = [];
+            }
+        }
+        if (transferBalancesByServiceData) {
+            try {
+                transferBalancesByService = JSON.parse(transferBalancesByServiceData.textContent || '{}');
+            } catch (error) {
+                transferBalancesByService = {};
             }
         }
         const openModal = (id) => { const m = document.getElementById(id); if (m) m.classList.add('show'); };
@@ -343,19 +363,32 @@
                     const context = document.getElementById('client-transfer-credit-context');
                     const targetSelect = document.getElementById('client-transfer-target');
                     const amountInput = document.getElementById('client-transfer-amount');
+                    const serviceSelect = document.getElementById('client-transfer-service-slug');
+                    const balances = transferBalancesByService[String(sourceClientId)] || {};
+
+                    const refreshContext = () => {
+                        const selectedService = serviceSelect ? String(serviceSelect.value || 'salles') : 'salles';
+                        const scopedBalance = Number(balances[selectedService] || 0);
+
+                        if (context) {
+                            context.textContent = `Source: ${sourceClientName} | Solde disponible (${selectedService}): ${scopedBalance.toFixed(2)}`;
+                        }
+
+                        if (amountInput) {
+                            amountInput.value = '';
+                            amountInput.max = scopedBalance > 0 ? String(scopedBalance) : '0';
+                        }
+                    };
 
                     if (form) {
                         form.action = `{{ url('clients') }}/${sourceClientId}/transfer-credit`;
                     }
 
-                    if (context) {
-                        context.textContent = `Source: ${sourceClientName} | Solde disponible: ${sourceBalance.toFixed(2)}`;
+                    if (serviceSelect) {
+                        serviceSelect.value = 'salles';
+                        serviceSelect.onchange = refreshContext;
                     }
-
-                    if (amountInput) {
-                        amountInput.value = '';
-                        amountInput.max = sourceBalance > 0 ? String(sourceBalance) : '0';
-                    }
+                    refreshContext();
 
                     if (targetSelect) {
                         targetSelect.innerHTML = '<option value="">Selectionner...</option>';
