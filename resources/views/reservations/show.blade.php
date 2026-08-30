@@ -1004,6 +1004,10 @@
                                 @endif
                                 <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-modal">Modifier reservation</button>
                                 <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-slot-modal">Modifier date/heure/salle</button>
+                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="client-modal">Modifier donnees client</button>
+                                @if ($isSalleReservation)
+                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="staff-affectation-modal">Modifier affectation staff</button>
+                                @endif
                                 <button type="button" class="btn reservation-actions-menu-item" data-open-modal="cancel-reservation-modal" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Annuler la reservation</button>
                             </div>
                         </div>
@@ -1017,7 +1021,7 @@
 
             <article class="reservation-card">
                 <div class="reservation-object-head">
-                    <h3 class="reservation-object-title">Reservation detail</h3>
+                    <h3 class="reservation-object-title">Affectation, client et satisfaction</h3>
                 </div>
                 <div class="reservation-object-body">
                     <div class="reservation-detail-section">
@@ -1215,11 +1219,6 @@
                             </div>
                             </div>
 
-                            @if ($canUpdateReservation)
-                                <div class="reservation-actions-row" style="justify-content:flex-start; margin-top:8px;">
-                                    <button type="button" class="btn btn-primary" data-open-modal="staff-affectation-modal">Modifier affectation staff</button>
-                                </div>
-                            @endif
                         @endif
                     </div>
 
@@ -1230,11 +1229,6 @@
                         <div class="reservation-kv"><span class="reservation-kv-key">Mobile 1</span><span class="reservation-kv-value">{{ $reservation->client?->phone ?? '-' }}{{ $reservation->client?->phone_label_1 ? ' (' . $reservation->client->phone_label_1 . ')' : '' }}</span></div>
                         <div class="reservation-kv"><span class="reservation-kv-key">Mobile 2</span><span class="reservation-kv-value">{{ $reservation->client?->phone_2 ?? '-' }}{{ $reservation->client?->phone_label_2 ? ' (' . $reservation->client->phone_label_2 . ')' : '' }}</span></div>
                         <div class="reservation-kv"><span class="reservation-kv-key">Adresse</span><span class="reservation-kv-value">{{ $clientAddress }}</span></div>
-                        @if ($canUpdateReservation)
-                            <div class="reservation-actions-row" style="justify-content:flex-start; margin-top:8px;">
-                                <button type="button" class="btn" data-open-modal="client-modal">Modifier donnees client</button>
-                            </div>
-                        @endif
                     </div>
 
                     <div class="reservation-detail-section">
