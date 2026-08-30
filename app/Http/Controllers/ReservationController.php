@@ -756,6 +756,12 @@ class ReservationController extends MatrixAwareController
         $this->enforcePermission('reservations', 'update', 'update');
 
         if (($reservation->service_slug ?? 'salles') !== 'salles') {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Les retours de services sont reserves aux reservations de type salle.',
+                ], 422);
+            }
+
             return redirect()->route('reservations.show', $reservation)->withErrors([
                 'service_retour' => 'Les retours de services sont reserves aux reservations de type salle.',
             ])->withInput();
@@ -775,6 +781,13 @@ class ReservationController extends MatrixAwareController
         $quantityToReturn = (int) $validated['quantite_retournee'];
 
         if ($quantityToReturn > $remainingQuantity) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Quantite retournee invalide. Reste disponible: ' . $remainingQuantity . '.',
+                    'remaining_quantity' => $remainingQuantity,
+                ], 422);
+            }
+
             return redirect()->route('reservations.service-inventory', $reservation)
                 ->withErrors([
                     'service_retour' => 'Quantite retournee invalide. Reste disponible: ' . $remainingQuantity . '.',
@@ -782,13 +795,33 @@ class ReservationController extends MatrixAwareController
                 ->withInput();
         }
 
-        ServiceRetour::query()->create([
+        $retour = ServiceRetour::query()->create([
             'entree_id' => $serviceEntree->id,
             'quantite_retournee' => $quantityToReturn,
             'note_retour' => $validated['note_retour'] ?? null,
             'created_by' => Auth::id(),
             'created_dtm' => now(),
         ]);
+
+        $newTotalReturned = $alreadyReturned + $quantityToReturn;
+        $newRemainingQuantity = max(((int) $serviceEntree->quantite) - $newTotalReturned, 0);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Sortie de service enregistree.',
+                'entree_id' => (int) $serviceEntree->id,
+                'entree_quantite' => (int) $serviceEntree->quantite,
+                'total_retourne' => $newTotalReturned,
+                'remaining_quantity' => $newRemainingQuantity,
+                'retour' => [
+                    'id' => (int) $retour->id,
+                    'quantite_retournee' => (int) $retour->quantite_retournee,
+                    'note_retour' => (string) ($retour->note_retour ?? ''),
+                    'created_at_iso' => now()->toIso8601String(),
+                    'creator_name' => (string) (Auth::user()?->name ?? '-'),
+                ],
+            ]);
+        }
 
         return redirect()->route('reservations.service-inventory', $reservation)
             ->with('success', 'Sortie de service enregistree.');
