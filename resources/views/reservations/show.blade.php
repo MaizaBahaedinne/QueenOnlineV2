@@ -60,6 +60,13 @@
         $activeLinkedAdditionalServiceRows = $linkedAdditionalServiceRows
             ->filter(fn ($row) => ($row->linkedReservation->status ?? null) !== 'cancelled')
             ->values();
+        $staffOptions = $staffOptions ?? collect();
+        $gerantAffectation = $reservation->serviceAffectations->firstWhere('affectation', 'gerant');
+        $serveurAffectations = $reservation->serviceAffectations->where('affectation', 'serveur')->values();
+        $femmeMenageAffectations = $reservation->serviceAffectations->where('affectation', 'femme-menage')->values();
+        $selectedServeurUserIds = $serveurAffectations->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->values();
+        $selectedFemmeMenageUserIds = $femmeMenageAffectations->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->values();
+        $selectedChefUserId = optional($serveurAffectations->firstWhere('is_chef', true))->user_id;
     @endphp
 
     <style>
@@ -762,13 +769,16 @@
                     <div class="reservation-actions-menu" id="reservation-actions-menu">
                         <button type="button" class="btn btn-primary" id="reservation-actions-toggle">Actions reservation</button>
                         <div class="reservation-actions-menu-panel" id="reservation-actions-panel">
+                            @if ($canCreateReservation)
+                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="clone-reservation-modal">Cloner reservation</button>
+                            @endif
                             <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-modal">Modifier reservation</button>
                             <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-slot-modal">Modifier date/heure/salle</button>
                             <button type="button" class="btn reservation-actions-menu-item" data-open-modal="cancel-reservation-modal" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Annuler la reservation</button>
                         </div>
                     </div>
                 @endif
-                @if ($canCreateReservation)
+                @if ($canCreateReservation && ($reservation->status ?? null) === 'cancelled')
                     <button type="button" class="btn" data-open-modal="clone-reservation-modal">Cloner reservation</button>
                 @endif
                 <a href="{{ route('reservations.index') }}" class="btn">Retour au calendrier</a>
@@ -946,6 +956,153 @@
                                 </li>
                             @endforeach
                         </ul>
+                    @endif
+                </div>
+            </article>
+
+            <article class="reservation-card">
+                <div class="reservation-object-head">
+                    <h3 class="reservation-object-title">Affectation staff event</h3>
+                </div>
+                <div class="reservation-object-body">
+                    @if (! $isSalleReservation)
+                        <p class="reservation-empty">L affectation staff est disponible uniquement pour les reservations de type salle.</p>
+                    @else
+                        <div class="additional-service-category">
+                            <h4>Gérant</h4>
+                            @if ($gerantAffectation?->user)
+                                <div class="additional-service-item">
+                                    <div>
+                                        <strong>{{ $gerantAffectation->user->name }}</strong>
+                                        <small>Responsable principal</small>
+                                    </div>
+                                </div>
+                            @else
+                                <p class="reservation-empty">Aucun gérant affecté.</p>
+                            @endif
+                        </div>
+
+                        <div class="additional-service-category">
+                            <h4>Serveurs</h4>
+                            @if ($serveurAffectations->isEmpty())
+                                <p class="reservation-empty">Aucun serveur affecté.</p>
+                            @else
+                                @foreach ($serveurAffectations as $row)
+                                    <div class="additional-service-item">
+                                        <div>
+                                            <strong>{{ $row->user?->name ?? ('Utilisateur #' . $row->user_id) }}</strong>
+                                            <small>{{ $row->is_chef ? 'Chef des serveurs' : 'Serveur' }}</small>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @endif
+                        </div>
+
+                        <div class="additional-service-category">
+                            <h4>Femmes de ménage</h4>
+                            @if ($femmeMenageAffectations->isEmpty())
+                                <p class="reservation-empty">Aucune femme de ménage affectée.</p>
+                            @else
+                                @foreach ($femmeMenageAffectations as $row)
+                                    <div class="additional-service-item">
+                                        <div>
+                                            <strong>{{ $row->user?->name ?? ('Utilisateur #' . $row->user_id) }}</strong>
+                                            <small>Equipe entretien</small>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @endif
+                        </div>
+
+                        @if ($canUpdateReservation)
+                            <form method="POST" action="{{ route('reservations.staff-affectations.update', $reservation) }}" style="display:grid; gap:10px; margin-top:8px;">
+                                @csrf
+                                @method('PATCH')
+
+                                <p class="payment-form-help">Affecter le staff qui va travailler sur cet evenement: gérant, serveurs (avec un chef), femmes de ménage.</p>
+
+                                <div>
+                                    <label for="staff-manager-user-id">Gérant</label>
+                                    <select id="staff-manager-user-id" name="manager_staff_user_id">
+                                        <option value="">Aucun</option>
+                                        @foreach ($staffOptions as $staffOption)
+                                            @php
+                                                $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                                $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
+                                                $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
+                                                $selectedManagerUserId = old('manager_staff_user_id', $gerantAffectation?->user_id);
+                                            @endphp
+                                            <option value="{{ $staffUserId }}" {{ (string) $selectedManagerUserId === (string) $staffUserId ? 'selected' : '' }}>
+                                                {{ $staffLabel }}{{ !empty($staffOption->position_title) ? ' - ' . $staffOption->position_title : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label for="staff-serveur-user-ids">Serveurs</label>
+                                    @php
+                                        $oldServeurs = collect(old('serveur_staff_user_ids', $selectedServeurUserIds->all()))->map(fn ($id) => (string) $id);
+                                    @endphp
+                                    <select id="staff-serveur-user-ids" name="serveur_staff_user_ids[]" multiple size="6">
+                                        @foreach ($staffOptions as $staffOption)
+                                            @php
+                                                $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                                $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
+                                                $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
+                                            @endphp
+                                            <option value="{{ $staffUserId }}" {{ $oldServeurs->contains((string) $staffUserId) ? 'selected' : '' }}>
+                                                {{ $staffLabel }}{{ !empty($staffOption->position_title) ? ' - ' . $staffOption->position_title : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label for="staff-serveur-chef-user-id">Chef des serveurs</label>
+                                    @php
+                                        $oldChefUserId = old('serveur_chef_user_id', $selectedChefUserId);
+                                    @endphp
+                                    <select id="staff-serveur-chef-user-id" name="serveur_chef_user_id">
+                                        <option value="">Aucun</option>
+                                        @foreach ($staffOptions as $staffOption)
+                                            @php
+                                                $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                                $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
+                                                $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
+                                            @endphp
+                                            <option value="{{ $staffUserId }}" {{ (string) $oldChefUserId === (string) $staffUserId ? 'selected' : '' }}>
+                                                {{ $staffLabel }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <small style="color:#607a95;">Le chef doit faire partie de la liste des serveurs.</small>
+                                </div>
+
+                                <div>
+                                    <label for="staff-femme-menage-user-ids">Femmes de ménage</label>
+                                    @php
+                                        $oldFemmesMenage = collect(old('femme_menage_staff_user_ids', $selectedFemmeMenageUserIds->all()))->map(fn ($id) => (string) $id);
+                                    @endphp
+                                    <select id="staff-femme-menage-user-ids" name="femme_menage_staff_user_ids[]" multiple size="6">
+                                        @foreach ($staffOptions as $staffOption)
+                                            @php
+                                                $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                                $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
+                                                $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
+                                            @endphp
+                                            <option value="{{ $staffUserId }}" {{ $oldFemmesMenage->contains((string) $staffUserId) ? 'selected' : '' }}>
+                                                {{ $staffLabel }}{{ !empty($staffOption->position_title) ? ' - ' . $staffOption->position_title : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div class="reservation-actions-row">
+                                    <button type="submit" class="btn btn-primary">Enregistrer affectation staff</button>
+                                </div>
+                            </form>
+                        @endif
                     @endif
                 </div>
             </article>
@@ -1838,6 +1995,7 @@
             const hasCreditErrors = "{{ $errors->has('credit') || $errors->has('credit_amount') ? '1' : '0' }}" === '1';
             const hasCreditTransferErrors = "{{ $errors->has('credit_transfer') || $errors->has('credit_transfer_amount') || $errors->has('target_client_id') ? '1' : '0' }}" === '1';
             const hasCloneErrors = "{{ $errors->has('clone_salle_id') || $errors->has('clone_title') || $errors->has('clone_event_type') || $errors->has('clone_start_date') || $errors->has('clone_end_date') || $errors->has('clone_start_time') || $errors->has('clone_end_time') || $errors->has('clone_total_amount') || $errors->has('clone_note_admin') ? '1' : '0' }}" === '1';
+            const hasStaffAffectationErrors = "{{ $errors->has('staff_affectation') || $errors->has('manager_staff_user_id') || $errors->has('serveur_staff_user_ids') || $errors->has('serveur_staff_user_ids.*') || $errors->has('serveur_chef_user_id') || $errors->has('femme_menage_staff_user_ids') || $errors->has('femme_menage_staff_user_ids.*') ? '1' : '0' }}" === '1';
 
             if (hasCancelErrors) {
                 openModal('cancel-reservation-modal');
@@ -1853,6 +2011,8 @@
                 openModal('additional-service-modal');
             } else if (hasClientErrors) {
                 openModal('client-modal');
+            } else if (hasStaffAffectationErrors) {
+                // Les erreurs d'affectation staff sont affichees dans la carte principale, pas en modal.
             }
         })();
     </script>

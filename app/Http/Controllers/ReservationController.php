@@ -9,8 +9,10 @@ use App\Models\Reservation;
 use App\Models\ReservationAdditionalService;
 use App\Models\ReservationSalleOption;
 use App\Models\ReservationCancellation;
+use App\Models\ServiceAffectation;
 use App\Models\Salle;
 use App\Models\SalleOption;
+use App\Models\Staff;
 use App\Models\ServiceModuleItem;
 use App\Models\ServiceModulePack;
 use Illuminate\Http\Request;
@@ -237,7 +239,7 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'list', 'view');
 
-        $reservation->load(['client', 'salle', 'user', 'payments.user', 'additionalServices.item', 'additionalServices.pack', 'additionalServices.linkedReservation.payments', 'salleOptionRows.option']);
+        $reservation->load(['client', 'salle', 'user', 'payments.user', 'additionalServices.item', 'additionalServices.pack', 'additionalServices.linkedReservation.payments', 'salleOptionRows.option', 'serviceAffectations.user']);
 
         $currentStart = $this->reservationDateTime($reservation->start_date, $reservation->start_time);
         $currentEnd = $this->reservationDateTime($reservation->end_date, $reservation->end_time);
@@ -353,10 +355,22 @@ class ReservationController extends MatrixAwareController
 
         $reservationServiceSlug = $this->reservationServiceSlug($reservation);
         $clientCreditBalance = $this->getClientCreditBalance((int) $reservation->client_id, $reservationServiceSlug);
+
+        $staffOptions = Staff::query()
+            ->with('user:id,name')
+            ->where('status', 'active')
+            ->whereNotNull('user_id')
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get(['id', 'user_id', 'first_name', 'last_name', 'position_title'])
+            ->filter(fn (Staff $staff) => $staff->user !== null)
+            ->values();
+
         return view('reservations.show', [
             'title' => 'Detail reservation',
             'reservation' => $reservation,
             'salles' => Salle::query()->orderBy('name')->get(['id', 'name', 'capacity']),
+            'staffOptions' => $staffOptions,
             'governorates' => self::GOVERNORATES,
             'sources' => self::SOURCES,
             'eventTypes' => self::EVENT_TYPES,
@@ -369,6 +383,99 @@ class ReservationController extends MatrixAwareController
             'creditServiceLabel' => self::RESERVATION_SERVICES[$reservationServiceSlug] ?? 'Service',
             'reservationScopeLabel' => ($reservation->service_slug ?? 'salles') === 'salles' ? 'Interne' : 'Externe',
         ]);
+    }
+
+    public function updateStaffAffectations(Request $request, Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        if (($reservation->service_slug ?? 'salles') !== 'salles') {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'staff_affectation' => 'L affectation staff est reservee aux reservations de type salle.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'manager_staff_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'serveur_staff_user_ids' => ['nullable', 'array'],
+            'serveur_staff_user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+            'serveur_chef_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'femme_menage_staff_user_ids' => ['nullable', 'array'],
+            'femme_menage_staff_user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+        ]);
+
+        $managerUserId = filled($validated['manager_staff_user_id'] ?? null) ? (int) $validated['manager_staff_user_id'] : null;
+        $serveurUserIds = collect($validated['serveur_staff_user_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->values();
+        $femmeMenageUserIds = collect($validated['femme_menage_staff_user_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->values();
+        $chefUserId = filled($validated['serveur_chef_user_id'] ?? null) ? (int) $validated['serveur_chef_user_id'] : null;
+
+        if ($chefUserId !== null && ! $serveurUserIds->contains($chefUserId)) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'serveur_chef_user_id' => 'Le chef doit etre selectionne parmi les serveurs choisis.',
+            ])->withInput();
+        }
+
+        $allSelectedUserIds = collect([$managerUserId])
+            ->filter()
+            ->merge($serveurUserIds)
+            ->merge($femmeMenageUserIds)
+            ->unique()
+            ->values();
+
+        if ($allSelectedUserIds->isNotEmpty()) {
+            $activeStaffUserCount = Staff::query()
+                ->where('status', 'active')
+                ->whereIn('user_id', $allSelectedUserIds)
+                ->count();
+
+            if ($activeStaffUserCount !== $allSelectedUserIds->count()) {
+                return redirect()->route('reservations.show', $reservation)->withErrors([
+                    'staff_affectation' => 'Tous les comptes choisis doivent appartenir a des ressources humaines actives.',
+                ])->withInput();
+            }
+        }
+
+        DB::transaction(function () use ($reservation, $managerUserId, $serveurUserIds, $femmeMenageUserIds, $chefUserId): void {
+            ServiceAffectation::query()
+                ->where('reservation_id', $reservation->id)
+                ->whereIn('affectation', ['gerant', 'serveur', 'femme-menage'])
+                ->delete();
+
+            if ($managerUserId !== null) {
+                ServiceAffectation::query()->create([
+                    'affectation' => 'gerant',
+                    'user_id' => $managerUserId,
+                    'reservation_id' => $reservation->id,
+                    'created_dtm' => now(),
+                    'created_by' => Auth::id(),
+                    'is_chef' => false,
+                ]);
+            }
+
+            foreach ($serveurUserIds as $serveurUserId) {
+                ServiceAffectation::query()->create([
+                    'affectation' => 'serveur',
+                    'user_id' => $serveurUserId,
+                    'reservation_id' => $reservation->id,
+                    'created_dtm' => now(),
+                    'created_by' => Auth::id(),
+                    'is_chef' => $chefUserId !== null && $chefUserId === (int) $serveurUserId,
+                ]);
+            }
+
+            foreach ($femmeMenageUserIds as $femmeMenageUserId) {
+                ServiceAffectation::query()->create([
+                    'affectation' => 'femme-menage',
+                    'user_id' => $femmeMenageUserId,
+                    'reservation_id' => $reservation->id,
+                    'created_dtm' => now(),
+                    'created_by' => Auth::id(),
+                    'is_chef' => false,
+                ]);
+            }
+        });
+
+        return redirect()->route('reservations.show', $reservation)->with('success', 'Affectation du staff mise a jour.');
     }
 
     public function storeSalleOption(Request $request, Reservation $reservation)

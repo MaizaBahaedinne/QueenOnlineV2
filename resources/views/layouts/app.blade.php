@@ -64,9 +64,6 @@
                             @if (str_starts_with((string) $current, 'reservations.'))
                                 <ul class="menu-submenu">
                                     <li><a class="{{ $reservationService === 'salles' ? 'active' : '' }}" href="{{ route('reservations.index') }}">Salles</a></li>
-                                    @if (auth()->user()?->canFeature('salles', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'all' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'all']) }}">Toutes</a></li>
-                                    @endif
                                     @if (auth()->user()?->canFeature('troupe-musicale', 'list', 'view'))
                                         <li><a class="{{ $reservationService === 'troupe-musicale' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'troupe-musicale']) }}">Troupe musicale</a></li>
                                     @endif
@@ -84,6 +81,9 @@
                                     @endif
                                     @if (auth()->user()?->canFeature('voiture', 'list', 'view'))
                                         <li><a class="{{ $reservationService === 'voiture' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'voiture']) }}">Voiture</a></li>
+                                    @endif
+                                    @if (auth()->user()?->canFeature('salles', 'list', 'view'))
+                                        <li><a class="{{ $reservationService === 'all' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'all']) }}">Toutes</a></li>
                                     @endif
                                 </ul>
                             @endif
