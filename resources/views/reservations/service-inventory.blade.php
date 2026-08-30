@@ -25,6 +25,7 @@
         if ($isInventoryClosed) {
             $defaultWizardStep = 3;
         }
+        $openIncrementEntreeId = (int) old('entree_id', 0);
     @endphp
 
     <style>
@@ -283,6 +284,54 @@
             color: #345675;
         }
 
+        .inventory-table-wrap {
+            overflow-x: auto;
+            border: 1px solid #dbe7f4;
+            border-radius: 12px;
+            background: #fff;
+        }
+
+        .inventory-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 780px;
+        }
+
+        .inventory-table th,
+        .inventory-table td {
+            padding: 9px 10px;
+            border-bottom: 1px solid #e6eff9;
+            text-align: left;
+            vertical-align: top;
+            font-size: 12px;
+            color: #1f3f5d;
+        }
+
+        .inventory-table th {
+            background: #f5faff;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            font-size: 11px;
+            color: #52708b;
+        }
+
+        .inventory-table tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .inventory-table-actions {
+            white-space: nowrap;
+        }
+
+        .inventory-inline-form-row {
+            display: none;
+            background: #fbfdff;
+        }
+
+        .inventory-inline-form-row.is-open {
+            display: table-row;
+        }
+
         @media (max-width: 860px) {
             .payment-form-row {
                 grid-template-columns: 1fr;
@@ -374,65 +423,88 @@
                 @if ($serviceEntreesRows->isEmpty())
                     <p class="reservation-empty">Aucune entree enregistree.</p>
                 @else
-                    <div style="display:grid;gap:8px;">
-                        @foreach ($serviceEntreesRows as $entree)
-                            <div class="additional-service-category">
-                                <h4>{{ $entree->nature }} (Qte entree: {{ (int) $entree->quantite }})</h4>
-                                <small style="color:#5f7690;">
-                                    Moment: {{ $entree->moment_service ?: '-' }}
-                                    | Cree le:
-                                    @if ($entree->created_dtm)
-                                        @frDateTime($entree->created_dtm)
-                                    @else
-                                        @frDateTime($entree->created_at)
-                                    @endif
-                                    | Cree par: {{ $entree->creator?->name ?? '-' }}
-                                </small>
-
-                                @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
-                                    <form method="POST" action="{{ route('reservations.service-entrees.increment', [$reservation, $entree]) }}" class="payment-form" style="margin-top:4px;">
-                                        @csrf
-                                        <div class="payment-form-row">
-                                            <div>
-                                                <label>Ajouter a la quantite existante</label>
-                                                <input type="number" name="quantite_add" min="1" required placeholder="Ex: 5">
-                                            </div>
-                                            <div>
-                                                <label>Note changement</label>
-                                                <input type="text" name="history_note" placeholder="Optionnel (raison, correction...)">
-                                            </div>
-                                        </div>
-                                        <div class="reservation-actions-row">
-                                            <button type="submit" class="btn">Ajouter quantite</button>
-                                        </div>
-                                    </form>
-                                @endif
-
-                                <div class="inventory-history-list">
-                                    @forelse ($entree->histories->sortByDesc(function ($historyRow) { return $historyRow->created_dtm ?? $historyRow->created_at; }) as $historyRow)
-                                        <div class="inventory-history-item">
-                                            <strong>
-                                                {{ $historyRow->action === 'create' ? 'Creation ligne' : 'Augmentation quantite' }}:
-                                                {{ (int) $historyRow->previous_quantite }} + {{ (int) $historyRow->delta_quantite }} = {{ (int) $historyRow->new_quantite }}
-                                            </strong>
-                                            <span>
-                                                @if ($historyRow->created_dtm)
-                                                    @frDateTime($historyRow->created_dtm)
-                                                @else
-                                                    @frDateTime($historyRow->created_at)
-                                                @endif
-                                                | Par: {{ $historyRow->creator?->name ?? '-' }}
-                                            </span>
-                                            @if (! empty($historyRow->note))
-                                                <span>Note: {{ $historyRow->note }}</span>
+                    <div class="inventory-table-wrap">
+                        <table class="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th>Produit / nature</th>
+                                    <th>Quantite entree</th>
+                                    <th>Moment service</th>
+                                    <th>Cree le</th>
+                                    <th>Cree par</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($serviceEntreesRows as $entree)
+                                    <tr>
+                                        <td>{{ $entree->nature }}</td>
+                                        <td><strong>{{ (int) $entree->quantite }}</strong></td>
+                                        <td>{{ $entree->moment_service ?: '-' }}</td>
+                                        <td>
+                                            @if ($entree->created_dtm)
+                                                @frDateTime($entree->created_dtm)
+                                            @else
+                                                @frDateTime($entree->created_at)
                                             @endif
-                                        </div>
-                                    @empty
-                                        <p class="reservation-empty">Aucun changement enregistre.</p>
-                                    @endforelse
-                                </div>
-                            </div>
-                        @endforeach
+                                        </td>
+                                        <td>{{ $entree->creator?->name ?? '-' }}</td>
+                                        <td class="inventory-table-actions">
+                                            @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
+                                                <button type="button" class="btn js-toggle-increment-form" data-entree-id="{{ $entree->id }}">Modifier quantite</button>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    <tr class="inventory-inline-form-row" data-form-for-entree="{{ $entree->id }}">
+                                        <td colspan="6">
+                                            @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
+                                                <form method="POST" action="{{ route('reservations.service-entrees.increment', [$reservation, $entree]) }}" class="payment-form" style="margin-top:4px;">
+                                                    @csrf
+                                                    <input type="hidden" name="entree_id" value="{{ $entree->id }}">
+                                                    <div class="payment-form-row">
+                                                        <div>
+                                                            <label>Ajouter a la quantite existante</label>
+                                                            <input type="number" name="quantite_add" min="1" required placeholder="Ex: 5">
+                                                        </div>
+                                                        <div>
+                                                            <label>Note changement</label>
+                                                            <input type="text" name="history_note" placeholder="Optionnel (raison, correction...)">
+                                                        </div>
+                                                    </div>
+                                                    <div class="reservation-actions-row">
+                                                        <button type="submit" class="btn">Ajouter quantite</button>
+                                                    </div>
+                                                </form>
+                                            @endif
+
+                                            <div class="inventory-history-list">
+                                                @forelse ($entree->histories->sortByDesc(function ($historyRow) { return $historyRow->created_dtm ?? $historyRow->created_at; }) as $historyRow)
+                                                    <div class="inventory-history-item">
+                                                        <strong>
+                                                            {{ $historyRow->action === 'create' ? 'Creation ligne' : 'Augmentation quantite' }}:
+                                                            {{ (int) $historyRow->previous_quantite }} + {{ (int) $historyRow->delta_quantite }} = {{ (int) $historyRow->new_quantite }}
+                                                        </strong>
+                                                        <span>
+                                                            @if ($historyRow->created_dtm)
+                                                                @frDateTime($historyRow->created_dtm)
+                                                            @else
+                                                                @frDateTime($historyRow->created_at)
+                                                            @endif
+                                                            | Par: {{ $historyRow->creator?->name ?? '-' }}
+                                                        </span>
+                                                        @if (! empty($historyRow->note))
+                                                            <span>Note: {{ $historyRow->note }}</span>
+                                                        @endif
+                                                    </div>
+                                                @empty
+                                                    <p class="reservation-empty">Aucun changement enregistre.</p>
+                                                @endforelse
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
                 @endif
             </section>
@@ -572,6 +644,37 @@
             stepButtons.forEach((btn) => {
                 btn.addEventListener('click', () => activateStep(Number(btn.dataset.step || 1)));
             });
+
+            const toggleButtons = Array.from(document.querySelectorAll('.js-toggle-increment-form'));
+            const inlineRows = Array.from(document.querySelectorAll('.inventory-inline-form-row'));
+
+            const closeAllInlineForms = () => {
+                inlineRows.forEach((row) => row.classList.remove('is-open'));
+            };
+
+            toggleButtons.forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const entryId = String(btn.getAttribute('data-entree-id') || '');
+                    const targetRow = document.querySelector(`.inventory-inline-form-row[data-form-for-entree="${entryId}"]`);
+                    if (!targetRow) {
+                        return;
+                    }
+
+                    const wasOpen = targetRow.classList.contains('is-open');
+                    closeAllInlineForms();
+                    if (!wasOpen) {
+                        targetRow.classList.add('is-open');
+                    }
+                });
+            });
+
+            const openEntreeId = Number("{{ $openIncrementEntreeId }}") || 0;
+            if (openEntreeId > 0) {
+                const row = document.querySelector(`.inventory-inline-form-row[data-form-for-entree="${openEntreeId}"]`);
+                if (row) {
+                    row.classList.add('is-open');
+                }
+            }
 
             activateStep(defaultStep);
         })();
