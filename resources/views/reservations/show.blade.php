@@ -179,6 +179,13 @@
             justify-content: flex-end;
         }
 
+        .reservation-header-primary-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
         .reservation-hero-bottom {
             width: 100%;
             margin-top: 12px;
@@ -186,6 +193,54 @@
             border-top: 1px dashed #cfe0f2;
             display: grid;
             gap: 10px;
+        }
+
+        .reservation-hero-third-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            align-items: start;
+        }
+
+        .reservation-hero-panel {
+            border: 1px solid #dbe7f4;
+            border-radius: 12px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.75);
+            display: grid;
+            gap: 8px;
+            min-height: 100%;
+        }
+
+        .reservation-hero-panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .reservation-circle-action {
+            width: 30px;
+            height: 30px;
+            border-radius: 999px;
+            border: 1px solid #9ebbd8;
+            background: #f3f9ff;
+            color: #1f5f95;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background .15s ease, border-color .15s ease, transform .15s ease;
+        }
+
+        .reservation-circle-action:hover {
+            border-color: #2f6fa6;
+            background: #e8f3ff;
+            transform: translateY(-1px);
+        }
+
+        .reservation-circle-action:focus-visible {
+            outline: 2px solid #8bb8e0;
+            outline-offset: 1px;
         }
 
         .reservation-hero-inline-title {
@@ -983,6 +1038,7 @@
 
         @media (max-width: 960px) {
             .reservation-top-grid { grid-template-columns: 1fr; }
+            .reservation-hero-third-grid { grid-template-columns: 1fr; }
             .reservation-show-grid { grid-template-columns: 1fr; }
             .reservation-objects-grid { grid-template-columns: 1fr; }
             .payment-form-row { grid-template-columns: 1fr; }
@@ -1033,42 +1089,57 @@
                         <span class="reservation-chip">&#127915; {{ $reservation->event_type ?: '-' }}</span>
                         <span class="reservation-chip">&#128101; {{ $reservation->guest_count ?: '-' }}</span>
                     </div>
-                    <div class="reservation-show-actions" style="margin-top:10px;justify-content:flex-start;">
-                        <a href="{{ route('reservations.contract', $reservation) }}" class="btn">Contrat</a>
-                        <a href="{{ route('reservations.invoice', $reservation) }}" class="btn">Facture (TTC {{ number_format($invoiceTotalTtc, 3, '.', ' ') }} TND, TVA {{ (int) ($tvaRate * 100) }}% incluse)</a>
-                    </div>
                 </div>
                 <div class="reservation-show-actions">
-                    @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
-                        <div class="reservation-actions-menu" id="reservation-actions-menu">
-                            <button type="button" class="btn btn-primary" id="reservation-actions-toggle"><i class="fa fa-bolt" aria-hidden="true"></i> Actions reservation</button>
-                            <div class="reservation-actions-menu-panel" id="reservation-actions-panel">
-                                @if ($canCreateReservation)
-                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="clone-reservation-modal"><i class="fa fa-copy" aria-hidden="true"></i> Cloner la reservation</button>
-                                @endif
-                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-modal"><i class="fa fa-edit" aria-hidden="true"></i> Modifier la reservation</button>
-                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-slot-modal"><i class="fa fa-calendar" aria-hidden="true"></i> Modifier date, heure et salle</button>
-                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="client-modal"><i class="fa fa-user" aria-hidden="true"></i> Modifier les donnees client</button>
-                                @if ($isSalleReservation)
-                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="staff-affectation-modal"><i class="fa fa-users" aria-hidden="true"></i> Modifier l affectation staff</button>
-                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="service-inventory-modal"><i class="fa fa-exchange" aria-hidden="true"></i> Entrees / sorties services</button>
-                                @endif
-                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="cancel-reservation-modal" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;"><i class="fa fa-ban" aria-hidden="true"></i> Annuler la reservation</button>
+                    <div class="reservation-header-primary-actions">
+                        @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled' && $isSalleReservation)
+                            <button type="button" class="btn" data-open-modal="service-inventory-modal"><i class="fa fa-exchange" aria-hidden="true"></i> Entrees / sorties</button>
+                        @endif
+                        @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
+                            <div class="reservation-actions-menu" id="reservation-actions-menu">
+                                <button type="button" class="btn btn-primary" id="reservation-actions-toggle"><i class="fa fa-bolt" aria-hidden="true"></i> Actions reservation</button>
+                                <div class="reservation-actions-menu-panel" id="reservation-actions-panel">
+                                    @if ($canCreateReservation)
+                                        <button type="button" class="btn reservation-actions-menu-item" data-open-modal="clone-reservation-modal"><i class="fa fa-copy" aria-hidden="true"></i> Cloner la reservation</button>
+                                    @endif
+                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-modal"><i class="fa fa-edit" aria-hidden="true"></i> Modifier la reservation</button>
+                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-slot-modal"><i class="fa fa-calendar" aria-hidden="true"></i> Modifier date, heure et salle</button>
+                                    @if ($isSalleReservation)
+                                        <button type="button" class="btn reservation-actions-menu-item" data-open-modal="staff-affectation-modal"><i class="fa fa-users" aria-hidden="true"></i> Modifier l affectation staff</button>
+                                    @endif
+                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="cancel-reservation-modal" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;"><i class="fa fa-ban" aria-hidden="true"></i> Annuler la reservation</button>
+                                </div>
                             </div>
-                        </div>
-                    @endif
-                    @if ($canCreateReservation && ($reservation->status ?? null) === 'cancelled')
-                        <button type="button" class="btn" data-open-modal="clone-reservation-modal">Cloner reservation</button>
-                    @endif
+                        @endif
+                        @if ($canCreateReservation && ($reservation->status ?? null) === 'cancelled')
+                            <button type="button" class="btn" data-open-modal="clone-reservation-modal">Cloner reservation</button>
+                        @endif
+                    </div>
                     <a href="{{ route('reservations.index') }}" class="btn">Retour au calendrier</a>
                 </div>
 
-                <div class="reservation-hero-bottom">
-                    <h4 class="reservation-hero-inline-title">Affectation staff event</h4>
-                    @if (! $isSalleReservation)
-                        <p class="reservation-empty" style="padding:0;">L affectation staff est disponible uniquement pour les reservations de type salle.</p>
-                    @else
-                        <div class="staff-summary-grid">
+                <div class="reservation-hero-bottom reservation-hero-third-grid">
+                    <div class="reservation-hero-panel">
+                        <h4 class="reservation-hero-inline-title">Contrat / Facture</h4>
+                        <div class="reservation-show-actions" style="justify-content:flex-start;">
+                            <a href="{{ route('reservations.contract', $reservation) }}" class="btn">Contrat</a>
+                            <a href="{{ route('reservations.invoice', $reservation) }}" class="btn">Facture (TTC {{ number_format($invoiceTotalTtc, 3, '.', ' ') }} TND, TVA {{ (int) ($tvaRate * 100) }}% incluse)</a>
+                        </div>
+                    </div>
+
+                    <div class="reservation-hero-panel">
+                        <div class="reservation-hero-panel-head">
+                            <h4 class="reservation-hero-inline-title">Affectation staff event</h4>
+                            @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled' && $isSalleReservation)
+                                <button type="button" class="reservation-circle-action" data-open-modal="staff-affectation-modal" aria-label="Modifier l affectation staff" title="Modifier l affectation staff">
+                                    <i class="fa fa-plus" aria-hidden="true"></i>
+                                </button>
+                            @endif
+                        </div>
+                        @if (! $isSalleReservation)
+                            <p class="reservation-empty" style="padding:0;">L affectation staff est disponible uniquement pour les reservations de type salle.</p>
+                        @else
+                            <div class="staff-summary-grid">
                             <div class="staff-summary-row">
                                 <span class="staff-summary-label">Serveur</span>
                                 @if ($serveurAffectations->isNotEmpty())
@@ -1218,32 +1289,35 @@
                                     </div>
                                 </div>
                             @endif
-                        </div>
-                    @endif
+                            </div>
+                        @endif
+                    </div>
 
-                    <h4 class="reservation-hero-inline-title">Moyennes satisfaction</h4>
-                    <div class="reservation-rating-summary">
-                        <span class="reservation-chip info">
-                            Salle: {{ $averageSalleStars !== null ? number_format($averageSalleStars, 1, '.', ' ') : '-' }} / 5
-                            @if ($averageSalleStars !== null)
-                                <span class="reservation-rating-stars" aria-hidden="true">
-                                    @for ($i = 1; $i <= 5; $i++)
-                                        <i class="fa fa-star {{ $i <= (int) round($averageSalleStars) ? '' : 'off' }}"></i>
-                                    @endfor
-                                </span>
-                            @endif
-                        </span>
-                        <span class="reservation-chip info">
-                            Service: {{ $averageServiceStars !== null ? number_format($averageServiceStars, 1, '.', ' ') : '-' }} / 5
-                            @if ($averageServiceStars !== null)
-                                <span class="reservation-rating-stars" aria-hidden="true">
-                                    @for ($i = 1; $i <= 5; $i++)
-                                        <i class="fa fa-star {{ $i <= (int) round($averageServiceStars) ? '' : 'off' }}"></i>
-                                    @endfor
-                                </span>
-                            @endif
-                        </span>
-                        <span class="reservation-chip">{{ $feedbackCount }} note(s)</span>
+                    <div class="reservation-hero-panel">
+                        <h4 class="reservation-hero-inline-title">Moyennes satisfaction</h4>
+                        <div class="reservation-rating-summary">
+                            <span class="reservation-chip info">
+                                Salle: {{ $averageSalleStars !== null ? number_format($averageSalleStars, 1, '.', ' ') : '-' }} / 5
+                                @if ($averageSalleStars !== null)
+                                    <span class="reservation-rating-stars" aria-hidden="true">
+                                        @for ($i = 1; $i <= 5; $i++)
+                                            <i class="fa fa-star {{ $i <= (int) round($averageSalleStars) ? '' : 'off' }}"></i>
+                                        @endfor
+                                    </span>
+                                @endif
+                            </span>
+                            <span class="reservation-chip info">
+                                Service: {{ $averageServiceStars !== null ? number_format($averageServiceStars, 1, '.', ' ') : '-' }} / 5
+                                @if ($averageServiceStars !== null)
+                                    <span class="reservation-rating-stars" aria-hidden="true">
+                                        @for ($i = 1; $i <= 5; $i++)
+                                            <i class="fa fa-star {{ $i <= (int) round($averageServiceStars) ? '' : 'off' }}"></i>
+                                        @endfor
+                                    </span>
+                                @endif
+                            </span>
+                            <span class="reservation-chip">{{ $feedbackCount }} note(s)</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1251,6 +1325,9 @@
             <article class="reservation-card">
                 <div class="reservation-object-head">
                     <h3 class="reservation-object-title">Informations client</h3>
+                    @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
+                        <button type="button" class="btn" data-open-modal="client-modal"><i class="fa fa-user" aria-hidden="true"></i> Modifier client</button>
+                    @endif
                 </div>
                 <div class="reservation-object-body">
                     <div class="reservation-kv"><span class="reservation-kv-key">Nom complet</span><span class="reservation-kv-value">{{ $clientFullName }}</span></div>
