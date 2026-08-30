@@ -26,6 +26,7 @@
             $defaultWizardStep = 3;
         }
         $openIncrementEntreeId = (int) old('entree_id', 0);
+        $openSortieEntreeId = (int) old('entree_id_sortie', 0);
     @endphp
 
     <style>
@@ -515,70 +516,81 @@
                 @if ($serviceEntreesRows->isEmpty())
                     <p class="reservation-empty">Ajoute d abord au moins une entree avant de passer aux sorties.</p>
                 @else
-                    <div style="display:grid;gap:8px;">
-                        @foreach ($serviceEntreesRows as $entree)
-                            @php
-                                $totalRetourne = (int) $entree->retours->sum('quantite_retournee');
-                                $reste = max(((int) $entree->quantite) - $totalRetourne, 0);
-                            @endphp
-                            <div class="additional-service-category">
-                                <h4>{{ $entree->nature }} (Qte entree: {{ (int) $entree->quantite }})</h4>
-                                <small style="color:#5f7690;">
-                                    Moment: {{ $entree->moment_service ?: '-' }} | Heure: {{ $entree->heure_prevu ? \Illuminate\Support\Carbon::parse($entree->heure_prevu)->format('H:i') : '--:--' }}
-                                    | Cree le:
-                                    @if ($entree->created_dtm)
-                                        @frDateTime($entree->created_dtm)
-                                    @else
-                                        @frDateTime($entree->created_at)
-                                    @endif
-                                    | Cree par: {{ $entree->creator?->name ?? '-' }}
-                                </small>
-                                <div class="reservation-kv">
-                                    <span class="reservation-kv-key">Inventaire</span>
-                                    <span class="reservation-kv-value">Sorti: {{ $totalRetourne }} | Reste a consommer: {{ $reste }}</span>
-                                </div>
+                    <div class="inventory-table-wrap">
+                        <table class="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th>QTE produit</th>
+                                    <th>Produit</th>
+                                    <th>Reste</th>
+                                    <th>Valider</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($serviceEntreesRows as $entree)
+                                    @php
+                                        $totalRetourne = (int) $entree->retours->sum('quantite_retournee');
+                                        $reste = max(((int) $entree->quantite) - $totalRetourne, 0);
+                                    @endphp
+                                    <tr>
+                                        <td><strong>{{ (int) $entree->quantite }}</strong></td>
+                                        <td>{{ $entree->nature }}</td>
+                                        <td><strong>{{ $reste }}</strong></td>
+                                        <td class="inventory-table-actions">
+                                            @if ($reste > 0 && $canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
+                                                <button type="button" class="btn js-toggle-sortie-form" data-sortie-entree-id="{{ $entree->id }}">Valider sortie</button>
+                                            @else
+                                                <span class="inventory-status-pill ok">Valide</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    <tr class="inventory-inline-form-row" data-form-for-sortie-entree="{{ $entree->id }}">
+                                        <td colspan="4">
+                                            @if ($reste > 0 && $canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
+                                                <form method="POST" action="{{ route('reservations.service-retours.store', [$reservation, $entree]) }}" class="payment-form" style="margin-top:6px;">
+                                                    @csrf
+                                                    <input type="hidden" name="entree_id_sortie" value="{{ $entree->id }}">
+                                                    <div class="payment-form-row">
+                                                        <div>
+                                                            <label>Quantite sortie</label>
+                                                            <input type="number" name="quantite_retournee" min="1" max="{{ $reste }}" required>
+                                                        </div>
+                                                        <div>
+                                                            <label>Note sortie</label>
+                                                            <input type="text" name="note_retour" placeholder="Optionnel">
+                                                        </div>
+                                                    </div>
+                                                    <div class="reservation-actions-row">
+                                                        <button type="submit" class="btn">Enregistrer sortie</button>
+                                                    </div>
+                                                </form>
+                                            @endif
 
-                                @if ($entree->retours->isNotEmpty())
-                                    <div style="display:grid;gap:6px;">
-                                        @foreach ($entree->retours->sortByDesc(function ($retour) { return $retour->created_dtm ?? $retour->created_at; }) as $retour)
-                                            <div class="salle-option" style="background:#fff;">
-                                                <div>
-                                                    <strong>Sortie: {{ (int) $retour->quantite_retournee }}</strong>
-                                                    <small>
-                                                        @if ($retour->created_dtm)
-                                                            @frDateTime($retour->created_dtm)
-                                                        @else
-                                                            @frDateTime($retour->created_at)
-                                                        @endif
-                                                        | Cree par: {{ $retour->creator?->name ?? '-' }}
-                                                        @if (!empty($retour->note_retour)) - {{ $retour->note_retour }} @endif
-                                                    </small>
+                                            @if ($entree->retours->isNotEmpty())
+                                                <div class="inventory-history-list">
+                                                    @foreach ($entree->retours->sortByDesc(function ($retour) { return $retour->created_dtm ?? $retour->created_at; }) as $retour)
+                                                        <div class="inventory-history-item">
+                                                            <strong>Sortie: {{ (int) $retour->quantite_retournee }}</strong>
+                                                            <span>
+                                                                @if ($retour->created_dtm)
+                                                                    @frDateTime($retour->created_dtm)
+                                                                @else
+                                                                    @frDateTime($retour->created_at)
+                                                                @endif
+                                                                | Par: {{ $retour->creator?->name ?? '-' }}
+                                                            </span>
+                                                            @if (! empty($retour->note_retour))
+                                                                <span>Note: {{ $retour->note_retour }}</span>
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
                                                 </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @endif
-
-                                @if ($reste > 0 && $canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
-                                    <form method="POST" action="{{ route('reservations.service-retours.store', [$reservation, $entree]) }}" class="payment-form" style="margin-top:6px;">
-                                        @csrf
-                                        <div class="payment-form-row">
-                                            <div>
-                                                <label>Quantite sortie</label>
-                                                <input type="number" name="quantite_retournee" min="1" max="{{ $reste }}" required>
-                                            </div>
-                                            <div>
-                                                <label>Note sortie</label>
-                                                <input type="text" name="note_retour" placeholder="Optionnel">
-                                            </div>
-                                        </div>
-                                        <div class="reservation-actions-row">
-                                            <button type="submit" class="btn">Enregistrer sortie</button>
-                                        </div>
-                                    </form>
-                                @endif
-                            </div>
-                        @endforeach
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
                 @endif
             </section>
@@ -661,6 +673,37 @@
                     }
 
                     const wasOpen = targetRow.classList.contains('is-open');
+
+            const sortieToggleButtons = Array.from(document.querySelectorAll('.js-toggle-sortie-form'));
+            const sortieInlineRows = Array.from(document.querySelectorAll('.inventory-inline-form-row[data-form-for-sortie-entree]'));
+
+            const closeAllSortieInlineForms = () => {
+                sortieInlineRows.forEach((row) => row.classList.remove('is-open'));
+            };
+
+            sortieToggleButtons.forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const entryId = String(btn.getAttribute('data-sortie-entree-id') || '');
+                    const targetRow = document.querySelector(`.inventory-inline-form-row[data-form-for-sortie-entree="${entryId}"]`);
+                    if (!targetRow) {
+                        return;
+                    }
+
+                    const wasOpen = targetRow.classList.contains('is-open');
+                    closeAllSortieInlineForms();
+                    if (!wasOpen) {
+                        targetRow.classList.add('is-open');
+                    }
+                });
+            });
+
+            const openSortieId = Number("{{ $openSortieEntreeId }}") || 0;
+            if (openSortieId > 0) {
+                const row = document.querySelector(`.inventory-inline-form-row[data-form-for-sortie-entree="${openSortieId}"]`);
+                if (row) {
+                    row.classList.add('is-open');
+                }
+            }
                     closeAllInlineForms();
                     if (!wasOpen) {
                         targetRow.classList.add('is-open');
