@@ -258,7 +258,7 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'list', 'view');
 
-        $reservation->load(['client', 'salle', 'user', 'payments.user', 'additionalServices.item', 'additionalServices.pack', 'additionalServices.linkedReservation.payments', 'salleOptionRows.option', 'serviceAffectations.user']);
+        $reservation->load(['client', 'salle', 'user', 'payments.user', 'additionalServices.item', 'additionalServices.pack', 'additionalServices.linkedReservation.payments', 'salleOptionRows.option', 'serviceAffectations.user', 'serviceFeedbacks.creator']);
 
         $currentStart = $this->reservationDateTime($reservation->start_date, $reservation->start_time);
         $currentEnd = $this->reservationDateTime($reservation->end_date, $reservation->end_time);
@@ -378,12 +378,11 @@ class ReservationController extends MatrixAwareController
         $staffOptions = Staff::query()
             ->with(['user:id,name', 'department:id,name'])
             ->where('status', 'active')
-            ->whereNotNull('user_id')
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get(['id', 'user_id', 'department_id', 'photo_path', 'first_name', 'last_name', 'position_title'])
             ->filter(function (Staff $staff) {
-                return $staff->user !== null && $this->staffSectionSlug($staff->position_title) !== null;
+                return $this->staffSectionSlug($staff->position_title) !== null;
             })
             ->values();
 
@@ -433,6 +432,37 @@ class ReservationController extends MatrixAwareController
             'clientCreditBalance' => $clientCreditBalance,
             'creditServiceLabel' => self::RESERVATION_SERVICES[$reservationServiceSlug] ?? 'Service',
             'reservationScopeLabel' => ($reservation->service_slug ?? 'salles') === 'salles' ? 'Interne' : 'Externe',
+        ]);
+    }
+
+    public function contract(Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'list', 'view');
+
+        $reservation->load(['client', 'salle', 'user']);
+
+        return view('reservations.contract', [
+            'title' => 'Contrat reservation',
+            'reservation' => $reservation,
+        ]);
+    }
+
+    public function invoice(Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'list', 'view');
+
+        $reservation->load(['client', 'salle', 'user', 'payments']);
+
+        $totalTtc = (float) ($reservation->total_amount ?? 0);
+        $totalHt = $totalTtc > 0 ? round($totalTtc / 1.19, 3) : 0.0;
+        $tvaAmount = round($totalTtc - $totalHt, 3);
+
+        return view('reservations.invoice', [
+            'title' => 'Facture reservation',
+            'reservation' => $reservation,
+            'totalTtc' => $totalTtc,
+            'totalHt' => $totalHt,
+            'tvaAmount' => $tvaAmount,
         ]);
     }
 

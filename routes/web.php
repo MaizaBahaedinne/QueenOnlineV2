@@ -50,6 +50,8 @@ Route::middleware('auth')->group(function () {
 	Route::patch('reservations/{reservation}/details', [ReservationController::class, 'updateDetails'])->name('reservations.details.update');
 	Route::patch('reservations/{reservation}/slot', [ReservationController::class, 'updateSlot'])->name('reservations.slot.update');
 	Route::patch('reservations/{reservation}/staff-affectations', [ReservationController::class, 'updateStaffAffectations'])->name('reservations.staff-affectations.update');
+	Route::get('reservations/{reservation}/contract', [ReservationController::class, 'contract'])->name('reservations.contract');
+	Route::get('reservations/{reservation}/invoice', [ReservationController::class, 'invoice'])->name('reservations.invoice');
 	Route::patch('reservations/{reservation}/cancel', [ReservationController::class, 'cancel'])->name('reservations.cancel');
 	Route::post('reservations/{reservation}/clone', [ReservationController::class, 'cloneReservation'])->name('reservations.clone');
 	Route::post('reservations/{reservation}/apply-credit', [ReservationController::class, 'applyClientCredit'])->name('reservations.apply-credit');

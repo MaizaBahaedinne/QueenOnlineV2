@@ -71,6 +71,8 @@
         $selectedFemmeMenageUserIds = $femmeMenageAffectations->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->values();
         $selectedAgentSecuriteUserIds = $agentSecuriteAffectations->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->values();
         $staffByUserId = $staffOptions->keyBy('user_id');
+        $tvaRate = 0.19;
+        $invoiceTotalTtc = (float) ($reservation->total_amount ?? 0);
         $parallelBusyStaffUserIds = collect($parallelBusyStaffUserIds ?? [])->map(fn ($id) => (int) $id)->unique()->values();
     @endphp
 
@@ -300,6 +302,42 @@
             text-transform: uppercase;
             letter-spacing: .06em;
             color: #3d5b78;
+        }
+
+        .reservation-switch {
+            display: inline-flex;
+            gap: 6px;
+            padding: 4px;
+            border-radius: 10px;
+            border: 1px solid #d9e6f3;
+            background: #f4f8fd;
+        }
+
+        .reservation-switch-btn {
+            border: 1px solid transparent;
+            background: transparent;
+            color: #47627d;
+            font-size: 12px;
+            font-weight: 700;
+            border-radius: 8px;
+            padding: 7px 10px;
+            cursor: pointer;
+        }
+
+        .reservation-switch-btn.is-active {
+            background: #ffffff;
+            color: #1f4f7a;
+            border-color: #c6d9ee;
+            box-shadow: 0 4px 10px rgba(20, 49, 77, 0.08);
+        }
+
+        .reservation-switch-panel {
+            display: none;
+        }
+
+        .reservation-switch-panel.is-active {
+            display: grid;
+            gap: 8px;
         }
 
         .reservation-object-body {
@@ -819,6 +857,18 @@
             transform: translateY(-1px);
         }
 
+        .staff-avatar-card.is-disabled {
+            opacity: 0.62;
+            cursor: not-allowed;
+            background: #f3f6fa;
+        }
+
+        .staff-avatar-card.is-disabled:hover {
+            transform: none;
+            border-color: #d5e2f0;
+            box-shadow: none;
+        }
+
         .staff-avatar-card input {
             position: absolute;
             opacity: 0;
@@ -893,6 +943,17 @@
             line-height: 1.2;
         }
 
+        .staff-avatar-disabled-note {
+            font-size: 10px;
+            font-weight: 700;
+            color: #6b7280;
+            background: #e5e7eb;
+            border: 1px solid #d1d5db;
+            border-radius: 999px;
+            padding: 2px 7px;
+            line-height: 1.2;
+        }
+
         @media (max-width: 960px) {
             .reservation-top-grid { grid-template-columns: 1fr; }
             .reservation-show-grid { grid-template-columns: 1fr; }
@@ -946,6 +1007,10 @@
                         <span class="reservation-chip">&#127915; {{ $reservation->event_type ?: '-' }}</span>
                         <span class="reservation-chip">&#128101; {{ $reservation->guest_count ?: '-' }}</span>
                     </div>
+                    <div class="reservation-show-actions" style="margin-top:10px;justify-content:flex-start;">
+                        <a href="{{ route('reservations.contract', $reservation) }}" class="btn">Contrat</a>
+                        <a href="{{ route('reservations.invoice', $reservation) }}" class="btn">Facture (TTC {{ number_format($invoiceTotalTtc, 3, '.', ' ') }} TND, TVA {{ (int) ($tvaRate * 100) }}% incluse)</a>
+                    </div>
                 </div>
                 <div class="reservation-show-actions">
                     @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
@@ -970,13 +1035,17 @@
 
             <article class="reservation-card">
                 <div class="reservation-object-head">
-                    <h3 class="reservation-object-title">Affectation staff event</h3>
+                    <div class="reservation-switch" id="reservation-summary-switch">
+                        <button type="button" class="reservation-switch-btn is-active" data-switch-target="staff">Affectation staff event</button>
+                        <button type="button" class="reservation-switch-btn" data-switch-target="client">Informations client</button>
+                    </div>
                 </div>
                 <div class="reservation-object-body">
-                    @if (! $isSalleReservation)
-                        <p class="reservation-empty">L affectation staff est disponible uniquement pour les reservations de type salle.</p>
-                    @else
-                        <div class="staff-summary-grid">
+                    <div class="reservation-switch-panel is-active" data-switch-panel="staff">
+                        @if (! $isSalleReservation)
+                            <p class="reservation-empty">L affectation staff est disponible uniquement pour les reservations de type salle.</p>
+                        @else
+                            <div class="staff-summary-grid">
                             <div class="staff-summary-row">
                                 <span class="staff-summary-label">Chef de service</span>
                                 @if ($gerantAffectation && ($staffByUserId->get($gerantAffectation->user_id) ?? null))
@@ -1164,36 +1233,33 @@
                                     <strong>Aucun</strong>
                                 @endif
                             </div>
-                        </div>
+                            </div>
 
+                            @if ($canUpdateReservation)
+                                <div class="reservation-actions-row" style="justify-content:flex-start; margin-top:8px;">
+                                    <button type="button" class="btn btn-primary" data-open-modal="staff-affectation-modal">Modifier affectation staff</button>
+                                </div>
+                            @endif
+                        @endif
+                    </div>
+
+                    <div class="reservation-switch-panel" data-switch-panel="client">
+                        <div class="reservation-kv"><span class="reservation-kv-key">Nom complet</span><span class="reservation-kv-value">{{ $clientFullName }}</span></div>
+                        <div class="reservation-kv"><span class="reservation-kv-key">CIN</span><span class="reservation-kv-value">{{ $reservation->client?->cin ?? '-' }}</span></div>
+                        <div class="reservation-kv"><span class="reservation-kv-key">Mobile 1</span><span class="reservation-kv-value">{{ $reservation->client?->phone ?? '-' }}{{ $reservation->client?->phone_label_1 ? ' (' . $reservation->client->phone_label_1 . ')' : '' }}</span></div>
+                        <div class="reservation-kv"><span class="reservation-kv-key">Mobile 2</span><span class="reservation-kv-value">{{ $reservation->client?->phone_2 ?? '-' }}{{ $reservation->client?->phone_label_2 ? ' (' . $reservation->client->phone_label_2 . ')' : '' }}</span></div>
+                        <div class="reservation-kv"><span class="reservation-kv-key">Adresse</span><span class="reservation-kv-value">{{ $clientAddress }}</span></div>
                         @if ($canUpdateReservation)
                             <div class="reservation-actions-row" style="justify-content:flex-start; margin-top:8px;">
-                                <button type="button" class="btn btn-primary" data-open-modal="staff-affectation-modal">Modifier affectation staff</button>
+                                <button type="button" class="btn" data-open-modal="client-modal">Modifier donnees client</button>
                             </div>
                         @endif
-                    @endif
+                    </div>
                 </div>
             </article>
         </div>
 
         <div class="reservation-objects-grid">
-
-            <article class="reservation-card">
-                <div class="reservation-object-head">
-                    <h3 class="reservation-object-title">Informations client</h3>
-                    @if ($canUpdateReservation)
-                        <button type="button" class="btn" data-open-modal="client-modal">Modifier donnees client</button>
-                    @endif
-                </div>
-                <div class="reservation-object-body">
-                    <div class="reservation-kv"><span class="reservation-kv-key">Nom complet</span><span class="reservation-kv-value">{{ $clientFullName }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">CIN</span><span class="reservation-kv-value">{{ $reservation->client?->cin ?? '-' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Mobile 1</span><span class="reservation-kv-value">{{ $reservation->client?->phone ?? '-' }}{{ $reservation->client?->phone_label_1 ? ' (' . $reservation->client->phone_label_1 . ')' : '' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Mobile 2</span><span class="reservation-kv-value">{{ $reservation->client?->phone_2 ?? '-' }}{{ $reservation->client?->phone_label_2 ? ' (' . $reservation->client->phone_label_2 . ')' : '' }}</span></div>
-                    <div class="reservation-kv"><span class="reservation-kv-key">Adresse</span><span class="reservation-kv-value">{{ $clientAddress }}</span></div>
-                </div>
-            </article>
-
             <article class="reservation-card">
                 <div class="reservation-object-head">
                     <h3 class="reservation-object-title">Services supplementaires</h3>
@@ -1291,6 +1357,27 @@
                                     @endforeach
                                 </div>
                             @endif
+                        @endforeach
+                    @endif
+                </div>
+            </article>
+
+            <article class="reservation-card">
+                <div class="reservation-object-head">
+                    <h3 class="reservation-object-title">Notes satisfaction client</h3>
+                </div>
+                <div class="reservation-object-body">
+                    @if ($reservation->serviceFeedbacks->isEmpty())
+                        <p class="reservation-empty">Aucune note de satisfaction enregistree.</p>
+                    @else
+                        @foreach ($reservation->serviceFeedbacks->sortByDesc('created_dtm') as $feedback)
+                            <div class="reservation-kv">
+                                <span class="reservation-kv-key">{{ $feedback->nom ?: ($feedback->creator?->name ?? 'Client') }} - @frDateTime($feedback->created_dtm)</span>
+                                <span class="reservation-kv-value">
+                                    Salle: {{ $feedback->note_salle ?? '-' }} / 10 | Service: {{ $feedback->note_service ?? '-' }} / 10<br>
+                                    {{ $feedback->commentaire ?: 'Sans commentaire.' }}
+                                </span>
+                            </div>
                         @endforeach
                     @endif
                 </div>
@@ -1419,6 +1506,7 @@
                                             continue;
                                         }
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                        $isSelectable = $staffUserId > 0 && $staffOption->user !== null;
                                         $isBusyOnParallelReservation = $parallelBusyStaffUserIds->contains($staffUserId);
                                         $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
                                         $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
@@ -1437,8 +1525,8 @@
                                             $initials = 'ST';
                                         }
                                     @endphp
-                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }}" data-department-id="{{ $departmentId }}" data-role="gerant" title="{{ $isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '' }}">
-                                        <input type="radio" name="manager_staff_user_id" value="{{ $staffUserId }}" {{ (string) $oldManagerUserId === (string) $staffUserId ? 'checked' : '' }}>
+                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }} {{ $isSelectable ? '' : 'is-disabled' }}" data-department-id="{{ $departmentId }}" data-role="gerant" title="{{ ! $isSelectable ? 'Compte utilisateur non lie a cette fiche RH.' : ($isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '') }}">
+                                        <input type="radio" name="manager_staff_user_id" value="{{ $staffUserId }}" {{ (string) $oldManagerUserId === (string) $staffUserId ? 'checked' : '' }} {{ $isSelectable ? '' : 'disabled' }}>
                                         <span class="staff-avatar">
                                             @if (!empty($staffOption->photo_path))
                                                 <img src="{{ asset('storage/' . ltrim($staffOption->photo_path, '/')) }}" alt="{{ $staffLabel }}">
@@ -1450,6 +1538,9 @@
                                         <span class="staff-avatar-meta">{{ $departmentName }}</span>
                                         @if ($isBusyOnParallelReservation)
                                             <span class="staff-avatar-warning">Occupe</span>
+                                        @endif
+                                        @if (! $isSelectable)
+                                            <span class="staff-avatar-disabled-note">Compte non lie</span>
                                         @endif
                                     </label>
                                 @endforeach
@@ -1465,6 +1556,7 @@
                                             continue;
                                         }
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                        $isSelectable = $staffUserId > 0 && $staffOption->user !== null;
                                         $isBusyOnParallelReservation = $parallelBusyStaffUserIds->contains($staffUserId);
                                         $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
                                         $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
@@ -1483,8 +1575,8 @@
                                             $initials = 'ST';
                                         }
                                     @endphp
-                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }}" data-department-id="{{ $departmentId }}" data-role="serveur" title="{{ $isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '' }}">
-                                        <input type="checkbox" name="serveur_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldServeurs->contains((string) $staffUserId) ? 'checked' : '' }}>
+                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }} {{ $isSelectable ? '' : 'is-disabled' }}" data-department-id="{{ $departmentId }}" data-role="serveur" title="{{ ! $isSelectable ? 'Compte utilisateur non lie a cette fiche RH.' : ($isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '') }}">
+                                        <input type="checkbox" name="serveur_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldServeurs->contains((string) $staffUserId) ? 'checked' : '' }} {{ $isSelectable ? '' : 'disabled' }}>
                                         <span class="staff-avatar">
                                             @if (!empty($staffOption->photo_path))
                                                 <img src="{{ asset('storage/' . ltrim($staffOption->photo_path, '/')) }}" alt="{{ $staffLabel }}">
@@ -1496,6 +1588,9 @@
                                         <span class="staff-avatar-meta">{{ $departmentName }}</span>
                                         @if ($isBusyOnParallelReservation)
                                             <span class="staff-avatar-warning">Occupe</span>
+                                        @endif
+                                        @if (! $isSelectable)
+                                            <span class="staff-avatar-disabled-note">Compte non lie</span>
                                         @endif
                                     </label>
                                 @endforeach
@@ -1511,6 +1606,7 @@
                                             continue;
                                         }
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                        $isSelectable = $staffUserId > 0 && $staffOption->user !== null;
                                         $isBusyOnParallelReservation = $parallelBusyStaffUserIds->contains($staffUserId);
                                         $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
                                         $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
@@ -1529,8 +1625,8 @@
                                             $initials = 'ST';
                                         }
                                     @endphp
-                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }}" data-department-id="{{ $departmentId }}" data-role="annimateur" title="{{ $isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '' }}">
-                                        <input type="checkbox" name="annimateur_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldAnnimateurs->contains((string) $staffUserId) ? 'checked' : '' }}>
+                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }} {{ $isSelectable ? '' : 'is-disabled' }}" data-department-id="{{ $departmentId }}" data-role="annimateur" title="{{ ! $isSelectable ? 'Compte utilisateur non lie a cette fiche RH.' : ($isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '') }}">
+                                        <input type="checkbox" name="annimateur_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldAnnimateurs->contains((string) $staffUserId) ? 'checked' : '' }} {{ $isSelectable ? '' : 'disabled' }}>
                                         <span class="staff-avatar">
                                             @if (!empty($staffOption->photo_path))
                                                 <img src="{{ asset('storage/' . ltrim($staffOption->photo_path, '/')) }}" alt="{{ $staffLabel }}">
@@ -1542,6 +1638,9 @@
                                         <span class="staff-avatar-meta">{{ $departmentName }}</span>
                                         @if ($isBusyOnParallelReservation)
                                             <span class="staff-avatar-warning">Occupe</span>
+                                        @endif
+                                        @if (! $isSelectable)
+                                            <span class="staff-avatar-disabled-note">Compte non lie</span>
                                         @endif
                                     </label>
                                 @endforeach
@@ -1557,6 +1656,7 @@
                                             continue;
                                         }
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                        $isSelectable = $staffUserId > 0 && $staffOption->user !== null;
                                         $isBusyOnParallelReservation = $parallelBusyStaffUserIds->contains($staffUserId);
                                         $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
                                         $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
@@ -1575,8 +1675,8 @@
                                             $initials = 'ST';
                                         }
                                     @endphp
-                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }}" data-department-id="{{ $departmentId }}" data-role="femme-menage" title="{{ $isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '' }}">
-                                        <input type="checkbox" name="femme_menage_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldFemmesMenage->contains((string) $staffUserId) ? 'checked' : '' }}>
+                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }} {{ $isSelectable ? '' : 'is-disabled' }}" data-department-id="{{ $departmentId }}" data-role="femme-menage" title="{{ ! $isSelectable ? 'Compte utilisateur non lie a cette fiche RH.' : ($isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '') }}">
+                                        <input type="checkbox" name="femme_menage_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldFemmesMenage->contains((string) $staffUserId) ? 'checked' : '' }} {{ $isSelectable ? '' : 'disabled' }}>
                                         <span class="staff-avatar">
                                             @if (!empty($staffOption->photo_path))
                                                 <img src="{{ asset('storage/' . ltrim($staffOption->photo_path, '/')) }}" alt="{{ $staffLabel }}">
@@ -1588,6 +1688,9 @@
                                         <span class="staff-avatar-meta">{{ $departmentName }}</span>
                                         @if ($isBusyOnParallelReservation)
                                             <span class="staff-avatar-warning">Occupe</span>
+                                        @endif
+                                        @if (! $isSelectable)
+                                            <span class="staff-avatar-disabled-note">Compte non lie</span>
                                         @endif
                                     </label>
                                 @endforeach
@@ -1603,6 +1706,7 @@
                                             continue;
                                         }
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                        $isSelectable = $staffUserId > 0 && $staffOption->user !== null;
                                         $isBusyOnParallelReservation = $parallelBusyStaffUserIds->contains($staffUserId);
                                         $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
                                         $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
@@ -1621,8 +1725,8 @@
                                             $initials = 'ST';
                                         }
                                     @endphp
-                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }}" data-department-id="{{ $departmentId }}" data-role="agent-securite" title="{{ $isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '' }}">
-                                        <input type="checkbox" name="agent_securite_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldAgentsSecurite->contains((string) $staffUserId) ? 'checked' : '' }}>
+                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }} {{ $isSelectable ? '' : 'is-disabled' }}" data-department-id="{{ $departmentId }}" data-role="agent-securite" title="{{ ! $isSelectable ? 'Compte utilisateur non lie a cette fiche RH.' : ($isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '') }}">
+                                        <input type="checkbox" name="agent_securite_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldAgentsSecurite->contains((string) $staffUserId) ? 'checked' : '' }} {{ $isSelectable ? '' : 'disabled' }}>
                                         <span class="staff-avatar">
                                             @if (!empty($staffOption->photo_path))
                                                 <img src="{{ asset('storage/' . ltrim($staffOption->photo_path, '/')) }}" alt="{{ $staffLabel }}">
@@ -1634,6 +1738,9 @@
                                         <span class="staff-avatar-meta">{{ $departmentName }}</span>
                                         @if ($isBusyOnParallelReservation)
                                             <span class="staff-avatar-warning">Occupe</span>
+                                        @endif
+                                        @if (! $isSelectable)
+                                            <span class="staff-avatar-disabled-note">Compte non lie</span>
                                         @endif
                                     </label>
                                 @endforeach
@@ -2565,6 +2672,26 @@
 
                 staffDepartmentFilter.addEventListener('change', applyStaffDepartmentFilter);
                 applyStaffDepartmentFilter();
+            }
+
+            const summarySwitch = document.getElementById('reservation-summary-switch');
+            if (summarySwitch) {
+                const switchButtons = Array.from(summarySwitch.querySelectorAll('[data-switch-target]'));
+                const switchPanels = Array.from(document.querySelectorAll('[data-switch-panel]'));
+
+                const activatePanel = (target) => {
+                    switchButtons.forEach((button) => {
+                        button.classList.toggle('is-active', button.getAttribute('data-switch-target') === target);
+                    });
+
+                    switchPanels.forEach((panel) => {
+                        panel.classList.toggle('is-active', panel.getAttribute('data-switch-panel') === target);
+                    });
+                };
+
+                switchButtons.forEach((button) => {
+                    button.addEventListener('click', () => activatePanel(button.getAttribute('data-switch-target')));
+                });
             }
         })();
     </script>
