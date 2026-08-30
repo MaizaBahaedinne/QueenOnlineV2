@@ -33,6 +33,7 @@ class StaffController extends MatrixAwareController
         'Direction',
         'Maintenance',
         'Marketing',
+        'Services des receptions',
         'Securite',
     ];
 
