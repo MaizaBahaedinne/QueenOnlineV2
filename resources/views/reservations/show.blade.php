@@ -81,6 +81,8 @@
         $averageServiceNote = $feedbackCount > 0
             ? round((float) $reservation->serviceFeedbacks->avg('note_service'), 1)
             : null;
+        $averageSalleStars = $averageSalleNote !== null ? round($averageSalleNote / 2, 1) : null;
+        $averageServiceStars = $averageServiceNote !== null ? round($averageServiceNote / 2, 1) : null;
     @endphp
 
     <style>
@@ -135,7 +137,7 @@
 
         .reservation-top-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 1fr;
             gap: 14px;
             align-items: start;
         }
@@ -198,6 +200,18 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
+        }
+
+        .reservation-rating-stars {
+            color: #c89300;
+            margin-left: 4px;
+            display: inline-flex;
+            gap: 1px;
+            vertical-align: middle;
+        }
+
+        .reservation-rating-stars .off {
+            opacity: 0.25;
         }
 
         .reservation-actions-menu {
@@ -1027,19 +1041,19 @@
                 <div class="reservation-show-actions">
                     @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
                         <div class="reservation-actions-menu" id="reservation-actions-menu">
-                            <button type="button" class="btn btn-primary" id="reservation-actions-toggle">Actions reservation</button>
+                            <button type="button" class="btn btn-primary" id="reservation-actions-toggle"><i class="fa fa-bolt" aria-hidden="true"></i> Actions reservation</button>
                             <div class="reservation-actions-menu-panel" id="reservation-actions-panel">
                                 @if ($canCreateReservation)
-                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="clone-reservation-modal">Cloner reservation</button>
+                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="clone-reservation-modal"><i class="fa fa-copy" aria-hidden="true"></i> Cloner la reservation</button>
                                 @endif
-                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-modal">Modifier reservation</button>
-                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-slot-modal">Modifier date/heure/salle</button>
-                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="client-modal">Modifier donnees client</button>
+                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-modal"><i class="fa fa-edit" aria-hidden="true"></i> Modifier la reservation</button>
+                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-slot-modal"><i class="fa fa-calendar" aria-hidden="true"></i> Modifier date, heure et salle</button>
+                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="client-modal"><i class="fa fa-user" aria-hidden="true"></i> Modifier les donnees client</button>
                                 @if ($isSalleReservation)
-                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="staff-affectation-modal">Modifier affectation staff</button>
-                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="service-inventory-modal">Entrees / sorties services</button>
+                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="staff-affectation-modal"><i class="fa fa-users" aria-hidden="true"></i> Modifier l affectation staff</button>
+                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="service-inventory-modal"><i class="fa fa-exchange" aria-hidden="true"></i> Entrees / sorties services</button>
                                 @endif
-                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="cancel-reservation-modal" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Annuler la reservation</button>
+                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="cancel-reservation-modal" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;"><i class="fa fa-ban" aria-hidden="true"></i> Annuler la reservation</button>
                             </div>
                         </div>
                     @endif
@@ -1055,42 +1069,6 @@
                         <p class="reservation-empty" style="padding:0;">L affectation staff est disponible uniquement pour les reservations de type salle.</p>
                     @else
                         <div class="staff-summary-grid">
-                            <div class="staff-summary-row">
-                                <span class="staff-summary-label">Chef de service</span>
-                                @if ($gerantAffectation && ($staffByUserId->get($gerantAffectation->user_id) ?? null))
-                                    @php
-                                        $gerantStaff = $staffByUserId->get($gerantAffectation->user_id);
-                                        $gerantLabel = trim((string) ($gerantStaff->full_name ?: ($gerantAffectation->user?->name ?? '')));
-                                        $gerantInitials = '';
-                                        foreach (preg_split('/\s+/', $gerantLabel) ?: [] as $part) {
-                                            if ($part !== '') {
-                                                $gerantInitials .= mb_strtoupper(mb_substr($part, 0, 1));
-                                            }
-                                            if (mb_strlen($gerantInitials) >= 2) {
-                                                break;
-                                            }
-                                        }
-                                        if ($gerantInitials === '') {
-                                            $gerantInitials = 'ST';
-                                        }
-                                    @endphp
-                                    <div class="staff-assignment-preview-grid">
-                                        <div class="staff-assignment-preview-card" title="{{ $gerantLabel }}">
-                                            <span class="staff-assignment-preview-avatar">
-                                                @if (!empty($gerantStaff->photo_path))
-                                                    <img src="{{ asset('storage/' . ltrim($gerantStaff->photo_path, '/')) }}" alt="{{ $gerantLabel }}">
-                                                @else
-                                                    {{ $gerantInitials }}
-                                                @endif
-                                            </span>
-                                            <span class="staff-assignment-preview-name">{{ $gerantLabel }}</span>
-                                        </div>
-                                    </div>
-                                @else
-                                    <strong>Aucun</strong>
-                                @endif
-                            </div>
-
                             <div class="staff-summary-row">
                                 <span class="staff-summary-label">Serveur</span>
                                 @if ($serveurAffectations->isNotEmpty())
@@ -1245,8 +1223,26 @@
 
                     <h4 class="reservation-hero-inline-title">Moyennes satisfaction</h4>
                     <div class="reservation-rating-summary">
-                        <span class="reservation-chip info">Salle: {{ $averageSalleNote !== null ? number_format($averageSalleNote, 1, '.', ' ') : '-' }} / 10</span>
-                        <span class="reservation-chip info">Service: {{ $averageServiceNote !== null ? number_format($averageServiceNote, 1, '.', ' ') : '-' }} / 10</span>
+                        <span class="reservation-chip info">
+                            Salle: {{ $averageSalleStars !== null ? number_format($averageSalleStars, 1, '.', ' ') : '-' }} / 5
+                            @if ($averageSalleStars !== null)
+                                <span class="reservation-rating-stars" aria-hidden="true">
+                                    @for ($i = 1; $i <= 5; $i++)
+                                        <i class="fa fa-star {{ $i <= (int) round($averageSalleStars) ? '' : 'off' }}"></i>
+                                    @endfor
+                                </span>
+                            @endif
+                        </span>
+                        <span class="reservation-chip info">
+                            Service: {{ $averageServiceStars !== null ? number_format($averageServiceStars, 1, '.', ' ') : '-' }} / 5
+                            @if ($averageServiceStars !== null)
+                                <span class="reservation-rating-stars" aria-hidden="true">
+                                    @for ($i = 1; $i <= 5; $i++)
+                                        <i class="fa fa-star {{ $i <= (int) round($averageServiceStars) ? '' : 'off' }}"></i>
+                                    @endfor
+                                </span>
+                            @endif
+                        </span>
                         <span class="reservation-chip">{{ $feedbackCount }} note(s)</span>
                     </div>
                 </div>
