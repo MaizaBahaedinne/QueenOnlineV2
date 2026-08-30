@@ -135,7 +135,7 @@
 
         .reservation-top-grid {
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: 2fr 1fr;
             gap: 14px;
             align-items: start;
         }
@@ -1253,32 +1253,6 @@
 
             <article class="reservation-card">
                 <div class="reservation-object-head">
-                    <h3 class="reservation-object-title">Details satisfaction client</h3>
-                </div>
-                <div class="reservation-object-body">
-                    <div class="reservation-detail-section">
-                        <h4 class="reservation-detail-section-title">Notes satisfaction client</h4>
-                        @if ($reservation->serviceFeedbacks->isEmpty())
-                            <p class="reservation-empty">Aucune note de satisfaction enregistree.</p>
-                        @else
-                            @foreach ($reservation->serviceFeedbacks->sortByDesc('created_dtm') as $feedback)
-                                <div class="reservation-kv">
-                                    <span class="reservation-kv-key">{{ $feedback->nom ?: ($feedback->creator?->name ?? 'Client') }} - @frDateTime($feedback->created_dtm)</span>
-                                    <span class="reservation-kv-value">
-                                        Salle: {{ $feedback->note_salle ?? '-' }} / 10 | Service: {{ $feedback->note_service ?? '-' }} / 10<br>
-                                        {{ $feedback->commentaire ?: 'Sans commentaire.' }}
-                                    </span>
-                                </div>
-                            @endforeach
-                        @endif
-                    </div>
-                </div>
-            </article>
-        </div>
-
-        <div class="reservation-objects-grid">
-            <article class="reservation-card">
-                <div class="reservation-object-head">
                     <h3 class="reservation-object-title">Informations client</h3>
                 </div>
                 <div class="reservation-object-body">
@@ -1289,7 +1263,9 @@
                     <div class="reservation-kv"><span class="reservation-kv-key">Adresse</span><span class="reservation-kv-value">{{ $clientAddress }}</span></div>
                 </div>
             </article>
+        </div>
 
+        <div class="reservation-objects-grid">
             <article class="reservation-card" id="service-inventory">
                 <div class="reservation-object-head">
                     <h3 class="reservation-object-title">Entrees / sorties services</h3>
@@ -1314,7 +1290,13 @@
                                 <div class="payment-form-row">
                                     <div>
                                         <label for="entree-moment-service">Moment service</label>
-                                        <input id="entree-moment-service" name="moment_service" type="text" value="{{ old('moment_service') }}" placeholder="Ex: Cocktail, diner...">
+                                        <select id="entree-moment-service" name="moment_service">
+                                            <option value=""></option>
+                                            <option value="debut" {{ old('moment_service') === 'debut' ? 'selected' : '' }}>Debut</option>
+                                            <option value="diner" {{ old('moment_service') === 'diner' ? 'selected' : '' }}>Diner</option>
+                                            <option value="milieu" {{ old('moment_service') === 'milieu' ? 'selected' : '' }}>Milieu</option>
+                                            <option value="fin" {{ old('moment_service') === 'fin' ? 'selected' : '' }}>Fin</option>
+                                        </select>
                                     </div>
                                     <div>
                                         <label for="entree-heure-prevu">Heure prevue</label>
@@ -1358,6 +1340,7 @@
                                         @else
                                             @frDateTime($entree->created_at)
                                         @endif
+                                        | Cree par: {{ $entree->creator?->name ?? '-' }}
                                     </small>
                                     <div class="reservation-kv">
                                         <span class="reservation-kv-key">Inventaire</span>
@@ -1376,6 +1359,7 @@
                                                             @else
                                                                 @frDateTime($retour->created_at)
                                                             @endif
+                                                            | Cree par: {{ $retour->creator?->name ?? '-' }}
                                                             @if (!empty($retour->note_retour)) - {{ $retour->note_retour }} @endif
                                                         </small>
                                                     </div>
