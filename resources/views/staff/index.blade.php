@@ -1,6 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/style.css">
+
     @php
         $canCreate = auth()->user()?->canFeature('staff', 'create', 'create') ?? false;
         $canUpdate = auth()->user()?->canFeature('staff', 'update', 'update') ?? false;
@@ -60,6 +62,33 @@
         .crop-actions { display: flex; gap: 10px; flex-wrap: wrap; }
         .crop-slider { width: 100%; }
         .conditional-hidden { display: none; }
+        .datatable-wrapper .datatable-top,
+        .datatable-wrapper .datatable-bottom { gap: 10px; }
+        .datatable-wrapper .datatable-input,
+        .datatable-wrapper .datatable-selector {
+            border: 1px solid #d3e1ee;
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 13px;
+            color: #1a3a57;
+            background: #fff;
+        }
+        .datatable-wrapper .datatable-input:focus,
+        .datatable-wrapper .datatable-selector:focus {
+            outline: 2px solid rgba(44, 120, 182, 0.2);
+            border-color: #2c78b6;
+        }
+        .datatable-wrapper .datatable-pagination a {
+            border-radius: 9px;
+            border: 1px solid #d3e1ee;
+            color: #1a3a57;
+            background: #fff;
+        }
+        .datatable-wrapper .datatable-pagination .active a {
+            background: #2c78b6;
+            color: #fff;
+            border-color: #2c78b6;
+        }
         @media (max-width: 980px) { .staff-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .form-grid-3 { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 860px) { .crop-layout { grid-template-columns: 1fr; } .crop-stage { width: 100%; } }
         @media (max-width: 780px) { .form-grid-2, .form-grid-3, .staff-summary { grid-template-columns: 1fr; } }
@@ -99,7 +128,7 @@
         </div>
 
         <div class="staff-table-wrap">
-            <table>
+            <table id="staff-table">
                 <thead>
                     <tr>
                         <th>Photo</th>
@@ -216,7 +245,27 @@
 
     <div class="modal-overlay" id="staff-photo-crop-modal"><div class="modal-card crop-modal-card"><div class="modal-head"><div><h3 class="modal-title">Recadrer la photo</h3><p class="modal-subtitle">Format final carre 1:1 pour le profil Ressource Humaine.</p></div><button type="button" class="btn" id="staff-photo-crop-cancel-top">Fermer</button></div><div class="crop-layout"><div class="crop-stage" id="staff-photo-crop-stage"><img src="" alt="Recadrage photo Ressource Humaine" id="staff-photo-crop-image" class="crop-image" style="display:none;"></div><div class="crop-sidebar"><p class="crop-help">Glisse l image pour la positionner dans le cadre, puis ajuste le zoom. La photo enregistree sera recadree en carre 1:1.</p><div><label for="staff-photo-crop-zoom" style="display:block; margin-bottom:8px; font-weight:600;">Zoom</label><input type="range" id="staff-photo-crop-zoom" class="crop-slider" min="100" max="400" step="1" value="100"></div><div class="crop-actions"><button type="button" class="btn" id="staff-photo-crop-reset">Reinitialiser</button><button type="button" class="btn" id="staff-photo-crop-cancel">Annuler</button><button type="button" class="btn btn-primary" id="staff-photo-crop-apply">Utiliser cette photo</button></div></div></div></div></div>
 
+    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3"></script>
     <script>
+        if (window.simpleDatatables && document.getElementById('staff-table')) {
+            new simpleDatatables.DataTable('#staff-table', {
+                perPage: 15,
+                perPageSelect: [10, 15, 25, 50, 100],
+                searchable: true,
+                sortable: true,
+                labels: {
+                    placeholder: 'Rechercher...',
+                    perPage: '{select} lignes par page',
+                    noRows: 'Aucune ressource humaine',
+                    info: 'Affichage de {start} a {end} sur {rows} lignes',
+                },
+                columns: [
+                    { select: 0, sortable: false },
+                    { select: 7, sortable: false },
+                ],
+            });
+        }
+
         const openModalButtons = document.querySelectorAll('[data-open-modal]');
         const closeModalButtons = document.querySelectorAll('[data-close-modal]');
         const openModal = (id) => { const modal = document.getElementById(id); if (modal) modal.classList.add('show'); };

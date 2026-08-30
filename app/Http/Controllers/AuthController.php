@@ -30,16 +30,29 @@ class AuthController extends Controller
         $this->ensureIsNotRateLimited($request);
 
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'login' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string'],
         ]);
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+        $loginValue = trim((string) $credentials['login']);
+        $user = User::query()
+            ->where(function ($query) use ($loginValue) {
+                $query->where('email', $loginValue)
+                    ->orWhere('name', $loginValue);
+            })
+            ->first();
+
+        $attemptCredentials = [
+            'email' => $user?->email ?? '__invalid__',
+            'password' => $credentials['password'],
+        ];
+
+        if (! Auth::attempt($attemptCredentials, $request->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey($request), 60);
 
             return back()
-                ->withErrors(['email' => 'Email ou mot de passe invalide.'])
-                ->withInput($request->only('email'));
+                ->withErrors(['login' => 'Identifiant ou mot de passe invalide.'])
+                ->withInput($request->only('login'));
         }
 
         RateLimiter::clear($this->throttleKey($request));
@@ -129,12 +142,12 @@ class AuthController extends Controller
         $seconds = RateLimiter::availableIn($this->throttleKey($request));
 
         throw ValidationException::withMessages([
-            'email' => ["Trop de tentatives. Reessaie dans {$seconds}s."],
+            'login' => ["Trop de tentatives. Reessaie dans {$seconds}s."],
         ]);
     }
 
     protected function throttleKey(Request $request): string
     {
-        return Str::transliterate(Str::lower((string) $request->input('email')).'|'.$request->ip());
+        return Str::transliterate(Str::lower((string) $request->input('login')).'|'.$request->ip());
     }
 }

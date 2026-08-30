@@ -92,10 +92,10 @@
 
                 <input
                     class="auth-input"
-                    type="email"
-                    name="email"
-                    value="{{ old('email') }}"
-                    placeholder="Email"
+                    type="text"
+                    name="login"
+                    value="{{ old('login') }}"
+                    placeholder="Email ou pseudo"
                     required
                     autofocus
                 >
