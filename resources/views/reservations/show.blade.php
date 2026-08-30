@@ -544,6 +544,42 @@
             font-size: 18px;
         }
 
+        .modal-card label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #45617c;
+        }
+
+        .modal-card input:not([type="checkbox"]):not([type="radio"]),
+        .modal-card select,
+        .modal-card textarea {
+            width: 100%;
+            border: 1px solid #cddbeb;
+            border-radius: 10px;
+            padding: 9px 10px;
+            font-size: 13px;
+            background: #ffffff;
+            color: #183a5b;
+            transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+            appearance: none;
+        }
+
+        .modal-card input:not([type="checkbox"]):not([type="radio"]):focus,
+        .modal-card select:focus,
+        .modal-card textarea:focus {
+            outline: none;
+            border-color: #2c78b6;
+            box-shadow: 0 0 0 3px rgba(44, 120, 182, 0.14);
+            background: #fbfdff;
+        }
+
+        .modal-card input[readonly] {
+            background: #eef3f8;
+            color: #5b6b7d;
+        }
+
         .client-form-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
