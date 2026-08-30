@@ -2188,7 +2188,12 @@ class ReservationController extends MatrixAwareController
         if (empty($dateValue) || empty($timeValue)) {
             return null;
         }
-
+        try {
+            return Carbon::parse($dateValue . ' ' . $timeValue);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
 
     private function staffSectionSlug(?string $positionTitle): ?string
     {
@@ -2225,12 +2230,6 @@ class ReservationController extends MatrixAwareController
         }
 
         return null;
-    }
-        try {
-            return Carbon::parse($dateValue . ' ' . $timeValue);
-        } catch (\Throwable) {
-            return null;
-        }
     }
 
     private function isReservationTimeOverlapping(Reservation $otherReservation, Carbon $currentStart, Carbon $currentEnd): bool
