@@ -70,6 +70,7 @@
         $selectedAnnimateurUserIds = $annimateurAffectations->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->values();
         $selectedFemmeMenageUserIds = $femmeMenageAffectations->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->values();
         $selectedAgentSecuriteUserIds = $agentSecuriteAffectations->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->values();
+        $staffByUserId = $staffOptions->keyBy('user_id');
         $parallelBusyStaffUserIds = collect($parallelBusyStaffUserIds ?? [])->map(fn ($id) => (int) $id)->unique()->values();
     @endphp
 
@@ -739,6 +740,51 @@
             gap: 4px;
         }
 
+        .staff-assignment-preview-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .staff-assignment-preview-card {
+            width: 58px;
+            display: grid;
+            justify-items: center;
+            gap: 4px;
+        }
+
+        .staff-assignment-preview-avatar {
+            width: 54px;
+            height: 54px;
+            border-radius: 999px;
+            border: 2px solid #c8d9ea;
+            background: #e9f1fb;
+            color: #1d4d78;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(20, 49, 77, 0.08);
+        }
+
+        .staff-assignment-preview-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .staff-assignment-preview-name {
+            max-width: 100%;
+            font-size: 10px;
+            line-height: 1.15;
+            color: #5d7388;
+            text-align: center;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
         .staff-summary-label {
             font-size: 11px;
             text-transform: uppercase;
@@ -933,29 +979,190 @@
                         <div class="staff-summary-grid">
                             <div class="staff-summary-row">
                                 <span class="staff-summary-label">Chef de service</span>
-                                <strong>{{ $gerantAffectation?->user?->name ?? 'Aucun' }}</strong>
+                                @if ($gerantAffectation && ($staffByUserId->get($gerantAffectation->user_id) ?? null))
+                                    @php
+                                        $gerantStaff = $staffByUserId->get($gerantAffectation->user_id);
+                                        $gerantLabel = trim((string) ($gerantStaff->full_name ?: ($gerantAffectation->user?->name ?? '')));
+                                        $gerantInitials = '';
+                                        foreach (preg_split('/\s+/', $gerantLabel) ?: [] as $part) {
+                                            if ($part !== '') {
+                                                $gerantInitials .= mb_strtoupper(mb_substr($part, 0, 1));
+                                            }
+                                            if (mb_strlen($gerantInitials) >= 2) {
+                                                break;
+                                            }
+                                        }
+                                        if ($gerantInitials === '') {
+                                            $gerantInitials = 'ST';
+                                        }
+                                    @endphp
+                                    <div class="staff-assignment-preview-grid">
+                                        <div class="staff-assignment-preview-card" title="{{ $gerantLabel }}">
+                                            <span class="staff-assignment-preview-avatar">
+                                                @if (!empty($gerantStaff->photo_path))
+                                                    <img src="{{ asset('storage/' . ltrim($gerantStaff->photo_path, '/')) }}" alt="{{ $gerantLabel }}">
+                                                @else
+                                                    {{ $gerantInitials }}
+                                                @endif
+                                            </span>
+                                            <span class="staff-assignment-preview-name">{{ $gerantLabel }}</span>
+                                        </div>
+                                    </div>
+                                @else
+                                    <strong>Aucun</strong>
+                                @endif
                             </div>
                             <div class="staff-summary-row">
                                 <span class="staff-summary-label">Serveur</span>
-                                <span>
-                                    @if ($serveurAffectations->isEmpty())
-                                        Aucun
-                                    @else
-                                        {{ $serveurAffectations->map(fn($row) => $row->user?->name ?? ('Utilisateur #' . $row->user_id))->implode(', ') }}
-                                    @endif
-                                </span>
+                                @if ($serveurAffectations->isNotEmpty())
+                                    <div class="staff-assignment-preview-grid">
+                                        @foreach ($serveurAffectations as $row)
+                                            @php
+                                                $staffRow = $staffByUserId->get($row->user_id);
+                                                $staffLabel = trim((string) ($staffRow->full_name ?? ($row->user?->name ?? '')));
+                                                $staffLabel = $staffLabel !== '' ? $staffLabel : ('Utilisateur #' . $row->user_id);
+                                                $initials = '';
+                                                foreach (preg_split('/\s+/', $staffLabel) ?: [] as $part) {
+                                                    if ($part !== '') {
+                                                        $initials .= mb_strtoupper(mb_substr($part, 0, 1));
+                                                    }
+                                                    if (mb_strlen($initials) >= 2) {
+                                                        break;
+                                                    }
+                                                }
+                                                if ($initials === '') {
+                                                    $initials = 'ST';
+                                                }
+                                            @endphp
+                                            <div class="staff-assignment-preview-card" title="{{ $staffLabel }}">
+                                                <span class="staff-assignment-preview-avatar">
+                                                    @if ($staffRow && !empty($staffRow->photo_path))
+                                                        <img src="{{ asset('storage/' . ltrim($staffRow->photo_path, '/')) }}" alt="{{ $staffLabel }}">
+                                                    @else
+                                                        {{ $initials }}
+                                                    @endif
+                                                </span>
+                                                <span class="staff-assignment-preview-name">{{ $staffLabel }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <strong>Aucun</strong>
+                                @endif
                             </div>
                             <div class="staff-summary-row">
                                 <span class="staff-summary-label">Annimateur</span>
-                                <span>{{ $annimateurAffectations->isEmpty() ? 'Aucun' : $annimateurAffectations->map(fn($row) => $row->user?->name ?? ('Utilisateur #' . $row->user_id))->implode(', ') }}</span>
+                                @if ($annimateurAffectations->isNotEmpty())
+                                    <div class="staff-assignment-preview-grid">
+                                        @foreach ($annimateurAffectations as $row)
+                                            @php
+                                                $staffRow = $staffByUserId->get($row->user_id);
+                                                $staffLabel = trim((string) ($staffRow->full_name ?? ($row->user?->name ?? '')));
+                                                $staffLabel = $staffLabel !== '' ? $staffLabel : ('Utilisateur #' . $row->user_id);
+                                                $initials = '';
+                                                foreach (preg_split('/\s+/', $staffLabel) ?: [] as $part) {
+                                                    if ($part !== '') {
+                                                        $initials .= mb_strtoupper(mb_substr($part, 0, 1));
+                                                    }
+                                                    if (mb_strlen($initials) >= 2) {
+                                                        break;
+                                                    }
+                                                }
+                                                if ($initials === '') {
+                                                    $initials = 'ST';
+                                                }
+                                            @endphp
+                                            <div class="staff-assignment-preview-card" title="{{ $staffLabel }}">
+                                                <span class="staff-assignment-preview-avatar">
+                                                    @if ($staffRow && !empty($staffRow->photo_path))
+                                                        <img src="{{ asset('storage/' . ltrim($staffRow->photo_path, '/')) }}" alt="{{ $staffLabel }}">
+                                                    @else
+                                                        {{ $initials }}
+                                                    @endif
+                                                </span>
+                                                <span class="staff-assignment-preview-name">{{ $staffLabel }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <strong>Aucun</strong>
+                                @endif
                             </div>
                             <div class="staff-summary-row">
                                 <span class="staff-summary-label">Femme de menage</span>
-                                <span>{{ $femmeMenageAffectations->isEmpty() ? 'Aucune' : $femmeMenageAffectations->map(fn($row) => $row->user?->name ?? ('Utilisateur #' . $row->user_id))->implode(', ') }}</span>
+                                @if ($femmeMenageAffectations->isNotEmpty())
+                                    <div class="staff-assignment-preview-grid">
+                                        @foreach ($femmeMenageAffectations as $row)
+                                            @php
+                                                $staffRow = $staffByUserId->get($row->user_id);
+                                                $staffLabel = trim((string) ($staffRow->full_name ?? ($row->user?->name ?? '')));
+                                                $staffLabel = $staffLabel !== '' ? $staffLabel : ('Utilisateur #' . $row->user_id);
+                                                $initials = '';
+                                                foreach (preg_split('/\s+/', $staffLabel) ?: [] as $part) {
+                                                    if ($part !== '') {
+                                                        $initials .= mb_strtoupper(mb_substr($part, 0, 1));
+                                                    }
+                                                    if (mb_strlen($initials) >= 2) {
+                                                        break;
+                                                    }
+                                                }
+                                                if ($initials === '') {
+                                                    $initials = 'ST';
+                                                }
+                                            @endphp
+                                            <div class="staff-assignment-preview-card" title="{{ $staffLabel }}">
+                                                <span class="staff-assignment-preview-avatar">
+                                                    @if ($staffRow && !empty($staffRow->photo_path))
+                                                        <img src="{{ asset('storage/' . ltrim($staffRow->photo_path, '/')) }}" alt="{{ $staffLabel }}">
+                                                    @else
+                                                        {{ $initials }}
+                                                    @endif
+                                                </span>
+                                                <span class="staff-assignment-preview-name">{{ $staffLabel }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <strong>Aucune</strong>
+                                @endif
                             </div>
                             <div class="staff-summary-row">
                                 <span class="staff-summary-label">Agent de securite</span>
-                                <span>{{ $agentSecuriteAffectations->isEmpty() ? 'Aucun' : $agentSecuriteAffectations->map(fn($row) => $row->user?->name ?? ('Utilisateur #' . $row->user_id))->implode(', ') }}</span>
+                                @if ($agentSecuriteAffectations->isNotEmpty())
+                                    <div class="staff-assignment-preview-grid">
+                                        @foreach ($agentSecuriteAffectations as $row)
+                                            @php
+                                                $staffRow = $staffByUserId->get($row->user_id);
+                                                $staffLabel = trim((string) ($staffRow->full_name ?? ($row->user?->name ?? '')));
+                                                $staffLabel = $staffLabel !== '' ? $staffLabel : ('Utilisateur #' . $row->user_id);
+                                                $initials = '';
+                                                foreach (preg_split('/\s+/', $staffLabel) ?: [] as $part) {
+                                                    if ($part !== '') {
+                                                        $initials .= mb_strtoupper(mb_substr($part, 0, 1));
+                                                    }
+                                                    if (mb_strlen($initials) >= 2) {
+                                                        break;
+                                                    }
+                                                }
+                                                if ($initials === '') {
+                                                    $initials = 'ST';
+                                                }
+                                            @endphp
+                                            <div class="staff-assignment-preview-card" title="{{ $staffLabel }}">
+                                                <span class="staff-assignment-preview-avatar">
+                                                    @if ($staffRow && !empty($staffRow->photo_path))
+                                                        <img src="{{ asset('storage/' . ltrim($staffRow->photo_path, '/')) }}" alt="{{ $staffLabel }}">
+                                                    @else
+                                                        {{ $initials }}
+                                                    @endif
+                                                </span>
+                                                <span class="staff-assignment-preview-name">{{ $staffLabel }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <strong>Aucun</strong>
+                                @endif
                             </div>
                         </div>
 
