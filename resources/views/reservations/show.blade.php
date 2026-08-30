@@ -301,40 +301,26 @@
             color: #3d5b78;
         }
 
-        .reservation-switch {
-            display: inline-flex;
-            gap: 6px;
-            padding: 4px;
-            border-radius: 10px;
-            border: 1px solid #d9e6f3;
-            background: #f4f8fd;
-        }
-
-        .reservation-switch-btn {
-            border: 1px solid transparent;
-            background: transparent;
-            color: #47627d;
-            font-size: 12px;
-            font-weight: 700;
-            border-radius: 8px;
-            padding: 7px 10px;
-            cursor: pointer;
-        }
-
-        .reservation-switch-btn.is-active {
-            background: #ffffff;
-            color: #1f4f7a;
-            border-color: #c6d9ee;
-            box-shadow: 0 4px 10px rgba(20, 49, 77, 0.08);
-        }
-
-        .reservation-switch-panel {
-            display: none;
-        }
-
-        .reservation-switch-panel.is-active {
+        .reservation-detail-section {
             display: grid;
             gap: 8px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #d7e4f2;
+            margin-bottom: 10px;
+        }
+
+        .reservation-detail-section:last-child {
+            padding-bottom: 0;
+            border-bottom: 0;
+            margin-bottom: 0;
+        }
+
+        .reservation-detail-section-title {
+            margin: 0;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #3b5a77;
         }
 
         .reservation-object-body {
@@ -1031,14 +1017,11 @@
 
             <article class="reservation-card">
                 <div class="reservation-object-head">
-                    <div class="reservation-switch" id="reservation-summary-switch">
-                        <button type="button" class="reservation-switch-btn is-active" data-switch-target="staff">Affectation staff event</button>
-                        <button type="button" class="reservation-switch-btn" data-switch-target="client">Informations client</button>
-                        <button type="button" class="reservation-switch-btn" data-switch-target="satisfaction">Notes satisfaction client</button>
-                    </div>
+                    <h3 class="reservation-object-title">Reservation detail</h3>
                 </div>
                 <div class="reservation-object-body">
-                    <div class="reservation-switch-panel is-active" data-switch-panel="staff">
+                    <div class="reservation-detail-section">
+                        <h4 class="reservation-detail-section-title">Affectation staff event</h4>
                         @if (! $isSalleReservation)
                             <p class="reservation-empty">L affectation staff est disponible uniquement pour les reservations de type salle.</p>
                         @else
@@ -1240,7 +1223,8 @@
                         @endif
                     </div>
 
-                    <div class="reservation-switch-panel" data-switch-panel="client">
+                    <div class="reservation-detail-section">
+                        <h4 class="reservation-detail-section-title">Informations client</h4>
                         <div class="reservation-kv"><span class="reservation-kv-key">Nom complet</span><span class="reservation-kv-value">{{ $clientFullName }}</span></div>
                         <div class="reservation-kv"><span class="reservation-kv-key">CIN</span><span class="reservation-kv-value">{{ $reservation->client?->cin ?? '-' }}</span></div>
                         <div class="reservation-kv"><span class="reservation-kv-key">Mobile 1</span><span class="reservation-kv-value">{{ $reservation->client?->phone ?? '-' }}{{ $reservation->client?->phone_label_1 ? ' (' . $reservation->client->phone_label_1 . ')' : '' }}</span></div>
@@ -1253,7 +1237,8 @@
                         @endif
                     </div>
 
-                    <div class="reservation-switch-panel" data-switch-panel="satisfaction">
+                    <div class="reservation-detail-section">
+                        <h4 class="reservation-detail-section-title">Notes satisfaction client</h4>
                         @if ($reservation->serviceFeedbacks->isEmpty())
                             <p class="reservation-empty">Aucune note de satisfaction enregistree.</p>
                         @else
@@ -2666,25 +2651,6 @@
                 applyStaffDepartmentFilter();
             }
 
-            const summarySwitch = document.getElementById('reservation-summary-switch');
-            if (summarySwitch) {
-                const switchButtons = Array.from(summarySwitch.querySelectorAll('[data-switch-target]'));
-                const switchPanels = Array.from(document.querySelectorAll('[data-switch-panel]'));
-
-                const activatePanel = (target) => {
-                    switchButtons.forEach((button) => {
-                        button.classList.toggle('is-active', button.getAttribute('data-switch-target') === target);
-                    });
-
-                    switchPanels.forEach((panel) => {
-                        panel.classList.toggle('is-active', panel.getAttribute('data-switch-panel') === target);
-                    });
-                };
-
-                switchButtons.forEach((button) => {
-                    button.addEventListener('click', () => activatePanel(button.getAttribute('data-switch-target')));
-                });
-            }
         })();
     </script>
     <script>
