@@ -50,6 +50,15 @@ class ModuleSeeder extends Seeder
                 ],
             ],
             [
+                'module' => ['name' => 'Services salle', 'slug' => 'services-salle', 'description' => 'Gestion des entrees, retours, feedbacks et affectations pour reservations salle', 'sort_order' => 45],
+                'features' => [
+                    ['name' => 'Liste services salle', 'slug' => 'list', 'sort_order' => 10],
+                    ['name' => 'Creation service salle', 'slug' => 'create', 'sort_order' => 20],
+                    ['name' => 'Edition service salle', 'slug' => 'update', 'sort_order' => 30],
+                    ['name' => 'Suppression service salle', 'slug' => 'delete', 'sort_order' => 40],
+                ],
+            ],
+            [
                 'module' => ['name' => 'Paiements', 'slug' => 'payments', 'description' => 'Gestion des paiements', 'sort_order' => 50],
                 'features' => [
                     ['name' => 'Liste paiements', 'slug' => 'list', 'sort_order' => 10],

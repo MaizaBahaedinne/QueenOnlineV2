@@ -53,4 +53,24 @@ class Reservation extends Model
     {
         return $this->hasMany(ReservationSalleOption::class);
     }
+
+    public function serviceEntrees()
+    {
+        return $this->hasMany(ServiceEntree::class);
+    }
+
+    public function serviceFeedbacks()
+    {
+        return $this->hasMany(ServiceFeedback::class);
+    }
+
+    public function serviceAffectations()
+    {
+        return $this->hasMany(ServiceAffectation::class);
+    }
+
+    public function isSalleReservation(): bool
+    {
+        return ($this->service_slug ?? 'salles') === 'salles';
+    }
 }
