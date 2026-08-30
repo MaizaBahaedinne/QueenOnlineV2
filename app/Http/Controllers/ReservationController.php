@@ -10,6 +10,8 @@ use App\Models\ReservationAdditionalService;
 use App\Models\ReservationSalleOption;
 use App\Models\ReservationCancellation;
 use App\Models\ServiceAffectation;
+use App\Models\ServiceEntree;
+use App\Models\ServiceRetour;
 use App\Models\Salle;
 use App\Models\SalleOption;
 use App\Models\Staff;
@@ -258,7 +260,20 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'list', 'view');
 
-        $reservation->load(['client', 'salle', 'user', 'payments.user', 'additionalServices.item', 'additionalServices.pack', 'additionalServices.linkedReservation.payments', 'salleOptionRows.option', 'serviceAffectations.user', 'serviceFeedbacks.creator']);
+        $reservation->load([
+            'client',
+            'salle',
+            'user',
+            'payments.user',
+            'additionalServices.item',
+            'additionalServices.pack',
+            'additionalServices.linkedReservation.payments',
+            'salleOptionRows.option',
+            'serviceAffectations.user',
+            'serviceFeedbacks.creator',
+            'serviceEntrees.creator',
+            'serviceEntrees.retours.creator',
+        ]);
 
         $currentStart = $this->reservationDateTime($reservation->start_date, $reservation->start_time);
         $currentEnd = $this->reservationDateTime($reservation->end_date, $reservation->end_time);
@@ -622,6 +637,82 @@ class ReservationController extends MatrixAwareController
         ]);
 
         return redirect()->route('reservations.show', $reservation)->with('success', 'Option salle ajoutee a la reservation.');
+    }
+
+    public function storeServiceEntree(Request $request, Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        if (($reservation->service_slug ?? 'salles') !== 'salles') {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'service_entree' => 'Les entrees de services sont reservees aux reservations de type salle.',
+            ])->withInput();
+        }
+
+        $validated = $request->validate([
+            'nature' => ['required', 'string', 'max:255'],
+            'quantite' => ['required', 'integer', 'min:1'],
+            'moment_service' => ['nullable', 'string', 'max:100'],
+            'heure_prevu' => ['nullable', 'date_format:H:i'],
+            'note' => ['nullable', 'string'],
+        ]);
+
+        ServiceEntree::query()->create([
+            'reservation_id' => $reservation->id,
+            'nature' => trim((string) $validated['nature']),
+            'quantite' => (int) $validated['quantite'],
+            'moment_service' => filled($validated['moment_service'] ?? null) ? trim((string) $validated['moment_service']) : null,
+            'heure_prevu' => filled($validated['heure_prevu'] ?? null) ? ((string) $validated['heure_prevu'] . ':00') : null,
+            'note' => $validated['note'] ?? null,
+            'created_by' => Auth::id(),
+            'created_dtm' => now(),
+        ]);
+
+        return redirect()->to(route('reservations.show', $reservation) . '#service-inventory')
+            ->with('success', 'Entree de service ajoutee.');
+    }
+
+    public function storeServiceRetour(Request $request, Reservation $reservation, ServiceEntree $serviceEntree)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        if (($reservation->service_slug ?? 'salles') !== 'salles') {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'service_retour' => 'Les retours de services sont reserves aux reservations de type salle.',
+            ])->withInput();
+        }
+
+        if ((int) $serviceEntree->reservation_id !== (int) $reservation->id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'quantite_retournee' => ['required', 'integer', 'min:1'],
+            'note_retour' => ['nullable', 'string'],
+        ]);
+
+        $alreadyReturned = (int) $serviceEntree->retours()->sum('quantite_retournee');
+        $remainingQuantity = max(((int) $serviceEntree->quantite) - $alreadyReturned, 0);
+        $quantityToReturn = (int) $validated['quantite_retournee'];
+
+        if ($quantityToReturn > $remainingQuantity) {
+            return redirect()->to(route('reservations.show', $reservation) . '#service-inventory')
+                ->withErrors([
+                    'service_retour' => 'Quantite retournee invalide. Reste disponible: ' . $remainingQuantity . '.',
+                ])
+                ->withInput();
+        }
+
+        ServiceRetour::query()->create([
+            'entree_id' => $serviceEntree->id,
+            'quantite_retournee' => $quantityToReturn,
+            'note_retour' => $validated['note_retour'] ?? null,
+            'created_by' => Auth::id(),
+            'created_dtm' => now(),
+        ]);
+
+        return redirect()->to(route('reservations.show', $reservation) . '#service-inventory')
+            ->with('success', 'Sortie de service enregistree.');
     }
 
     public function destroySalleOption(Reservation $reservation, ReservationSalleOption $salleOptionRow)

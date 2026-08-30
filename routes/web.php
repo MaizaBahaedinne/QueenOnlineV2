@@ -61,6 +61,8 @@ Route::middleware('auth')->group(function () {
 	Route::post('reservations/{reservation}/additional-services', [ReservationController::class, 'storeAdditionalService'])->name('reservations.additional-services.store');
 	Route::delete('reservations/{reservation}/additional-services/{additionalService}', [ReservationController::class, 'destroyAdditionalService'])->name('reservations.additional-services.destroy');
 	Route::patch('reservations/{reservation}/additional-services/{additionalService}/start-time', [ReservationController::class, 'updateAdditionalServiceStartTime'])->name('reservations.additional-services.start-time.update');
+	Route::post('reservations/{reservation}/service-entrees', [ReservationController::class, 'storeServiceEntree'])->name('reservations.service-entrees.store');
+	Route::post('reservations/{reservation}/service-entrees/{serviceEntree}/retours', [ReservationController::class, 'storeServiceRetour'])->name('reservations.service-retours.store');
 	Route::post('reservations/{reservation}/salle-options', [ReservationController::class, 'storeSalleOption'])->name('reservations.salle-options.store');
 	Route::delete('reservations/{reservation}/salle-options/{salleOptionRow}', [ReservationController::class, 'destroySalleOption'])->name('reservations.salle-options.destroy');
 	Route::resource('reservations', ReservationController::class);

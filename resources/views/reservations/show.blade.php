@@ -1290,6 +1290,125 @@
                 </div>
             </article>
 
+            <article class="reservation-card" id="service-inventory">
+                <div class="reservation-object-head">
+                    <h3 class="reservation-object-title">Entrees / sorties services</h3>
+                </div>
+                <div class="reservation-object-body">
+                    @if (! $isSalleReservation)
+                        <p class="reservation-empty">L inventaire des entrees/sorties est disponible uniquement pour les reservations de type salle.</p>
+                    @else
+                        @if ($canUpdateReservation)
+                            <form method="POST" action="{{ route('reservations.service-entrees.store', $reservation) }}" class="payment-form" style="margin-bottom:8px;">
+                                @csrf
+                                <div class="payment-form-row">
+                                    <div>
+                                        <label for="entree-nature">Produit / nature</label>
+                                        <input id="entree-nature" name="nature" type="text" required value="{{ old('nature') }}" placeholder="Ex: Jus, Eau, Cafe...">
+                                    </div>
+                                    <div>
+                                        <label for="entree-quantite">Quantite entree</label>
+                                        <input id="entree-quantite" name="quantite" type="number" min="1" required value="{{ old('quantite') }}">
+                                    </div>
+                                </div>
+                                <div class="payment-form-row">
+                                    <div>
+                                        <label for="entree-moment-service">Moment service</label>
+                                        <input id="entree-moment-service" name="moment_service" type="text" value="{{ old('moment_service') }}" placeholder="Ex: Cocktail, diner...">
+                                    </div>
+                                    <div>
+                                        <label for="entree-heure-prevu">Heure prevue</label>
+                                        <input id="entree-heure-prevu" name="heure_prevu" type="time" value="{{ old('heure_prevu') }}">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="entree-note">Note</label>
+                                    <input id="entree-note" name="note" type="text" value="{{ old('note') }}" placeholder="Optionnel">
+                                </div>
+                                <div class="reservation-actions-row">
+                                    <button type="submit" class="btn btn-primary">Ajouter entree</button>
+                                </div>
+                            </form>
+                        @endif
+
+                        @php
+                            $serviceEntreesRows = $reservation->serviceEntrees
+                                ->where('is_deleted', false)
+                                ->sortByDesc(function ($entree) {
+                                    return $entree->created_dtm ?? $entree->created_at;
+                                })
+                                ->values();
+                        @endphp
+
+                        @if ($serviceEntreesRows->isEmpty())
+                            <p class="reservation-empty">Aucune entree enregistree.</p>
+                        @else
+                            @foreach ($serviceEntreesRows as $entree)
+                                @php
+                                    $totalRetourne = (int) $entree->retours->sum('quantite_retournee');
+                                    $reste = max(((int) $entree->quantite) - $totalRetourne, 0);
+                                @endphp
+                                <div class="additional-service-category">
+                                    <h4>{{ $entree->nature }} (Qte entree: {{ (int) $entree->quantite }})</h4>
+                                    <small style="color:#5f7690;">
+                                        Moment: {{ $entree->moment_service ?: '-' }} | Heure: {{ $entree->heure_prevu ? \Illuminate\Support\Carbon::parse($entree->heure_prevu)->format('H:i') : '--:--' }}
+                                        | Cree le:
+                                        @if ($entree->created_dtm)
+                                            @frDateTime($entree->created_dtm)
+                                        @else
+                                            @frDateTime($entree->created_at)
+                                        @endif
+                                    </small>
+                                    <div class="reservation-kv">
+                                        <span class="reservation-kv-key">Inventaire</span>
+                                        <span class="reservation-kv-value">Sorti: {{ $totalRetourne }} | Reste a consommer: {{ $reste }}</span>
+                                    </div>
+
+                                    @if ($entree->retours->isNotEmpty())
+                                        <div style="display:grid;gap:6px;">
+                                            @foreach ($entree->retours->sortByDesc(function ($retour) { return $retour->created_dtm ?? $retour->created_at; }) as $retour)
+                                                <div class="salle-option" style="background:#fff;">
+                                                    <div>
+                                                        <strong>Sortie: {{ (int) $retour->quantite_retournee }}</strong>
+                                                        <small>
+                                                            @if ($retour->created_dtm)
+                                                                @frDateTime($retour->created_dtm)
+                                                            @else
+                                                                @frDateTime($retour->created_at)
+                                                            @endif
+                                                            @if (!empty($retour->note_retour)) - {{ $retour->note_retour }} @endif
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+
+                                    @if ($canUpdateReservation && $reste > 0)
+                                        <form method="POST" action="{{ route('reservations.service-retours.store', [$reservation, $entree]) }}" class="payment-form" style="margin-top:6px;">
+                                            @csrf
+                                            <div class="payment-form-row">
+                                                <div>
+                                                    <label>Quantite sortie</label>
+                                                    <input type="number" name="quantite_retournee" min="1" max="{{ $reste }}" required>
+                                                </div>
+                                                <div>
+                                                    <label>Note sortie</label>
+                                                    <input type="text" name="note_retour" placeholder="Optionnel">
+                                                </div>
+                                            </div>
+                                            <div class="reservation-actions-row">
+                                                <button type="submit" class="btn">Enregistrer sortie</button>
+                                            </div>
+                                        </form>
+                                    @endif
+                                </div>
+                            @endforeach
+                        @endif
+                    @endif
+                </div>
+            </article>
+
             <article class="reservation-card">
                 <div class="reservation-object-head">
                     <h3 class="reservation-object-title">Services supplementaires</h3>
