@@ -1130,11 +1130,6 @@
                     <div class="reservation-hero-panel">
                         <div class="reservation-hero-panel-head">
                             <h4 class="reservation-hero-inline-title">Affectation staff event</h4>
-                            @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled' && $isSalleReservation)
-                                <button type="button" class="reservation-circle-action" data-open-modal="staff-affectation-modal" aria-label="Modifier l affectation staff" title="Modifier l affectation staff">
-                                    <i class="fa fa-plus" aria-hidden="true"></i>
-                                </button>
-                            @endif
                         </div>
                         @if (! $isSalleReservation)
                             <p class="reservation-empty" style="padding:0;">L affectation staff est disponible uniquement pour les reservations de type salle.</p>
@@ -1176,6 +1171,13 @@
                                     </div>
                                 @else
                                     <strong>Aucun</strong>
+                                @endif
+                                @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
+                                    <div style="margin-top:8px;display:flex;justify-content:flex-start;">
+                                        <button type="button" class="reservation-circle-action" data-open-modal="staff-affectation-modal" aria-label="Modifier l affectation staff" title="Modifier l affectation staff">
+                                            <i class="fa fa-plus" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
                                 @endif
                             </div>
 
@@ -1297,23 +1299,27 @@
                         <h4 class="reservation-hero-inline-title">Moyennes satisfaction</h4>
                         <div class="reservation-rating-summary">
                             <span class="reservation-chip info">
-                                Salle: {{ $averageSalleStars !== null ? number_format($averageSalleStars, 1, '.', ' ') : '-' }} / 5
+                                Salle:
                                 @if ($averageSalleStars !== null)
                                     <span class="reservation-rating-stars" aria-hidden="true">
                                         @for ($i = 1; $i <= 5; $i++)
                                             <i class="fa fa-star {{ $i <= (int) round($averageSalleStars) ? '' : 'off' }}"></i>
                                         @endfor
                                     </span>
+                                @else
+                                    -
                                 @endif
                             </span>
                             <span class="reservation-chip info">
-                                Service: {{ $averageServiceStars !== null ? number_format($averageServiceStars, 1, '.', ' ') : '-' }} / 5
+                                Service:
                                 @if ($averageServiceStars !== null)
                                     <span class="reservation-rating-stars" aria-hidden="true">
                                         @for ($i = 1; $i <= 5; $i++)
                                             <i class="fa fa-star {{ $i <= (int) round($averageServiceStars) ? '' : 'off' }}"></i>
                                         @endfor
                                     </span>
+                                @else
+                                    -
                                 @endif
                             </span>
                             <span class="reservation-chip">{{ $feedbackCount }} note(s)</span>
@@ -1322,6 +1328,9 @@
                 </div>
             </div>
 
+        </div>
+
+        <div class="reservation-objects-grid">
             <article class="reservation-card">
                 <div class="reservation-object-head">
                     <h3 class="reservation-object-title">Informations client</h3>
@@ -1337,9 +1346,7 @@
                     <div class="reservation-kv"><span class="reservation-kv-key">Adresse</span><span class="reservation-kv-value">{{ $clientAddress }}</span></div>
                 </div>
             </article>
-        </div>
 
-        <div class="reservation-objects-grid">
             <article class="reservation-card">
                 <div class="reservation-object-head">
                     <h3 class="reservation-object-title">Services supplementaires</h3>
