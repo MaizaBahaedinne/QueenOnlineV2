@@ -333,6 +333,21 @@
             display: table-row;
         }
 
+        .inventory-reste-input {
+            width: 110px;
+            border: 1px solid #ccdbeb;
+            border-radius: 8px;
+            padding: 6px 8px;
+            font-size: 12px;
+        }
+
+        .inventory-inline-error {
+            margin-top: 6px;
+            font-size: 12px;
+            color: #9c2f2a;
+            font-weight: 700;
+        }
+
         @media (max-width: 860px) {
             .payment-form-row {
                 grid-template-columns: 1fr;
@@ -535,7 +550,14 @@
                                     <tr>
                                         <td><strong>{{ (int) $entree->quantite }}</strong></td>
                                         <td>{{ $entree->nature }}</td>
-                                        <td><strong>{{ $reste }}</strong></td>
+                                        <td>
+                                            @if ($reste > 0 && $canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
+                                                <input type="number" class="inventory-reste-input js-sortie-qty" data-sortie-entree-id="{{ $entree->id }}" min="1" max="{{ (int) $entree->quantite }}" data-max-reste="{{ $reste }}" value="{{ $reste }}">
+                                                <small style="display:block;color:#607a95;">Max entree: {{ (int) $entree->quantite }}</small>
+                                            @else
+                                                <strong>{{ $reste }}</strong>
+                                            @endif
+                                        </td>
                                         <td class="inventory-table-actions">
                                             @if ($reste > 0 && $canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
                                                 <button type="button" class="btn js-toggle-sortie-form" data-sortie-entree-id="{{ $entree->id }}">Valider sortie</button>
@@ -547,18 +569,16 @@
                                     <tr class="inventory-inline-form-row" data-form-for-sortie-entree="{{ $entree->id }}">
                                         <td colspan="4">
                                             @if ($reste > 0 && $canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
-                                                <form method="POST" action="{{ route('reservations.service-retours.store', [$reservation, $entree]) }}" class="payment-form" style="margin-top:6px;">
+                                                <form method="POST" action="{{ route('reservations.service-retours.store', [$reservation, $entree]) }}" class="payment-form js-sortie-form" style="margin-top:6px;" data-sortie-entree-id="{{ $entree->id }}" data-entree-quantite="{{ (int) $entree->quantite }}">
                                                     @csrf
                                                     <input type="hidden" name="entree_id_sortie" value="{{ $entree->id }}">
+                                                    <input type="hidden" name="quantite_retournee" class="js-sortie-hidden-qty" value="{{ $reste }}">
                                                     <div class="payment-form-row">
-                                                        <div>
-                                                            <label>Quantite sortie</label>
-                                                            <input type="number" name="quantite_retournee" min="1" max="{{ $reste }}" required>
-                                                        </div>
                                                         <div>
                                                             <label>Note sortie</label>
                                                             <input type="text" name="note_retour" placeholder="Optionnel">
                                                         </div>
+                                                        <div class="inventory-inline-error js-sortie-error" style="display:none;"></div>
                                                     </div>
                                                     <div class="reservation-actions-row">
                                                         <button type="submit" class="btn">Enregistrer sortie</button>
@@ -566,8 +586,8 @@
                                                 </form>
                                             @endif
 
-                                            @if ($entree->retours->isNotEmpty())
-                                                <div class="inventory-history-list">
+                                            <div class="inventory-history-list" data-sortie-history-list="{{ $entree->id }}">
+                                                @if ($entree->retours->isNotEmpty())
                                                     @foreach ($entree->retours->sortByDesc(function ($retour) { return $retour->created_dtm ?? $retour->created_at; }) as $retour)
                                                         <div class="inventory-history-item">
                                                             <strong>Sortie: {{ (int) $retour->quantite_retournee }}</strong>
@@ -584,8 +604,10 @@
                                                             @endif
                                                         </div>
                                                     @endforeach
-                                                </div>
-                                            @endif
+                                                @else
+                                                    <p class="reservation-empty">Aucune sortie enregistree.</p>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -657,14 +679,14 @@
                 btn.addEventListener('click', () => activateStep(Number(btn.dataset.step || 1)));
             });
 
-            const toggleButtons = Array.from(document.querySelectorAll('.js-toggle-increment-form'));
-            const inlineRows = Array.from(document.querySelectorAll('.inventory-inline-form-row'));
+            const toggleIncrementButtons = Array.from(document.querySelectorAll('.js-toggle-increment-form'));
+            const incrementInlineRows = Array.from(document.querySelectorAll('.inventory-inline-form-row[data-form-for-entree]'));
 
-            const closeAllInlineForms = () => {
-                inlineRows.forEach((row) => row.classList.remove('is-open'));
+            const closeAllIncrementInlineForms = () => {
+                incrementInlineRows.forEach((row) => row.classList.remove('is-open'));
             };
 
-            toggleButtons.forEach((btn) => {
+            toggleIncrementButtons.forEach((btn) => {
                 btn.addEventListener('click', () => {
                     const entryId = String(btn.getAttribute('data-entree-id') || '');
                     const targetRow = document.querySelector(`.inventory-inline-form-row[data-form-for-entree="${entryId}"]`);
@@ -673,6 +695,20 @@
                     }
 
                     const wasOpen = targetRow.classList.contains('is-open');
+                    closeAllIncrementInlineForms();
+                    if (!wasOpen) {
+                        targetRow.classList.add('is-open');
+                    }
+                });
+            });
+
+            const openEntreeId = Number("{{ $openIncrementEntreeId }}") || 0;
+            if (openEntreeId > 0) {
+                const row = document.querySelector(`.inventory-inline-form-row[data-form-for-entree="${openEntreeId}"]`);
+                if (row) {
+                    row.classList.add('is-open');
+                }
+            }
 
             const sortieToggleButtons = Array.from(document.querySelectorAll('.js-toggle-sortie-form'));
             const sortieInlineRows = Array.from(document.querySelectorAll('.inventory-inline-form-row[data-form-for-sortie-entree]'));
@@ -704,20 +740,128 @@
                     row.classList.add('is-open');
                 }
             }
-                    closeAllInlineForms();
-                    if (!wasOpen) {
-                        targetRow.classList.add('is-open');
+
+            const sortieForms = Array.from(document.querySelectorAll('.js-sortie-form'));
+            sortieForms.forEach((form) => {
+                form.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+
+                    const entryId = String(form.getAttribute('data-sortie-entree-id') || '');
+                    const qtyInput = document.querySelector(`.js-sortie-qty[data-sortie-entree-id="${entryId}"]`);
+                    const hiddenQtyInput = form.querySelector('.js-sortie-hidden-qty');
+                    const noteInput = form.querySelector('input[name="note_retour"]');
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    const errorBox = form.querySelector('.js-sortie-error');
+                    const actionButton = document.querySelector(`.js-toggle-sortie-form[data-sortie-entree-id="${entryId}"]`);
+                    const actionCell = actionButton ? actionButton.parentElement : null;
+                    const historyList = document.querySelector(`.inventory-history-list[data-sortie-history-list="${entryId}"]`);
+
+                    if (!qtyInput || !hiddenQtyInput || !submitButton) {
+                        return;
+                    }
+
+                    const desiredQty = Number(qtyInput.value || 0);
+                    const maxEntree = Number(form.getAttribute('data-entree-quantite') || 0);
+                    const maxReste = Number(qtyInput.getAttribute('data-max-reste') || 0);
+
+                    if (!Number.isFinite(desiredQty) || desiredQty < 1) {
+                        if (errorBox) {
+                            errorBox.textContent = 'Quantite invalide.';
+                            errorBox.style.display = 'block';
+                        }
+                        return;
+                    }
+
+                    if (desiredQty > maxEntree) {
+                        if (errorBox) {
+                            errorBox.textContent = `La quantite ne peut pas depasser la quantite entree (${maxEntree}).`;
+                            errorBox.style.display = 'block';
+                        }
+                        return;
+                    }
+
+                    if (desiredQty > maxReste) {
+                        if (errorBox) {
+                            errorBox.textContent = `La quantite ne peut pas depasser le reste actuel (${maxReste}).`;
+                            errorBox.style.display = 'block';
+                        }
+                        return;
+                    }
+
+                    hiddenQtyInput.value = String(desiredQty);
+                    if (errorBox) {
+                        errorBox.style.display = 'none';
+                        errorBox.textContent = '';
+                    }
+
+                    const formData = new FormData(form);
+                    submitButton.disabled = true;
+
+                    try {
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            body: formData,
+                        });
+
+                        const payload = await response.json();
+                        if (!response.ok) {
+                            if (errorBox) {
+                                errorBox.textContent = payload.message || 'Erreur lors de la validation de la sortie.';
+                                errorBox.style.display = 'block';
+                            }
+                            return;
+                        }
+
+                        const remaining = Number(payload.remaining_quantity || 0);
+                        qtyInput.value = remaining > 0 ? String(remaining) : '0';
+                        qtyInput.setAttribute('data-max-reste', String(remaining));
+                        qtyInput.max = String(maxEntree);
+                        qtyInput.min = remaining > 0 ? '1' : '0';
+                        qtyInput.disabled = remaining <= 0;
+
+                        if (remaining <= 0 && actionCell) {
+                            actionCell.innerHTML = '<span class="inventory-status-pill ok">Valide</span>';
+                            const inlineRow = form.closest('.inventory-inline-form-row');
+                            if (inlineRow) {
+                                inlineRow.classList.remove('is-open');
+                            }
+                        }
+
+                        if (historyList) {
+                            const emptyNode = historyList.querySelector('.reservation-empty');
+                            if (emptyNode) {
+                                emptyNode.remove();
+                            }
+
+                            const dt = new Date(payload.retour?.created_at_iso || Date.now());
+                            const dtLabel = Number.isNaN(dt.getTime())
+                                ? ''
+                                : dt.toLocaleString('fr-FR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+                            const item = document.createElement('div');
+                            item.className = 'inventory-history-item';
+                            const safeNote = payload.retour?.note_retour ? `<span>Note: ${payload.retour.note_retour}</span>` : '';
+                            item.innerHTML = `<strong>Sortie: ${Number(payload.retour?.quantite_retournee || desiredQty)}</strong><span>${dtLabel} | Par: ${payload.retour?.creator_name || '-'}</span>${safeNote}`;
+                            historyList.prepend(item);
+                        }
+
+                        if (noteInput) {
+                            noteInput.value = '';
+                        }
+                    } catch (error) {
+                        if (errorBox) {
+                            errorBox.textContent = 'Erreur reseau. Reessaie.';
+                            errorBox.style.display = 'block';
+                        }
+                    } finally {
+                        submitButton.disabled = false;
                     }
                 });
             });
-
-            const openEntreeId = Number("{{ $openIncrementEntreeId }}") || 0;
-            if (openEntreeId > 0) {
-                const row = document.querySelector(`.inventory-inline-form-row[data-form-for-entree="${openEntreeId}"]`);
-                if (row) {
-                    row.classList.add('is-open');
-                }
-            }
 
             activateStep(defaultStep);
         })();
