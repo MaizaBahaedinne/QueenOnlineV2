@@ -1139,11 +1139,7 @@
                         </div>
                     </div>
 
-                    <div class="reservation-actions-row" style="justify-content:flex-start;">
-                        <button type="button" class="btn" id="slot-check-availability">Verifier disponibilite salles</button>
-                    </div>
-
-                    <p class="payment-form-help" id="slot-availability-help">Renseigne date/heure puis verifie les disponibilites avant enregistrement.</p>
+                    <p class="payment-form-help" id="slot-availability-help">La disponibilite est verifiee automatiquement des que date/heure changent.</p>
 
                     <div>
                         <label>Salles disponibles</label>
@@ -1502,7 +1498,6 @@
                 dot.style.backgroundColor = dot.dataset.color || '#8ea9c4';
             });
 
-            const slotCheckButton = document.getElementById('slot-check-availability');
             const slotStartDate = document.getElementById('slot-start-date');
             const slotStartTime = document.getElementById('slot-start-time');
             const slotEndTime = document.getElementById('slot-end-time');
@@ -1511,9 +1506,17 @@
             const slotHelp = document.getElementById('slot-availability-help');
             const availableSallesBaseUrl = "{{ route('reservations.available-salles', $reservation) }}";
 
-            if (!slotCheckButton || !slotStartDate || !slotStartTime || !slotEndTime || !slotSalleInput || !slotSalleCards) {
+            if (!slotStartDate || !slotStartTime || !slotEndTime || !slotSalleInput || !slotSalleCards) {
                 return;
             }
+
+            const clearSallesAvailability = (message) => {
+                slotSalleCards.innerHTML = '';
+                slotSalleInput.value = '';
+                if (slotHelp && message) {
+                    slotHelp.textContent = message;
+                }
+            };
 
             const setSelectedSalle = (salleId) => {
                 slotSalleInput.value = salleId ? String(salleId) : '';
@@ -1540,16 +1543,17 @@
                 syncEndDate();
             }
 
-            slotCheckButton.addEventListener('click', async () => {
+            const runAvailabilityCheck = async () => {
                 const startDate = slotStartDate.value;
                 const startTime = slotStartTime.value;
                 const endTime = slotEndTime.value;
 
                 if (!startDate || !startTime || !endTime) {
-                    if (slotHelp) slotHelp.textContent = 'Renseigne date, heure debut et heure fin.';
+                    clearSallesAvailability('Renseigne date, heure debut et heure fin.');
                     return;
                 }
 
+                clearSallesAvailability('Verification des salles disponibles...');
                 if (slotHelp) slotHelp.textContent = 'Verification des salles disponibles...';
 
                 try {
@@ -1617,7 +1621,27 @@
                 } catch (error) {
                     if (slotHelp) slotHelp.textContent = 'Impossible de verifier la disponibilite pour le moment.';
                 }
-            });
+            };
+
+            let availabilityDebounceTimer = null;
+            const scheduleAvailabilityCheck = () => {
+                clearSallesAvailability('Date/heure modifiee. Mise a jour de la disponibilite...');
+                if (availabilityDebounceTimer) {
+                    clearTimeout(availabilityDebounceTimer);
+                }
+                availabilityDebounceTimer = setTimeout(() => {
+                    runAvailabilityCheck();
+                }, 250);
+            };
+
+            slotStartDate.addEventListener('change', scheduleAvailabilityCheck);
+            slotStartDate.addEventListener('input', scheduleAvailabilityCheck);
+            slotStartTime.addEventListener('change', scheduleAvailabilityCheck);
+            slotStartTime.addEventListener('input', scheduleAvailabilityCheck);
+            slotEndTime.addEventListener('change', scheduleAvailabilityCheck);
+            slotEndTime.addEventListener('input', scheduleAvailabilityCheck);
+
+            runAvailabilityCheck();
         })();
     </script>
 
