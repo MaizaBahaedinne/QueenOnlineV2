@@ -930,6 +930,173 @@ class ReservationController extends MatrixAwareController
         return redirect()->route('reservations.show', $reservation)->with('success', 'Reservation annulee. Contrat de resiliation enregistre et avoir client cree.');
     }
 
+    public function cloneReservation(Request $request, Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'create', 'create');
+
+        $request->merge([
+            'clone_start_time' => substr((string) $request->input('clone_start_time', ''), 0, 5),
+            'clone_end_time' => substr((string) $request->input('clone_end_time', ''), 0, 5),
+        ]);
+
+        $validated = $request->validate([
+            'clone_salle_id' => ['required', 'exists:salles,id'],
+            'clone_title' => ['required', 'string', 'max:255'],
+            'clone_guest_count' => ['nullable', 'integer', 'min:1'],
+            'clone_event_type' => ['required', Rule::in(self::EVENT_TYPES)],
+            'clone_start_date' => ['required', 'date', 'after_or_equal:today'],
+            'clone_end_date' => ['required', 'date', 'after_or_equal:clone_start_date', 'after_or_equal:today'],
+            'clone_start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
+            'clone_end_time' => [
+                'required',
+                'date_format:H:i',
+                'after:clone_start_time',
+                'before_or_equal:23:59',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request) {
+                    $startRaw = substr((string) $request->input('clone_start_time'), 0, 5);
+                    $endRaw = substr((string) $value, 0, 5);
+
+                    $start = Carbon::createFromFormat('H:i', $startRaw);
+                    $end = Carbon::createFromFormat('H:i', $endRaw);
+
+                    if ($start && $end && $start->diffInMinutes($end, false) < 60) {
+                        $fail('Heure fin doit etre au moins heure debut + 1 heure.');
+                    }
+                },
+            ],
+            'clone_total_amount' => ['nullable', 'numeric', 'min:0'],
+            'clone_note_admin' => ['nullable', 'string'],
+            'copy_additional_services' => ['nullable', 'in:1'],
+            'copy_salle_options' => ['nullable', 'in:1'],
+        ]);
+
+        $targetSalleId = (int) $validated['clone_salle_id'];
+        $targetStartDate = (string) $validated['clone_start_date'];
+        $targetEndDate = (string) $validated['clone_end_date'];
+        $targetStartTime = (string) $validated['clone_start_time'];
+        $targetEndTime = (string) $validated['clone_end_time'];
+
+        $hasConflict = Reservation::query()
+            ->where('salle_id', $targetSalleId)
+            ->where('status', '!=', 'cancelled')
+            ->whereDate('start_date', '<=', $targetEndDate)
+            ->whereDate('end_date', '>=', $targetStartDate)
+            ->where(function ($timeQuery) use ($targetStartTime, $targetEndTime) {
+                $timeQuery
+                    ->whereNull('start_time')
+                    ->orWhereNull('end_time')
+                    ->orWhere(function ($overlapQuery) use ($targetStartTime, $targetEndTime) {
+                        $overlapQuery
+                            ->where('start_time', '<', $targetEndTime)
+                            ->where('end_time', '>', $targetStartTime);
+                    });
+            })
+            ->exists();
+
+        if ($hasConflict) {
+            return redirect()
+                ->route('reservations.show', $reservation)
+                ->withErrors(['clone_salle_id' => 'Salle indisponible pour la date/heure choisie.'])
+                ->withInput();
+        }
+
+        $paymentDueDate = Carbon::parse((string) $validated['clone_start_date'])->subDays(30)->toDateString();
+        $copyAdditionalServices = (string) $request->input('copy_additional_services', '1') === '1';
+        $copySalleOptions = (string) $request->input('copy_salle_options', '1') === '1';
+
+        $reservation->loadMissing(['additionalServices.linkedReservation', 'salleOptionRows']);
+
+        $hasServiceSlugColumn = Schema::hasColumn('reservations', 'service_slug');
+
+        $clonedReservation = DB::transaction(function () use ($reservation, $validated, $paymentDueDate, $copyAdditionalServices, $copySalleOptions, $targetSalleId, $hasServiceSlugColumn): Reservation {
+            $newReservationPayload = [
+                'client_id' => $reservation->client_id,
+                'salle_id' => (int) $validated['clone_salle_id'],
+                'user_id' => Auth::id(),
+                'title' => (string) $validated['clone_title'],
+                'guest_count' => $validated['clone_guest_count'] ?? null,
+                'event_type' => (string) $validated['clone_event_type'],
+                'start_date' => (string) $validated['clone_start_date'],
+                'end_date' => (string) $validated['clone_end_date'],
+                'start_time' => (string) $validated['clone_start_time'],
+                'end_time' => (string) $validated['clone_end_time'],
+                'payment_due_date' => $paymentDueDate,
+                'status' => 'pending',
+                'total_amount' => $validated['clone_total_amount'] ?? 0,
+                'note_admin' => $validated['clone_note_admin'] ?? null,
+            ];
+
+            if ($hasServiceSlugColumn) {
+                $newReservationPayload['service_slug'] = (string) ($reservation->service_slug ?: 'salles');
+            }
+
+            $newReservation = Reservation::query()->create($newReservationPayload);
+
+            if ($copyAdditionalServices) {
+                foreach ($reservation->additionalServices as $sourceService) {
+                    $linkedReservationId = null;
+
+                    if ($sourceService->linkedReservation) {
+                        $linkedTitle = trim(($newReservation->title ?: ('Reservation #' . $newReservation->id)) . ' - ' . $sourceService->label);
+                        if ($linkedTitle === '') {
+                            $linkedTitle = 'Service supplementaire';
+                        }
+
+                        $linkedReservationPayload = [
+                            'client_id' => $newReservation->client_id,
+                            'salle_id' => $newReservation->salle_id,
+                            'user_id' => Auth::id(),
+                            'title' => mb_substr($linkedTitle, 0, 255),
+                            'start_date' => $newReservation->start_date,
+                            'end_date' => $newReservation->end_date,
+                            'start_time' => $newReservation->start_time,
+                            'end_time' => $newReservation->end_time,
+                            'payment_due_date' => $paymentDueDate,
+                            'status' => 'pending',
+                            'total_amount' => (float) $sourceService->amount,
+                            'note_admin' => 'Reservation supplementaire liee a la reservation salle #' . $newReservation->id,
+                        ];
+
+                        if ($hasServiceSlugColumn) {
+                            $linkedReservationPayload['service_slug'] = $sourceService->module_slug;
+                        }
+
+                        $linkedReservation = Reservation::query()->create($linkedReservationPayload);
+
+                        $linkedReservationId = $linkedReservation->id;
+                    }
+
+                    ReservationAdditionalService::query()->create([
+                        'reservation_id' => $newReservation->id,
+                        'linked_reservation_id' => $linkedReservationId,
+                        'module_slug' => $sourceService->module_slug,
+                        'service_module_item_id' => $sourceService->service_module_item_id,
+                        'service_module_pack_id' => $sourceService->service_module_pack_id,
+                        'label' => $sourceService->label,
+                        'amount' => (float) $sourceService->amount,
+                        'note' => $sourceService->note,
+                    ]);
+                }
+            }
+
+            if ($copySalleOptions && (int) $reservation->salle_id === $targetSalleId) {
+                foreach ($reservation->salleOptionRows as $sourceOption) {
+                    ReservationSalleOption::query()->create([
+                        'reservation_id' => $newReservation->id,
+                        'salle_option_id' => $sourceOption->salle_option_id,
+                        'label' => $sourceOption->label,
+                        'amount' => (float) $sourceOption->amount,
+                        'note' => $sourceOption->note,
+                    ]);
+                }
+            }
+
+            return $newReservation;
+        });
+
+        return redirect()->route('reservations.show', $clonedReservation)->with('success', 'Reservation clonee sans copier les paiements.');
+    }
+
     public function applyClientCredit(Request $request, Reservation $reservation)
     {
         $this->enforcePermission('payments', 'create', 'create');

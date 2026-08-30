@@ -18,6 +18,7 @@
         $clientFullName = trim((string) ($reservation->client?->first_name . ' ' . $reservation->client?->name));
         $clientFullName = $clientFullName !== '' ? $clientFullName : ($reservation->client?->name ?? '-');
         $canUpdateReservation = auth()->user()?->canFeature('reservations', 'update', 'update') ?? false;
+        $canCreateReservation = auth()->user()?->canFeature('reservations', 'create', 'create') ?? false;
         $canCreatePayment = auth()->user()?->canFeature('payments', 'create', 'create') ?? false;
         $totalAmount = (float) ($reservation->total_amount ?? 0);
         $totalPaid = (float) $reservation->payments->sum('amount');
@@ -714,17 +715,18 @@
                 </div>
             </div>
             <div class="reservation-show-actions">
-                @if ($canUpdateReservation)
+                @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
                     <div class="reservation-actions-menu" id="reservation-actions-menu">
                         <button type="button" class="btn btn-primary" id="reservation-actions-toggle">Actions reservation</button>
                         <div class="reservation-actions-menu-panel" id="reservation-actions-panel">
                             <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-modal">Modifier reservation</button>
                             <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-slot-modal">Modifier date/heure/salle</button>
-                            @if (($reservation->status ?? null) !== 'cancelled')
-                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="cancel-reservation-modal" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Annuler la reservation</button>
-                            @endif
+                            <button type="button" class="btn reservation-actions-menu-item" data-open-modal="cancel-reservation-modal" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Annuler la reservation</button>
                         </div>
                     </div>
+                @endif
+                @if ($canCreateReservation)
+                    <button type="button" class="btn" data-open-modal="clone-reservation-modal">Cloner reservation</button>
                 @endif
                 <a href="{{ route('reservations.index') }}" class="btn">Retour au calendrier</a>
             </div>
@@ -952,6 +954,96 @@
                 </form>
             </div>
         </div>
+
+        @if ($canCreateReservation)
+            <div class="modal-overlay" id="clone-reservation-modal">
+                <div class="modal-card">
+                    <div class="modal-head">
+                        <h3 class="modal-title">Cloner la reservation</h3>
+                        <button type="button" class="btn" data-close-modal>Fermer</button>
+                    </div>
+
+                    <form method="POST" action="{{ route('reservations.clone', $reservation) }}" id="clone-reservation-form" style="display:grid; gap:10px;">
+                        @csrf
+
+                        <p class="payment-form-help">Tu peux ajuster les informations avant confirmation. Le clonage copie la reservation et les services supplementaires, mais ne copie aucun paiement.</p>
+
+                        <div class="slot-inline-grid">
+                            <div>
+                                <label for="clone-title">Titre</label>
+                                <input id="clone-title" name="clone_title" type="text" required value="{{ old('clone_title', 'Copie - ' . ($reservation->title ?: ('Reservation #' . $reservation->id))) }}">
+                            </div>
+                            <div>
+                                <label for="clone-event-type">Type evenement</label>
+                                <select id="clone-event-type" name="clone_event_type" required>
+                                    @foreach ($eventTypes as $eventType)
+                                        <option value="{{ $eventType }}" {{ old('clone_event_type', $reservation->event_type) === $eventType ? 'selected' : '' }}>{{ $eventType }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="clone-guest-count">Nombre invites</label>
+                                <input id="clone-guest-count" name="clone_guest_count" type="number" min="1" value="{{ old('clone_guest_count', $reservation->guest_count) }}">
+                            </div>
+                            <div>
+                                <label for="clone-total-amount">Montant total</label>
+                                <input id="clone-total-amount" name="clone_total_amount" type="number" step="0.01" min="0" value="{{ old('clone_total_amount', number_format((float) $reservation->total_amount, 2, '.', '')) }}">
+                            </div>
+
+                            <div>
+                                <label for="clone-start-date">Date event</label>
+                                <input id="clone-start-date" name="clone_start_date" type="date" required value="{{ old('clone_start_date', $reservation->start_date) }}">
+                            </div>
+                            <div>
+                                <label for="clone-end-date">Date fin</label>
+                                <input id="clone-end-date" name="clone_end_date" type="date" required value="{{ old('clone_end_date', $reservation->end_date) }}">
+                            </div>
+
+                            <div>
+                                <label for="clone-start-time">Heure debut</label>
+                                <input id="clone-start-time" name="clone_start_time" type="time" required value="{{ old('clone_start_time', $reservation->start_time ? \Carbon\Carbon::parse($reservation->start_time)->format('H:i') : '') }}">
+                            </div>
+                            <div>
+                                <label for="clone-end-time">Heure fin</label>
+                                <input id="clone-end-time" name="clone_end_time" type="time" required value="{{ old('clone_end_time', $reservation->end_time ? \Carbon\Carbon::parse($reservation->end_time)->format('H:i') : '') }}">
+                            </div>
+
+                            <div style="grid-column:1/-1;">
+                                <label for="clone-salle-id">Salle</label>
+                                <select id="clone-salle-id" name="clone_salle_id" required>
+                                    @foreach ($salles as $salle)
+                                        <option value="{{ $salle->id }}" {{ (string) old('clone_salle_id', $reservation->salle_id) === (string) $salle->id ? 'selected' : '' }}>
+                                            {{ $salle->name }} (Cap: {{ $salle->capacity ?? '-' }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="clone-note-admin">Note admin</label>
+                            <textarea id="clone-note-admin" name="clone_note_admin" rows="3">{{ old('clone_note_admin', $reservation->note_admin) }}</textarea>
+                        </div>
+
+                        <div style="display:grid;gap:8px;">
+                            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#244e76;">
+                                <input type="checkbox" name="copy_additional_services" value="1" {{ old('copy_additional_services', '1') === '1' ? 'checked' : '' }}>
+                                Copier les services supplementaires
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#244e76;">
+                                <input type="checkbox" name="copy_salle_options" value="1" {{ old('copy_salle_options', '1') === '1' ? 'checked' : '' }}>
+                                Copier les options salle (copie uniquement si la salle reste la meme)
+                            </label>
+                        </div>
+
+                        <div class="reservation-actions-row">
+                            <button type="submit" class="btn btn-primary">Confirmer le clonage</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @endif
 
         <div class="modal-overlay" id="reservation-slot-modal">
             <div class="modal-card">
@@ -1632,9 +1724,12 @@
             const hasCancelErrors = "{{ $errors->has('present_on_site') || $errors->has('termination_signed') || $errors->has('cancel') ? '1' : '0' }}" === '1';
             const hasCreditErrors = "{{ $errors->has('credit') || $errors->has('credit_amount') ? '1' : '0' }}" === '1';
             const hasCreditTransferErrors = "{{ $errors->has('credit_transfer') || $errors->has('credit_transfer_amount') || $errors->has('target_client_id') ? '1' : '0' }}" === '1';
+            const hasCloneErrors = "{{ $errors->has('clone_salle_id') || $errors->has('clone_title') || $errors->has('clone_event_type') || $errors->has('clone_start_date') || $errors->has('clone_end_date') || $errors->has('clone_start_time') || $errors->has('clone_end_time') || $errors->has('clone_total_amount') || $errors->has('clone_note_admin') ? '1' : '0' }}" === '1';
 
             if (hasCancelErrors) {
                 openModal('cancel-reservation-modal');
+            } else if (hasCloneErrors) {
+                openModal('clone-reservation-modal');
             } else if (hasSlotErrors) {
                 openModal('reservation-slot-modal');
             } else if (hasReservationErrors) {
