@@ -1037,6 +1037,7 @@
                                 <button type="button" class="btn reservation-actions-menu-item" data-open-modal="client-modal">Modifier donnees client</button>
                                 @if ($isSalleReservation)
                                     <button type="button" class="btn reservation-actions-menu-item" data-open-modal="staff-affectation-modal">Modifier affectation staff</button>
+                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="service-inventory-modal">Entrees / sorties services</button>
                                 @endif
                                 <button type="button" class="btn reservation-actions-menu-item" data-open-modal="cancel-reservation-modal" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Annuler la reservation</button>
                             </div>
@@ -1266,133 +1267,6 @@
         </div>
 
         <div class="reservation-objects-grid">
-            <article class="reservation-card" id="service-inventory">
-                <div class="reservation-object-head">
-                    <h3 class="reservation-object-title">Entrees / sorties services</h3>
-                </div>
-                <div class="reservation-object-body">
-                    @if (! $isSalleReservation)
-                        <p class="reservation-empty">L inventaire des entrees/sorties est disponible uniquement pour les reservations de type salle.</p>
-                    @else
-                        @if ($canUpdateReservation)
-                            <form method="POST" action="{{ route('reservations.service-entrees.store', $reservation) }}" class="payment-form" style="margin-bottom:8px;">
-                                @csrf
-                                <div class="payment-form-row">
-                                    <div>
-                                        <label for="entree-nature">Produit / nature</label>
-                                        <input id="entree-nature" name="nature" type="text" required value="{{ old('nature') }}" placeholder="Ex: Jus, Eau, Cafe...">
-                                    </div>
-                                    <div>
-                                        <label for="entree-quantite">Quantite entree</label>
-                                        <input id="entree-quantite" name="quantite" type="number" min="1" required value="{{ old('quantite') }}">
-                                    </div>
-                                </div>
-                                <div class="payment-form-row">
-                                    <div>
-                                        <label for="entree-moment-service">Moment service</label>
-                                        <select id="entree-moment-service" name="moment_service">
-                                            <option value=""></option>
-                                            <option value="debut" {{ old('moment_service') === 'debut' ? 'selected' : '' }}>Debut</option>
-                                            <option value="diner" {{ old('moment_service') === 'diner' ? 'selected' : '' }}>Diner</option>
-                                            <option value="milieu" {{ old('moment_service') === 'milieu' ? 'selected' : '' }}>Milieu</option>
-                                            <option value="fin" {{ old('moment_service') === 'fin' ? 'selected' : '' }}>Fin</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label for="entree-heure-prevu">Heure prevue</label>
-                                        <input id="entree-heure-prevu" name="heure_prevu" type="time" value="{{ old('heure_prevu') }}">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label for="entree-note">Note</label>
-                                    <input id="entree-note" name="note" type="text" value="{{ old('note') }}" placeholder="Optionnel">
-                                </div>
-                                <div class="reservation-actions-row">
-                                    <button type="submit" class="btn btn-primary">Ajouter entree</button>
-                                </div>
-                            </form>
-                        @endif
-
-                        @php
-                            $serviceEntreesRows = $reservation->serviceEntrees
-                                ->where('is_deleted', false)
-                                ->sortByDesc(function ($entree) {
-                                    return $entree->created_dtm ?? $entree->created_at;
-                                })
-                                ->values();
-                        @endphp
-
-                        @if ($serviceEntreesRows->isEmpty())
-                            <p class="reservation-empty">Aucune entree enregistree.</p>
-                        @else
-                            @foreach ($serviceEntreesRows as $entree)
-                                @php
-                                    $totalRetourne = (int) $entree->retours->sum('quantite_retournee');
-                                    $reste = max(((int) $entree->quantite) - $totalRetourne, 0);
-                                @endphp
-                                <div class="additional-service-category">
-                                    <h4>{{ $entree->nature }} (Qte entree: {{ (int) $entree->quantite }})</h4>
-                                    <small style="color:#5f7690;">
-                                        Moment: {{ $entree->moment_service ?: '-' }} | Heure: {{ $entree->heure_prevu ? \Illuminate\Support\Carbon::parse($entree->heure_prevu)->format('H:i') : '--:--' }}
-                                        | Cree le:
-                                        @if ($entree->created_dtm)
-                                            @frDateTime($entree->created_dtm)
-                                        @else
-                                            @frDateTime($entree->created_at)
-                                        @endif
-                                        | Cree par: {{ $entree->creator?->name ?? '-' }}
-                                    </small>
-                                    <div class="reservation-kv">
-                                        <span class="reservation-kv-key">Inventaire</span>
-                                        <span class="reservation-kv-value">Sorti: {{ $totalRetourne }} | Reste a consommer: {{ $reste }}</span>
-                                    </div>
-
-                                    @if ($entree->retours->isNotEmpty())
-                                        <div style="display:grid;gap:6px;">
-                                            @foreach ($entree->retours->sortByDesc(function ($retour) { return $retour->created_dtm ?? $retour->created_at; }) as $retour)
-                                                <div class="salle-option" style="background:#fff;">
-                                                    <div>
-                                                        <strong>Sortie: {{ (int) $retour->quantite_retournee }}</strong>
-                                                        <small>
-                                                            @if ($retour->created_dtm)
-                                                                @frDateTime($retour->created_dtm)
-                                                            @else
-                                                                @frDateTime($retour->created_at)
-                                                            @endif
-                                                            | Cree par: {{ $retour->creator?->name ?? '-' }}
-                                                            @if (!empty($retour->note_retour)) - {{ $retour->note_retour }} @endif
-                                                        </small>
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @endif
-
-                                    @if ($canUpdateReservation && $reste > 0)
-                                        <form method="POST" action="{{ route('reservations.service-retours.store', [$reservation, $entree]) }}" class="payment-form" style="margin-top:6px;">
-                                            @csrf
-                                            <div class="payment-form-row">
-                                                <div>
-                                                    <label>Quantite sortie</label>
-                                                    <input type="number" name="quantite_retournee" min="1" max="{{ $reste }}" required>
-                                                </div>
-                                                <div>
-                                                    <label>Note sortie</label>
-                                                    <input type="text" name="note_retour" placeholder="Optionnel">
-                                                </div>
-                                            </div>
-                                            <div class="reservation-actions-row">
-                                                <button type="submit" class="btn">Enregistrer sortie</button>
-                                            </div>
-                                        </form>
-                                    @endif
-                                </div>
-                            @endforeach
-                        @endif
-                    @endif
-                </div>
-            </article>
-
             <article class="reservation-card">
                 <div class="reservation-object-head">
                     <h3 class="reservation-object-title">Services supplementaires</h3>
@@ -1555,6 +1429,131 @@
 
     @if ($canUpdateReservation)
         @if ($isSalleReservation)
+            <div class="modal-overlay" id="service-inventory-modal">
+                <div class="modal-card" style="width:min(980px,100%);">
+                    <div class="modal-head">
+                        <h3 class="modal-title">Entrees / sorties services</h3>
+                        <button type="button" class="btn" data-close-modal>Fermer</button>
+                    </div>
+
+                    <form method="POST" action="{{ route('reservations.service-entrees.store', $reservation) }}" class="payment-form" style="margin-bottom:8px;">
+                        @csrf
+                        <div class="payment-form-row">
+                            <div>
+                                <label for="entree-nature">Produit / nature</label>
+                                <input id="entree-nature" name="nature" type="text" required value="{{ old('nature') }}" placeholder="Ex: Jus, Eau, Cafe...">
+                            </div>
+                            <div>
+                                <label for="entree-quantite">Quantite entree</label>
+                                <input id="entree-quantite" name="quantite" type="number" min="1" required value="{{ old('quantite') }}">
+                            </div>
+                        </div>
+                        <div class="payment-form-row">
+                            <div>
+                                <label for="entree-moment-service">Moment service</label>
+                                <select id="entree-moment-service" name="moment_service">
+                                    <option value=""></option>
+                                    <option value="debut" {{ old('moment_service') === 'debut' ? 'selected' : '' }}>Debut</option>
+                                    <option value="diner" {{ old('moment_service') === 'diner' ? 'selected' : '' }}>Diner</option>
+                                    <option value="milieu" {{ old('moment_service') === 'milieu' ? 'selected' : '' }}>Milieu</option>
+                                    <option value="fin" {{ old('moment_service') === 'fin' ? 'selected' : '' }}>Fin</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="entree-heure-prevu">Heure prevue</label>
+                                <input id="entree-heure-prevu" name="heure_prevu" type="time" value="{{ old('heure_prevu') }}">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="entree-note">Note</label>
+                            <input id="entree-note" name="note" type="text" value="{{ old('note') }}" placeholder="Optionnel">
+                        </div>
+                        <div class="reservation-actions-row">
+                            <button type="submit" class="btn btn-primary">Ajouter entree</button>
+                        </div>
+                    </form>
+
+                    @php
+                        $serviceEntreesRows = $reservation->serviceEntrees
+                            ->where('is_deleted', false)
+                            ->sortByDesc(function ($entree) {
+                                return $entree->created_dtm ?? $entree->created_at;
+                            })
+                            ->values();
+                    @endphp
+
+                    @if ($serviceEntreesRows->isEmpty())
+                        <p class="reservation-empty">Aucune entree enregistree.</p>
+                    @else
+                        <div style="display:grid;gap:8px;">
+                            @foreach ($serviceEntreesRows as $entree)
+                                @php
+                                    $totalRetourne = (int) $entree->retours->sum('quantite_retournee');
+                                    $reste = max(((int) $entree->quantite) - $totalRetourne, 0);
+                                @endphp
+                                <div class="additional-service-category">
+                                    <h4>{{ $entree->nature }} (Qte entree: {{ (int) $entree->quantite }})</h4>
+                                    <small style="color:#5f7690;">
+                                        Moment: {{ $entree->moment_service ?: '-' }} | Heure: {{ $entree->heure_prevu ? \Illuminate\Support\Carbon::parse($entree->heure_prevu)->format('H:i') : '--:--' }}
+                                        | Cree le:
+                                        @if ($entree->created_dtm)
+                                            @frDateTime($entree->created_dtm)
+                                        @else
+                                            @frDateTime($entree->created_at)
+                                        @endif
+                                        | Cree par: {{ $entree->creator?->name ?? '-' }}
+                                    </small>
+                                    <div class="reservation-kv">
+                                        <span class="reservation-kv-key">Inventaire</span>
+                                        <span class="reservation-kv-value">Sorti: {{ $totalRetourne }} | Reste a consommer: {{ $reste }}</span>
+                                    </div>
+
+                                    @if ($entree->retours->isNotEmpty())
+                                        <div style="display:grid;gap:6px;">
+                                            @foreach ($entree->retours->sortByDesc(function ($retour) { return $retour->created_dtm ?? $retour->created_at; }) as $retour)
+                                                <div class="salle-option" style="background:#fff;">
+                                                    <div>
+                                                        <strong>Sortie: {{ (int) $retour->quantite_retournee }}</strong>
+                                                        <small>
+                                                            @if ($retour->created_dtm)
+                                                                @frDateTime($retour->created_dtm)
+                                                            @else
+                                                                @frDateTime($retour->created_at)
+                                                            @endif
+                                                            | Cree par: {{ $retour->creator?->name ?? '-' }}
+                                                            @if (!empty($retour->note_retour)) - {{ $retour->note_retour }} @endif
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+
+                                    @if ($reste > 0)
+                                        <form method="POST" action="{{ route('reservations.service-retours.store', [$reservation, $entree]) }}" class="payment-form" style="margin-top:6px;">
+                                            @csrf
+                                            <div class="payment-form-row">
+                                                <div>
+                                                    <label>Quantite sortie</label>
+                                                    <input type="number" name="quantite_retournee" min="1" max="{{ $reste }}" required>
+                                                </div>
+                                                <div>
+                                                    <label>Note sortie</label>
+                                                    <input type="text" name="note_retour" placeholder="Optionnel">
+                                                </div>
+                                            </div>
+                                            <div class="reservation-actions-row">
+                                                <button type="submit" class="btn">Enregistrer sortie</button>
+                                            </div>
+                                        </form>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             <div class="modal-overlay" id="staff-affectation-modal">
                 <div class="modal-card" style="width:min(980px,100%);">
                     <div class="modal-head">
@@ -2752,6 +2751,7 @@
             const hasCreditTransferErrors = "{{ $errors->has('credit_transfer') || $errors->has('credit_transfer_amount') || $errors->has('target_client_id') ? '1' : '0' }}" === '1';
             const hasCloneErrors = "{{ $errors->has('clone_salle_id') || $errors->has('clone_title') || $errors->has('clone_event_type') || $errors->has('clone_start_date') || $errors->has('clone_end_date') || $errors->has('clone_start_time') || $errors->has('clone_end_time') || $errors->has('clone_total_amount') || $errors->has('clone_note_admin') ? '1' : '0' }}" === '1';
             const hasStaffAffectationErrors = "{{ $errors->has('staff_affectation') || $errors->has('manager_staff_user_id') || $errors->has('serveur_staff_user_ids') || $errors->has('serveur_staff_user_ids.*') || $errors->has('annimateur_staff_user_ids') || $errors->has('annimateur_staff_user_ids.*') || $errors->has('femme_menage_staff_user_ids') || $errors->has('femme_menage_staff_user_ids.*') || $errors->has('agent_securite_staff_user_ids') || $errors->has('agent_securite_staff_user_ids.*') ? '1' : '0' }}" === '1';
+            const hasServiceInventoryErrors = "{{ $errors->has('service_entree') || $errors->has('service_retour') || $errors->has('nature') || $errors->has('quantite') || $errors->has('moment_service') || $errors->has('heure_prevu') || $errors->has('quantite_retournee') ? '1' : '0' }}" === '1';
 
             if (hasCancelErrors) {
                 openModal('cancel-reservation-modal');
@@ -2769,6 +2769,8 @@
                 openModal('client-modal');
             } else if (hasStaffAffectationErrors) {
                 openModal('staff-affectation-modal');
+            } else if (hasServiceInventoryErrors) {
+                openModal('service-inventory-modal');
             }
 
             const staffDepartmentFilter = document.getElementById('staff-department-filter');
