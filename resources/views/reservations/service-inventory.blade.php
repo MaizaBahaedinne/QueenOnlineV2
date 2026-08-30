@@ -341,6 +341,12 @@
             font-size: 12px;
         }
 
+        .inventory-reste-input:disabled {
+            background: #eef2f7;
+            color: #7a8794;
+            cursor: not-allowed;
+        }
+
         .inventory-inline-error {
             margin-top: 6px;
             font-size: 12px;
@@ -552,7 +558,7 @@
                                         <td>{{ $entree->nature }}</td>
                                         <td>
                                             @if ($reste > 0 && $canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
-                                                <input type="number" class="inventory-reste-input js-sortie-qty" data-sortie-entree-id="{{ $entree->id }}" min="1" max="{{ (int) $entree->quantite }}" data-max-reste="{{ $reste }}" value="{{ $reste }}">
+                                                <input type="number" class="inventory-reste-input js-sortie-qty" data-sortie-entree-id="{{ $entree->id }}" min="1" max="{{ (int) $entree->quantite }}" data-max-reste="{{ $reste }}" value="" placeholder="Max {{ $reste }}">
                                                 <small style="display:block;color:#607a95;">Max entree: {{ (int) $entree->quantite }}</small>
                                             @else
                                                 <strong>{{ $reste }}</strong>
@@ -572,7 +578,7 @@
                                                 <form method="POST" action="{{ route('reservations.service-retours.store', [$reservation, $entree]) }}" class="payment-form js-sortie-form" style="margin-top:6px;" data-sortie-entree-id="{{ $entree->id }}" data-entree-quantite="{{ (int) $entree->quantite }}">
                                                     @csrf
                                                     <input type="hidden" name="entree_id_sortie" value="{{ $entree->id }}">
-                                                    <input type="hidden" name="quantite_retournee" class="js-sortie-hidden-qty" value="{{ $reste }}">
+                                                    <input type="hidden" name="quantite_retournee" class="js-sortie-hidden-qty" value="">
                                                     <div class="payment-form-row">
                                                         <div>
                                                             <label>Note sortie</label>
@@ -794,6 +800,10 @@
                         errorBox.textContent = '';
                     }
 
+                    if (!window.confirm('Confirmer cet enregistrement de sortie ?')) {
+                        return;
+                    }
+
                     const formData = new FormData(form);
                     submitButton.disabled = true;
 
@@ -817,19 +827,26 @@
                         }
 
                         const remaining = Number(payload.remaining_quantity || 0);
-                        qtyInput.value = remaining > 0 ? String(remaining) : '0';
+                        qtyInput.value = String(desiredQty);
                         qtyInput.setAttribute('data-max-reste', String(remaining));
-                        qtyInput.max = String(maxEntree);
-                        qtyInput.min = remaining > 0 ? '1' : '0';
-                        qtyInput.disabled = remaining <= 0;
+                        qtyInput.disabled = true;
 
-                        if (remaining <= 0 && actionCell) {
+                        if (actionCell) {
                             actionCell.innerHTML = '<span class="inventory-status-pill ok">Valide</span>';
-                            const inlineRow = form.closest('.inventory-inline-form-row');
-                            if (inlineRow) {
-                                inlineRow.classList.remove('is-open');
-                            }
                         }
+
+                        const inlineRow = form.closest('.inventory-inline-form-row');
+                        if (inlineRow) {
+                            inlineRow.classList.remove('is-open');
+                        }
+
+                        form.style.display = 'none';
+
+                        if (remaining > 0 && qtyInput.nextElementSibling && qtyInput.nextElementSibling.tagName === 'SMALL') {
+                            qtyInput.nextElementSibling.textContent = `Reste apres validation: ${remaining}`;
+                        }
+
+                        window.alert(payload.message || 'Sortie enregistree avec succes.');
 
                         if (historyList) {
                             const emptyNode = historyList.querySelector('.reservation-empty');
