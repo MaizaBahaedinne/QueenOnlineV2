@@ -63,10 +63,13 @@
         $staffOptions = $staffOptions ?? collect();
         $gerantAffectation = $reservation->serviceAffectations->firstWhere('affectation', 'gerant');
         $serveurAffectations = $reservation->serviceAffectations->where('affectation', 'serveur')->values();
+        $annimateurAffectations = $reservation->serviceAffectations->where('affectation', 'annimateur')->values();
         $femmeMenageAffectations = $reservation->serviceAffectations->where('affectation', 'femme-menage')->values();
+        $agentSecuriteAffectations = $reservation->serviceAffectations->where('affectation', 'agent-securite')->values();
         $selectedServeurUserIds = $serveurAffectations->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->values();
+        $selectedAnnimateurUserIds = $annimateurAffectations->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->values();
         $selectedFemmeMenageUserIds = $femmeMenageAffectations->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->values();
-        $selectedChefUserId = optional($serveurAffectations->firstWhere('is_chef', true))->user_id;
+        $selectedAgentSecuriteUserIds = $agentSecuriteAffectations->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->values();
         $parallelBusyStaffUserIds = collect($parallelBusyStaffUserIds ?? [])->map(fn ($id) => (int) $id)->unique()->values();
     @endphp
 
@@ -929,22 +932,30 @@
                     @else
                         <div class="staff-summary-grid">
                             <div class="staff-summary-row">
-                                <span class="staff-summary-label">Gérant</span>
+                                <span class="staff-summary-label">Chef de service</span>
                                 <strong>{{ $gerantAffectation?->user?->name ?? 'Aucun' }}</strong>
                             </div>
                             <div class="staff-summary-row">
-                                <span class="staff-summary-label">Serveurs</span>
+                                <span class="staff-summary-label">Serveur</span>
                                 <span>
                                     @if ($serveurAffectations->isEmpty())
                                         Aucun
                                     @else
-                                        {{ $serveurAffectations->map(fn($row) => ($row->user?->name ?? ('Utilisateur #' . $row->user_id)) . ($row->is_chef ? ' (Chef)' : ''))->implode(', ') }}
+                                        {{ $serveurAffectations->map(fn($row) => $row->user?->name ?? ('Utilisateur #' . $row->user_id))->implode(', ') }}
                                     @endif
                                 </span>
                             </div>
                             <div class="staff-summary-row">
-                                <span class="staff-summary-label">Femmes de ménage</span>
+                                <span class="staff-summary-label">Annimateur</span>
+                                <span>{{ $annimateurAffectations->isEmpty() ? 'Aucun' : $annimateurAffectations->map(fn($row) => $row->user?->name ?? ('Utilisateur #' . $row->user_id))->implode(', ') }}</span>
+                            </div>
+                            <div class="staff-summary-row">
+                                <span class="staff-summary-label">Femme de menage</span>
                                 <span>{{ $femmeMenageAffectations->isEmpty() ? 'Aucune' : $femmeMenageAffectations->map(fn($row) => $row->user?->name ?? ('Utilisateur #' . $row->user_id))->implode(', ') }}</span>
+                            </div>
+                            <div class="staff-summary-row">
+                                <span class="staff-summary-label">Agent de securite</span>
+                                <span>{{ $agentSecuriteAffectations->isEmpty() ? 'Aucun' : $agentSecuriteAffectations->map(fn($row) => $row->user?->name ?? ('Utilisateur #' . $row->user_id))->implode(', ') }}</span>
                             </div>
                         </div>
 
@@ -1171,8 +1182,9 @@
 
                             $oldManagerUserId = old('manager_staff_user_id', $gerantAffectation?->user_id);
                             $oldServeurs = collect(old('serveur_staff_user_ids', $selectedServeurUserIds->all()))->map(fn ($id) => (string) $id);
-                            $oldChefUserId = old('serveur_chef_user_id', $selectedChefUserId);
+                            $oldAnnimateurs = collect(old('annimateur_staff_user_ids', $selectedAnnimateurUserIds->all()))->map(fn ($id) => (string) $id);
                             $oldFemmesMenage = collect(old('femme_menage_staff_user_ids', $selectedFemmeMenageUserIds->all()))->map(fn ($id) => (string) $id);
+                            $oldAgentsSecurite = collect(old('agent_securite_staff_user_ids', $selectedAgentSecuriteUserIds->all()))->map(fn ($id) => (string) $id);
                         @endphp
 
                         <div>
@@ -1186,7 +1198,7 @@
                         </div>
 
                         <div class="additional-service-category">
-                            <h4>Section Gérant</h4>
+                            <h4>Section Chef de service</h4>
                             <div class="staff-avatar-grid">
                                 <label class="staff-avatar-card" data-department-id="" data-role="gerant">
                                     <input type="radio" name="manager_staff_user_id" value="" {{ (string) $oldManagerUserId === '' ? 'checked' : '' }}>
@@ -1196,6 +1208,9 @@
                                 </label>
                                 @foreach ($sortedStaffOptions as $staffOption)
                                     @php
+                                        if (! in_array((string) ($staffOption->position_title ?? ''), ['Chef Service', 'Chef de service'], true)) {
+                                            continue;
+                                        }
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
                                         $isBusyOnParallelReservation = $parallelBusyStaffUserIds->contains($staffUserId);
                                         $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
@@ -1235,10 +1250,13 @@
                         </div>
 
                         <div class="additional-service-category">
-                            <h4>Section Serveurs</h4>
+                            <h4>Section Serveur</h4>
                             <div class="staff-avatar-grid">
                                 @foreach ($sortedStaffOptions as $staffOption)
                                     @php
+                                        if (! in_array((string) ($staffOption->position_title ?? ''), ['Serveur', 'serveur'], true)) {
+                                            continue;
+                                        }
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
                                         $isBusyOnParallelReservation = $parallelBusyStaffUserIds->contains($staffUserId);
                                         $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
@@ -1278,16 +1296,13 @@
                         </div>
 
                         <div class="additional-service-category">
-                            <h4>Chef des serveurs</h4>
+                            <h4>Section Annimateur</h4>
                             <div class="staff-avatar-grid">
-                                <label class="staff-avatar-card" data-department-id="" data-role="chef">
-                                    <input type="radio" name="serveur_chef_user_id" value="" {{ (string) $oldChefUserId === '' ? 'checked' : '' }}>
-                                    <span class="staff-avatar">-</span>
-                                    <span class="staff-avatar-name">Aucun</span>
-                                    <span class="staff-avatar-meta">Pas de chef</span>
-                                </label>
                                 @foreach ($sortedStaffOptions as $staffOption)
                                     @php
+                                        if ((string) ($staffOption->position_title ?? '') !== 'Annimateur') {
+                                            continue;
+                                        }
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
                                         $isBusyOnParallelReservation = $parallelBusyStaffUserIds->contains($staffUserId);
                                         $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
@@ -1307,8 +1322,8 @@
                                             $initials = 'ST';
                                         }
                                     @endphp
-                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }}" data-department-id="{{ $departmentId }}" data-role="chef" title="{{ $isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '' }}">
-                                        <input type="radio" name="serveur_chef_user_id" value="{{ $staffUserId }}" {{ (string) $oldChefUserId === (string) $staffUserId ? 'checked' : '' }}>
+                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }}" data-department-id="{{ $departmentId }}" data-role="annimateur" title="{{ $isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '' }}">
+                                        <input type="checkbox" name="annimateur_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldAnnimateurs->contains((string) $staffUserId) ? 'checked' : '' }}>
                                         <span class="staff-avatar">
                                             @if (!empty($staffOption->photo_path))
                                                 <img src="{{ asset('storage/' . ltrim($staffOption->photo_path, '/')) }}" alt="{{ $staffLabel }}">
@@ -1324,14 +1339,16 @@
                                     </label>
                                 @endforeach
                             </div>
-                            <small style="color:#607a95;">Le chef doit etre selectionne parmi les serveurs.</small>
                         </div>
 
                         <div class="additional-service-category">
-                            <h4>Section Femmes de ménage</h4>
+                            <h4>Section Femme de menage</h4>
                             <div class="staff-avatar-grid">
                                 @foreach ($sortedStaffOptions as $staffOption)
                                     @php
+                                        if ((string) ($staffOption->position_title ?? '') !== 'Femme de menage') {
+                                            continue;
+                                        }
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
                                         $isBusyOnParallelReservation = $parallelBusyStaffUserIds->contains($staffUserId);
                                         $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
@@ -1353,6 +1370,52 @@
                                     @endphp
                                     <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }}" data-department-id="{{ $departmentId }}" data-role="femme-menage" title="{{ $isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '' }}">
                                         <input type="checkbox" name="femme_menage_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldFemmesMenage->contains((string) $staffUserId) ? 'checked' : '' }}>
+                                        <span class="staff-avatar">
+                                            @if (!empty($staffOption->photo_path))
+                                                <img src="{{ asset('storage/' . ltrim($staffOption->photo_path, '/')) }}" alt="{{ $staffLabel }}">
+                                            @else
+                                                {{ $initials }}
+                                            @endif
+                                        </span>
+                                        <span class="staff-avatar-name">{{ $staffLabel }}</span>
+                                        <span class="staff-avatar-meta">{{ $departmentName }}</span>
+                                        @if ($isBusyOnParallelReservation)
+                                            <span class="staff-avatar-warning">Occupe</span>
+                                        @endif
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="additional-service-category">
+                            <h4>Section Agent de securite</h4>
+                            <div class="staff-avatar-grid">
+                                @foreach ($sortedStaffOptions as $staffOption)
+                                    @php
+                                        if ((string) ($staffOption->position_title ?? '') !== 'Agent de securite') {
+                                            continue;
+                                        }
+                                        $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                        $isBusyOnParallelReservation = $parallelBusyStaffUserIds->contains($staffUserId);
+                                        $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
+                                        $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
+                                        $departmentId = (string) ($staffOption->department_id ?? '');
+                                        $departmentName = (string) ($staffOption->department?->name ?? 'Sans departement');
+                                        $initials = '';
+                                        foreach (preg_split('/\s+/', $staffLabel) ?: [] as $part) {
+                                            if ($part !== '') {
+                                                $initials .= mb_strtoupper(mb_substr($part, 0, 1));
+                                            }
+                                            if (mb_strlen($initials) >= 2) {
+                                                break;
+                                            }
+                                        }
+                                        if ($initials === '') {
+                                            $initials = 'ST';
+                                        }
+                                    @endphp
+                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }}" data-department-id="{{ $departmentId }}" data-role="agent-securite" title="{{ $isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '' }}">
+                                        <input type="checkbox" name="agent_securite_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldAgentsSecurite->contains((string) $staffUserId) ? 'checked' : '' }}>
                                         <span class="staff-avatar">
                                             @if (!empty($staffOption->photo_path))
                                                 <img src="{{ asset('storage/' . ltrim($staffOption->photo_path, '/')) }}" alt="{{ $staffLabel }}">
@@ -2262,7 +2325,7 @@
             const hasCreditErrors = "{{ $errors->has('credit') || $errors->has('credit_amount') ? '1' : '0' }}" === '1';
             const hasCreditTransferErrors = "{{ $errors->has('credit_transfer') || $errors->has('credit_transfer_amount') || $errors->has('target_client_id') ? '1' : '0' }}" === '1';
             const hasCloneErrors = "{{ $errors->has('clone_salle_id') || $errors->has('clone_title') || $errors->has('clone_event_type') || $errors->has('clone_start_date') || $errors->has('clone_end_date') || $errors->has('clone_start_time') || $errors->has('clone_end_time') || $errors->has('clone_total_amount') || $errors->has('clone_note_admin') ? '1' : '0' }}" === '1';
-            const hasStaffAffectationErrors = "{{ $errors->has('staff_affectation') || $errors->has('manager_staff_user_id') || $errors->has('serveur_staff_user_ids') || $errors->has('serveur_staff_user_ids.*') || $errors->has('serveur_chef_user_id') || $errors->has('femme_menage_staff_user_ids') || $errors->has('femme_menage_staff_user_ids.*') ? '1' : '0' }}" === '1';
+            const hasStaffAffectationErrors = "{{ $errors->has('staff_affectation') || $errors->has('manager_staff_user_id') || $errors->has('serveur_staff_user_ids') || $errors->has('serveur_staff_user_ids.*') || $errors->has('annimateur_staff_user_ids') || $errors->has('annimateur_staff_user_ids.*') || $errors->has('femme_menage_staff_user_ids') || $errors->has('femme_menage_staff_user_ids.*') || $errors->has('agent_securite_staff_user_ids') || $errors->has('agent_securite_staff_user_ids.*') ? '1' : '0' }}" === '1';
 
             if (hasCancelErrors) {
                 openModal('cancel-reservation-modal');

@@ -75,6 +75,9 @@ class ReservationController extends MatrixAwareController
 
     private const STAFF_AFFECTATION_POSITION_TITLES = [
         'Chef Service',
+        'Chef de service',
+        'Serveur',
+        'serveur',
         'Annimateur',
         'Femme de menage',
         'Agent de securite',
@@ -431,26 +434,26 @@ class ReservationController extends MatrixAwareController
             'manager_staff_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'serveur_staff_user_ids' => ['nullable', 'array'],
             'serveur_staff_user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
-            'serveur_chef_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'annimateur_staff_user_ids' => ['nullable', 'array'],
+            'annimateur_staff_user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
             'femme_menage_staff_user_ids' => ['nullable', 'array'],
             'femme_menage_staff_user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+            'agent_securite_staff_user_ids' => ['nullable', 'array'],
+            'agent_securite_staff_user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
         ]);
 
         $managerUserId = filled($validated['manager_staff_user_id'] ?? null) ? (int) $validated['manager_staff_user_id'] : null;
         $serveurUserIds = collect($validated['serveur_staff_user_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->values();
+        $annimateurUserIds = collect($validated['annimateur_staff_user_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->values();
         $femmeMenageUserIds = collect($validated['femme_menage_staff_user_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->values();
-        $chefUserId = filled($validated['serveur_chef_user_id'] ?? null) ? (int) $validated['serveur_chef_user_id'] : null;
-
-        if ($chefUserId !== null && ! $serveurUserIds->contains($chefUserId)) {
-            return redirect()->route('reservations.show', $reservation)->withErrors([
-                'serveur_chef_user_id' => 'Le chef doit etre selectionne parmi les serveurs choisis.',
-            ])->withInput();
-        }
+        $agentSecuriteUserIds = collect($validated['agent_securite_staff_user_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->values();
 
         $allSelectedUserIds = collect([$managerUserId])
             ->filter()
             ->merge($serveurUserIds)
+            ->merge($annimateurUserIds)
             ->merge($femmeMenageUserIds)
+            ->merge($agentSecuriteUserIds)
             ->unique()
             ->values();
 
@@ -467,10 +470,10 @@ class ReservationController extends MatrixAwareController
             }
         }
 
-        DB::transaction(function () use ($reservation, $managerUserId, $serveurUserIds, $femmeMenageUserIds, $chefUserId): void {
+        DB::transaction(function () use ($reservation, $managerUserId, $serveurUserIds, $annimateurUserIds, $femmeMenageUserIds, $agentSecuriteUserIds): void {
             ServiceAffectation::query()
                 ->where('reservation_id', $reservation->id)
-                ->whereIn('affectation', ['gerant', 'serveur', 'femme-menage'])
+            ->whereIn('affectation', ['gerant', 'serveur', 'annimateur', 'femme-menage', 'agent-securite'])
                 ->delete();
 
             if ($managerUserId !== null) {
@@ -491,7 +494,18 @@ class ReservationController extends MatrixAwareController
                     'reservation_id' => $reservation->id,
                     'created_dtm' => now(),
                     'created_by' => Auth::id(),
-                    'is_chef' => $chefUserId !== null && $chefUserId === (int) $serveurUserId,
+                    'is_chef' => false,
+                ]);
+            }
+
+            foreach ($annimateurUserIds as $annimateurUserId) {
+                ServiceAffectation::query()->create([
+                    'affectation' => 'annimateur',
+                    'user_id' => $annimateurUserId,
+                    'reservation_id' => $reservation->id,
+                    'created_dtm' => now(),
+                    'created_by' => Auth::id(),
+                    'is_chef' => false,
                 ]);
             }
 
@@ -499,6 +513,17 @@ class ReservationController extends MatrixAwareController
                 ServiceAffectation::query()->create([
                     'affectation' => 'femme-menage',
                     'user_id' => $femmeMenageUserId,
+                    'reservation_id' => $reservation->id,
+                    'created_dtm' => now(),
+                    'created_by' => Auth::id(),
+                    'is_chef' => false,
+                ]);
+            }
+
+            foreach ($agentSecuriteUserIds as $agentSecuriteUserId) {
+                ServiceAffectation::query()->create([
+                    'affectation' => 'agent-securite',
+                    'user_id' => $agentSecuriteUserId,
                     'reservation_id' => $reservation->id,
                     'created_dtm' => now(),
                     'created_by' => Auth::id(),

@@ -25,6 +25,7 @@ class StaffController extends MatrixAwareController
         'Femme de menage',
         'Photographe',
         'Responsable',
+        'Serveur',
     ];
 
     private const PREDEFINED_DEPARTMENTS = [
