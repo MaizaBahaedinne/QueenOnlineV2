@@ -900,6 +900,8 @@ class ReservationController extends MatrixAwareController
             'present_on_site' => ['required', 'accepted'],
             'termination_signed' => ['required', 'accepted'],
             'note' => ['nullable', 'string'],
+            'cancel_linked_reservation_ids' => ['nullable', 'array'],
+            'cancel_linked_reservation_ids.*' => ['integer', 'exists:reservations,id'],
         ]);
 
         if ((string) $reservation->status === 'cancelled') {
@@ -908,7 +910,29 @@ class ReservationController extends MatrixAwareController
 
         $paidAmount = (float) $reservation->payments()->sum('amount');
 
-        DB::transaction(function () use ($reservation, $validated, $paidAmount): void {
+        $reservation->loadMissing(['additionalServices.linkedReservation']);
+        $allowedLinkedRows = $reservation->additionalServices
+            ->filter(fn (ReservationAdditionalService $row) => (int) ($row->linked_reservation_id ?? 0) > 0)
+            ->keyBy(fn (ReservationAdditionalService $row) => (int) $row->linked_reservation_id);
+
+        $selectedLinkedReservationIds = collect($validated['cancel_linked_reservation_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values();
+
+        $forbiddenSelection = $selectedLinkedReservationIds
+            ->first(fn (int $id) => ! $allowedLinkedRows->has($id));
+
+        if ($forbiddenSelection !== null) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'cancel_linked_reservation_ids' => 'Selection de reservation liee invalide.',
+            ])->withInput();
+        }
+
+        $cancelledLinkedCount = 0;
+
+        DB::transaction(function () use ($reservation, $validated, $paidAmount, $allowedLinkedRows, $selectedLinkedReservationIds, &$cancelledLinkedCount): void {
             $reservation->update([
                 'status' => 'cancelled',
             ]);
@@ -941,9 +965,34 @@ class ReservationController extends MatrixAwareController
 
                 ClientCreditLedger::query()->create($ledgerPayload);
             }
+
+            foreach ($selectedLinkedReservationIds as $linkedReservationId) {
+                /** @var ReservationAdditionalService|null $linkedRow */
+                $linkedRow = $allowedLinkedRows->get($linkedReservationId);
+                $linkedReservation = $linkedRow?->linkedReservation;
+
+                if (! $linkedReservation || (string) $linkedReservation->status === 'cancelled') {
+                    continue;
+                }
+
+                $currentNote = trim((string) ($linkedReservation->note_admin ?? ''));
+                $appendNote = 'Annulee depuis la reservation parent #' . $reservation->id;
+
+                $linkedReservation->update([
+                    'status' => 'cancelled',
+                    'note_admin' => $currentNote !== '' ? ($currentNote . ' | ' . $appendNote) : $appendNote,
+                ]);
+
+                $cancelledLinkedCount++;
+            }
         });
 
-        return redirect()->route('reservations.show', $reservation)->with('success', 'Reservation annulee. Contrat de resiliation enregistre et avoir client cree.');
+        $successMessage = 'Reservation annulee. Contrat de resiliation enregistre et avoir client cree.';
+        if ($cancelledLinkedCount > 0) {
+            $successMessage .= ' ' . $cancelledLinkedCount . ' reservation(s) de service supplementaire ont aussi ete annulees.';
+        }
+
+        return redirect()->route('reservations.show', $reservation)->with('success', $successMessage);
     }
 
     public function cloneReservation(Request $request, Reservation $reservation)
@@ -1453,6 +1502,8 @@ class ReservationController extends MatrixAwareController
                     }
                 },
             ],
+            'sync_linked_date_ids' => ['nullable', 'array'],
+            'sync_linked_date_ids.*' => ['integer', 'exists:reservations,id'],
         ]);
 
         $targetSalleId = (int) $validated['salle_id'];
@@ -1488,16 +1539,63 @@ class ReservationController extends MatrixAwareController
 
         $validated['payment_due_date'] = Carbon::parse((string) $validated['start_date'])->subDays(30)->toDateString();
 
-        $reservation->update([
-            'salle_id' => $validated['salle_id'],
-            'start_date' => $validated['start_date'],
-            'end_date' => $validated['end_date'],
-            'start_time' => $validated['start_time'],
-            'end_time' => $validated['end_time'],
-            'payment_due_date' => $validated['payment_due_date'],
-        ]);
+        $reservation->loadMissing(['additionalServices.linkedReservation']);
+        $allowedLinkedRows = $reservation->additionalServices
+            ->filter(fn (ReservationAdditionalService $row) => (int) ($row->linked_reservation_id ?? 0) > 0)
+            ->keyBy(fn (ReservationAdditionalService $row) => (int) $row->linked_reservation_id);
 
-        return redirect()->route('reservations.show', $reservation)->with('success', 'Date, heure et salle mises a jour.');
+        $selectedLinkedDateSyncIds = collect($validated['sync_linked_date_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values();
+
+        $forbiddenSyncSelection = $selectedLinkedDateSyncIds
+            ->first(fn (int $id) => ! $allowedLinkedRows->has($id));
+
+        if ($forbiddenSyncSelection !== null) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'sync_linked_date_ids' => 'Selection de reservation liee invalide.',
+            ])->withInput();
+        }
+
+        $syncedLinkedCount = 0;
+
+        DB::transaction(function () use ($reservation, $validated, $selectedLinkedDateSyncIds, $allowedLinkedRows, &$syncedLinkedCount): void {
+            $reservation->update([
+                'salle_id' => $validated['salle_id'],
+                'start_date' => $validated['start_date'],
+                'end_date' => $validated['end_date'],
+                'start_time' => $validated['start_time'],
+                'end_time' => $validated['end_time'],
+                'payment_due_date' => $validated['payment_due_date'],
+            ]);
+
+            foreach ($selectedLinkedDateSyncIds as $linkedReservationId) {
+                /** @var ReservationAdditionalService|null $linkedRow */
+                $linkedRow = $allowedLinkedRows->get($linkedReservationId);
+                $linkedReservation = $linkedRow?->linkedReservation;
+
+                if (! $linkedReservation || (string) $linkedReservation->status === 'cancelled') {
+                    continue;
+                }
+
+                $linkedReservation->update([
+                    'start_date' => $validated['start_date'],
+                    'end_date' => $validated['end_date'],
+                    'payment_due_date' => $validated['payment_due_date'],
+                ]);
+
+                $syncedLinkedCount++;
+            }
+        });
+
+        $successMessage = 'Date, heure et salle mises a jour.';
+        if ($syncedLinkedCount > 0) {
+            $successMessage .= ' ' . $syncedLinkedCount . ' reservation(s) de service supplementaire ont ete alignees sur la date (heures conservees).';
+        }
+
+        return redirect()->route('reservations.show', $reservation)->with('success', $successMessage);
     }
 
     public function update(Request $request, Reservation $reservation)

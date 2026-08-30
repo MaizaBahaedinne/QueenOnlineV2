@@ -54,6 +54,12 @@
         };
         $reservationScopeLabel = (string) ($reservationScopeLabel ?? (($reservation->service_slug ?? 'salles') === 'salles' ? 'Interne' : 'Externe'));
         $creditServiceLabel = (string) ($creditServiceLabel ?? $reservationTypeLabel);
+        $linkedAdditionalServiceRows = $reservation->additionalServices
+            ->filter(fn ($row) => $row->linkedReservation)
+            ->values();
+        $activeLinkedAdditionalServiceRows = $linkedAdditionalServiceRows
+            ->filter(fn ($row) => ($row->linkedReservation->status ?? null) !== 'cancelled')
+            ->values();
     @endphp
 
     <style>
@@ -985,6 +991,29 @@
                         <textarea id="cancel-note" name="note" rows="3">{{ old('note') }}</textarea>
                     </div>
 
+                    @if ($activeLinkedAdditionalServiceRows->isNotEmpty())
+                        <div style="display:grid;gap:6px;border:1px solid #dbe7f4;border-radius:10px;padding:10px;background:#f8fbff;">
+                            <strong style="font-size:13px;color:#1f4970;">Annuler aussi les reservations de services supplementaires ?</strong>
+                            <small style="color:#4f6b86;">Selection service par service.</small>
+                            @php
+                                $oldCancelLinkedIds = collect(old('cancel_linked_reservation_ids', []))->map(fn ($id) => (string) $id);
+                            @endphp
+                            @foreach ($activeLinkedAdditionalServiceRows as $serviceRow)
+                                @php
+                                    $linked = $serviceRow->linkedReservation;
+                                    $serviceLabel = $additionalServiceModules[$serviceRow->module_slug] ?? ucfirst((string) $serviceRow->module_slug);
+                                @endphp
+                                <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#244e76;margin:0;">
+                                    <input type="checkbox" name="cancel_linked_reservation_ids[]" value="{{ $linked->id }}" {{ $oldCancelLinkedIds->contains((string) $linked->id) ? 'checked' : '' }}>
+                                    <span>
+                                        {{ $serviceLabel }} - {{ $serviceRow->label }} (Reservation #{{ $linked->id }})
+                                        <small style="display:block;color:#607a95;">Date: @frDate($linked->start_date) @if($linked->start_date !== $linked->end_date) -> @frDate($linked->end_date) @endif | Heure: {{ $linked->start_time ?? '--:--' }} - {{ $linked->end_time ?? '--:--' }}</small>
+                                    </span>
+                                </label>
+                            @endforeach
+                        </div>
+                    @endif
+
                     <div class="reservation-actions-row">
                         <button type="submit" class="btn" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Confirmer annulation et creer avoir</button>
                     </div>
@@ -1129,6 +1158,29 @@
                             </button>
                         </div>
                     </div>
+
+                    @if ($activeLinkedAdditionalServiceRows->isNotEmpty())
+                        <div style="display:grid;gap:6px;border:1px solid #dbe7f4;border-radius:10px;padding:10px;background:#f8fbff;">
+                            <strong style="font-size:13px;color:#1f4970;">Modifier aussi la date des reservations de services supplementaires ?</strong>
+                            <small style="color:#4f6b86;">Selection service par service. Les heures restent inchangees.</small>
+                            @php
+                                $oldSyncLinkedIds = collect(old('sync_linked_date_ids', []))->map(fn ($id) => (string) $id);
+                            @endphp
+                            @foreach ($activeLinkedAdditionalServiceRows as $serviceRow)
+                                @php
+                                    $linked = $serviceRow->linkedReservation;
+                                    $serviceLabel = $additionalServiceModules[$serviceRow->module_slug] ?? ucfirst((string) $serviceRow->module_slug);
+                                @endphp
+                                <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#244e76;margin:0;">
+                                    <input type="checkbox" name="sync_linked_date_ids[]" value="{{ $linked->id }}" {{ $oldSyncLinkedIds->contains((string) $linked->id) ? 'checked' : '' }}>
+                                    <span>
+                                        {{ $serviceLabel }} - {{ $serviceRow->label }} (Reservation #{{ $linked->id }})
+                                        <small style="display:block;color:#607a95;">Date actuelle: @frDate($linked->start_date) @if($linked->start_date !== $linked->end_date) -> @frDate($linked->end_date) @endif | Heure conservee: {{ $linked->start_time ?? '--:--' }} - {{ $linked->end_time ?? '--:--' }}</small>
+                                    </span>
+                                </label>
+                            @endforeach
+                        </div>
+                    @endif
 
                     <div class="reservation-actions-row">
                         <button type="submit" class="btn btn-primary">Enregistrer date/heure/salle</button>
@@ -1757,8 +1809,8 @@
             const hasClientErrors = "{{ $errors->has('client_type') || $errors->has('first_name') || $errors->has('name') || $errors->has('phone') ? '1' : '0' }}" === '1';
             const hasAdditionalServiceErrors = "{{ $errors->has('module_slug') || $errors->has('service_ref') || $errors->has('service_amount') || $errors->has('service') ? '1' : '0' }}" === '1';
             const hasReservationErrors = "{{ $errors->has('title') || $errors->has('event_type') || $errors->has('guest_count') || $errors->has('total_amount') || $errors->has('note_admin') ? '1' : '0' }}" === '1';
-            const hasSlotErrors = "{{ $errors->has('salle_id') || $errors->has('start_date') || $errors->has('end_date') || $errors->has('start_time') || $errors->has('end_time') ? '1' : '0' }}" === '1';
-            const hasCancelErrors = "{{ $errors->has('present_on_site') || $errors->has('termination_signed') || $errors->has('cancel') ? '1' : '0' }}" === '1';
+            const hasSlotErrors = "{{ $errors->has('salle_id') || $errors->has('start_date') || $errors->has('end_date') || $errors->has('start_time') || $errors->has('end_time') || $errors->has('sync_linked_date_ids') ? '1' : '0' }}" === '1';
+            const hasCancelErrors = "{{ $errors->has('present_on_site') || $errors->has('termination_signed') || $errors->has('cancel') || $errors->has('cancel_linked_reservation_ids') ? '1' : '0' }}" === '1';
             const hasCreditErrors = "{{ $errors->has('credit') || $errors->has('credit_amount') ? '1' : '0' }}" === '1';
             const hasCreditTransferErrors = "{{ $errors->has('credit_transfer') || $errors->has('credit_transfer_amount') || $errors->has('target_client_id') ? '1' : '0' }}" === '1';
             const hasCloneErrors = "{{ $errors->has('clone_salle_id') || $errors->has('clone_title') || $errors->has('clone_event_type') || $errors->has('clone_start_date') || $errors->has('clone_end_date') || $errors->has('clone_start_time') || $errors->has('clone_end_time') || $errors->has('clone_total_amount') || $errors->has('clone_note_admin') ? '1' : '0' }}" === '1';
