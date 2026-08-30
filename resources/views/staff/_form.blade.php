@@ -59,18 +59,25 @@
         <div class="staff-section-body">
             <div class="form-grid-3">
                 <div class="field"><label>Matricule employe</label><input class="search" style="max-width:none;" type="text" name="employee_code" id="{{ $prefixId }}-employee-code"></div>
-                <div class="field"><label>Poste / fonction</label><input class="search" style="max-width:none;" type="text" name="position_title" id="{{ $prefixId }}-position-title" required></div>
+                <div class="field">
+                    <label>Poste / fonction</label>
+                    <select class="search" style="max-width:none;" name="position_title" id="{{ $prefixId }}-position-title" required>
+                        <option value="">Selectionner</option>
+                        @foreach ($positionTitleOptions as $positionTitle)
+                            <option value="{{ $positionTitle }}">{{ $positionTitle }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="field"><label>Date d entree</label><input class="search" style="max-width:none;" type="date" name="hire_date" id="{{ $prefixId }}-hire-date"></div>
                 <div class="field">
-                    <label>Departement existant</label>
-                    <select class="search" style="max-width:none;" name="department_id" id="{{ $prefixId }}-department-id">
+                    <label>Departement</label>
+                    <select class="search" style="max-width:none;" name="department_id" id="{{ $prefixId }}-department-id" required>
                         <option value="">Selectionner</option>
                         @foreach ($departments as $department)
                             <option value="{{ $department->id }}">{{ $department->name }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="field"><label>Nouveau departement</label><input class="search" style="max-width:none;" type="text" name="department_name" id="{{ $prefixId }}-department-name"></div>
                 <div class="field">
                     <label>Responsable hierarchique</label>
                     <select class="search" style="max-width:none;" name="manager_id" id="{{ $prefixId }}-manager-id">

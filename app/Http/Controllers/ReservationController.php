@@ -73,6 +73,13 @@ class ReservationController extends MatrixAwareController
         'Evenement',
     ];
 
+    private const STAFF_AFFECTATION_POSITION_TITLES = [
+        'Chef Service',
+        'Annimateur',
+        'Femme de menage',
+        'Agent de securite',
+    ];
+
     public function index()
     {
         $this->enforcePermission('reservations', 'list', 'view');
@@ -360,17 +367,42 @@ class ReservationController extends MatrixAwareController
             ->with(['user:id,name', 'department:id,name'])
             ->where('status', 'active')
             ->whereNotNull('user_id')
+            ->whereIn('position_title', self::STAFF_AFFECTATION_POSITION_TITLES)
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get(['id', 'user_id', 'department_id', 'photo_path', 'first_name', 'last_name', 'position_title'])
             ->filter(fn (Staff $staff) => $staff->user !== null)
             ->values();
 
+        $parallelBusyStaffUserIds = collect();
+        if ($currentStart && $currentEnd) {
+            $overlappingReservationIds = Reservation::query()
+                ->where('id', '!=', $reservation->id)
+                ->where('status', '!=', 'cancelled')
+                ->whereDate('start_date', '<=', $currentEnd->toDateString())
+                ->whereDate('end_date', '>=', $currentStart->toDateString())
+                ->get(['id', 'start_date', 'start_time', 'end_date', 'end_time'])
+                ->filter(fn (Reservation $otherReservation) => $this->isReservationTimeOverlapping($otherReservation, $currentStart, $currentEnd))
+                ->pluck('id')
+                ->values();
+
+            if ($overlappingReservationIds->isNotEmpty()) {
+                $parallelBusyStaffUserIds = ServiceAffectation::query()
+                    ->whereIn('reservation_id', $overlappingReservationIds)
+                    ->whereNotNull('user_id')
+                    ->pluck('user_id')
+                    ->map(fn ($userId) => (int) $userId)
+                    ->unique()
+                    ->values();
+            }
+        }
+
         return view('reservations.show', [
             'title' => 'Detail reservation',
             'reservation' => $reservation,
             'salles' => Salle::query()->orderBy('name')->get(['id', 'name', 'capacity']),
             'staffOptions' => $staffOptions,
+            'parallelBusyStaffUserIds' => $parallelBusyStaffUserIds,
             'governorates' => self::GOVERNORATES,
             'sources' => self::SOURCES,
             'eventTypes' => self::EVENT_TYPES,
@@ -2121,5 +2153,17 @@ class ReservationController extends MatrixAwareController
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private function isReservationTimeOverlapping(Reservation $otherReservation, Carbon $currentStart, Carbon $currentEnd): bool
+    {
+        $otherStart = $this->reservationDateTime($otherReservation->start_date, $otherReservation->start_time);
+        $otherEnd = $this->reservationDateTime($otherReservation->end_date, $otherReservation->end_time);
+
+        if (! $otherStart || ! $otherEnd) {
+            return false;
+        }
+
+        return $otherStart->lt($currentEnd) && $otherEnd->gt($currentStart);
     }
 }

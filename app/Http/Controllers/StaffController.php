@@ -10,17 +10,42 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class StaffController extends MatrixAwareController
 {
+    private const PREDEFINED_POSITION_TITLES = [
+        'Agent de securite',
+        'Annimateur',
+        'Charge des travaux',
+        'Chauffeur',
+        'Chef Service',
+        'Chef de troupe',
+        'Directeur',
+        'Femme de menage',
+        'Photographe',
+        'Responsable',
+    ];
+
+    private const PREDEFINED_DEPARTMENTS = [
+        'Artistique',
+        'Commercial',
+        'Direction',
+        'Maintenance',
+        'Marketing',
+        'Securite',
+    ];
+
     public function index()
     {
         $this->enforcePermission('staff', 'list', 'view');
 
+        $this->ensurePredefinedDepartments();
+
         return view('staff.index', [
             'title' => 'Ressource Humaine',
             'staffMembers' => Staff::query()->with(['department', 'manager', 'user.role'])->latest()->get(),
-            'departments' => Department::query()->orderBy('name')->get(),
+            'departments' => Department::query()->whereIn('name', self::PREDEFINED_DEPARTMENTS)->orderBy('name')->get(),
             'managers' => Staff::query()->orderBy('first_name')->orderBy('last_name')->get(['id', 'first_name', 'last_name']),
             'users' => User::query()->with('role')->orderBy('name')->get(['id', 'name', 'email', 'role_id']),
             ...$this->formOptions(),
@@ -124,6 +149,8 @@ class StaffController extends MatrixAwareController
 
     private function validatePayload(Request $request, ?int $ignoreId = null): array
     {
+        $this->ensurePredefinedDepartments();
+
         return $request->validate([
             'photo' => ['nullable', 'image', 'max:3072'],
             'first_name' => ['required', 'string', 'max:255'],
@@ -146,9 +173,8 @@ class StaffController extends MatrixAwareController
             'emergency_contact_phone_secondary' => ['nullable', 'string', 'max:50'],
             'employee_code' => ['nullable', 'string', 'max:100', Rule::unique('staff', 'employee_code')->ignore($ignoreId)],
             'hire_date' => ['nullable', 'date'],
-            'position_title' => ['required', 'string', 'max:255'],
-            'department_id' => ['nullable', 'exists:departments,id'],
-            'department_name' => ['nullable', 'string', 'max:255'],
+            'position_title' => ['required', Rule::in($this->positionTitleOptions())],
+            'department_id' => ['required', 'exists:departments,id'],
             'employment_type' => ['required', Rule::in(['permanent', 'part-time'])],
             'contract_type' => ['required', Rule::in(['CDI', 'CDD', 'Freelance'])],
             'contract_start_date' => ['nullable', 'date'],
@@ -219,15 +245,18 @@ class StaffController extends MatrixAwareController
             $validated[$nullableField] = filled($validated[$nullableField] ?? null) ? $validated[$nullableField] : null;
         }
 
-        if (! empty($validated['department_name'])) {
-            $department = Department::query()->firstOrCreate(
-                ['name' => $validated['department_name']],
-                ['status' => 'active']
-            );
-            $validated['department_id'] = $department->id;
+        $allowedDepartmentId = Department::query()
+            ->whereIn('name', self::PREDEFINED_DEPARTMENTS)
+            ->where('id', (int) ($validated['department_id'] ?? 0))
+            ->value('id');
+
+        if (! $allowedDepartmentId) {
+            throw ValidationException::withMessages([
+                'department_id' => 'Le departement selectionne est invalide.',
+            ]);
         }
 
-        unset($validated['department_name']);
+        $validated['department_id'] = (int) $allowedDepartmentId;
 
         if (($validated['contract_type'] ?? null) !== 'CDD') {
             $validated['contract_end_date'] = null;
@@ -253,10 +282,29 @@ class StaffController extends MatrixAwareController
     private function formOptions(): array
     {
         return [
+            'positionTitleOptions' => $this->positionTitleOptions(),
             'maritalStatusOptions' => $this->maritalStatusOptions(),
             'paymentMethodOptions' => $this->paymentMethodOptions(),
             'documentTypeOptions' => $this->documentTypeOptions(),
         ];
+    }
+
+    private function positionTitleOptions(): array
+    {
+        return collect(self::PREDEFINED_POSITION_TITLES)
+            ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
+    }
+
+    private function ensurePredefinedDepartments(): void
+    {
+        foreach (self::PREDEFINED_DEPARTMENTS as $departmentName) {
+            Department::query()->firstOrCreate(
+                ['name' => $departmentName],
+                ['status' => 'active']
+            );
+        }
     }
 
     private function maritalStatusOptions(): array

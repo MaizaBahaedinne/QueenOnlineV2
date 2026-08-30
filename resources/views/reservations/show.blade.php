@@ -67,6 +67,7 @@
         $selectedServeurUserIds = $serveurAffectations->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->values();
         $selectedFemmeMenageUserIds = $femmeMenageAffectations->pluck('user_id')->filter()->map(fn ($id) => (int) $id)->values();
         $selectedChefUserId = optional($serveurAffectations->firstWhere('is_chef', true))->user_id;
+        $parallelBusyStaffUserIds = collect($parallelBusyStaffUserIds ?? [])->map(fn ($id) => (int) $id)->unique()->values();
     @endphp
 
     <style>
@@ -781,6 +782,23 @@
             background: #f2f8ff;
         }
 
+        .staff-avatar-card--busy {
+            border-color: #d9aa00;
+            box-shadow: 0 0 0 2px rgba(217, 170, 0, 0.22);
+            background: #fffbea;
+        }
+
+        .staff-avatar-card--busy .staff-avatar {
+            border-color: #d9aa00;
+            background: #fff4c9;
+        }
+
+        .staff-avatar-card--busy:has(input:checked) {
+            border-color: #c59300;
+            box-shadow: 0 0 0 2px rgba(197, 147, 0, 0.28);
+            background: #fff5cf;
+        }
+
         .staff-avatar {
             width: 58px;
             height: 58px;
@@ -812,6 +830,17 @@
         .staff-avatar-meta {
             font-size: 11px;
             color: #607a95;
+            line-height: 1.2;
+        }
+
+        .staff-avatar-warning {
+            font-size: 10px;
+            font-weight: 700;
+            color: #876200;
+            background: #ffeeb2;
+            border: 1px solid #e2bf44;
+            border-radius: 999px;
+            padding: 2px 7px;
             line-height: 1.2;
         }
 
@@ -1168,6 +1197,7 @@
                                 @foreach ($sortedStaffOptions as $staffOption)
                                     @php
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                        $isBusyOnParallelReservation = $parallelBusyStaffUserIds->contains($staffUserId);
                                         $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
                                         $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
                                         $departmentId = (string) ($staffOption->department_id ?? '');
@@ -1185,7 +1215,7 @@
                                             $initials = 'ST';
                                         }
                                     @endphp
-                                    <label class="staff-avatar-card" data-department-id="{{ $departmentId }}" data-role="gerant">
+                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }}" data-department-id="{{ $departmentId }}" data-role="gerant" title="{{ $isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '' }}">
                                         <input type="radio" name="manager_staff_user_id" value="{{ $staffUserId }}" {{ (string) $oldManagerUserId === (string) $staffUserId ? 'checked' : '' }}>
                                         <span class="staff-avatar">
                                             @if (!empty($staffOption->photo_path))
@@ -1196,6 +1226,9 @@
                                         </span>
                                         <span class="staff-avatar-name">{{ $staffLabel }}</span>
                                         <span class="staff-avatar-meta">{{ $departmentName }}</span>
+                                        @if ($isBusyOnParallelReservation)
+                                            <span class="staff-avatar-warning">Occupe</span>
+                                        @endif
                                     </label>
                                 @endforeach
                             </div>
@@ -1207,6 +1240,7 @@
                                 @foreach ($sortedStaffOptions as $staffOption)
                                     @php
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                        $isBusyOnParallelReservation = $parallelBusyStaffUserIds->contains($staffUserId);
                                         $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
                                         $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
                                         $departmentId = (string) ($staffOption->department_id ?? '');
@@ -1224,7 +1258,7 @@
                                             $initials = 'ST';
                                         }
                                     @endphp
-                                    <label class="staff-avatar-card" data-department-id="{{ $departmentId }}" data-role="serveur">
+                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }}" data-department-id="{{ $departmentId }}" data-role="serveur" title="{{ $isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '' }}">
                                         <input type="checkbox" name="serveur_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldServeurs->contains((string) $staffUserId) ? 'checked' : '' }}>
                                         <span class="staff-avatar">
                                             @if (!empty($staffOption->photo_path))
@@ -1235,6 +1269,9 @@
                                         </span>
                                         <span class="staff-avatar-name">{{ $staffLabel }}</span>
                                         <span class="staff-avatar-meta">{{ $departmentName }}</span>
+                                        @if ($isBusyOnParallelReservation)
+                                            <span class="staff-avatar-warning">Occupe</span>
+                                        @endif
                                     </label>
                                 @endforeach
                             </div>
@@ -1252,6 +1289,7 @@
                                 @foreach ($sortedStaffOptions as $staffOption)
                                     @php
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                        $isBusyOnParallelReservation = $parallelBusyStaffUserIds->contains($staffUserId);
                                         $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
                                         $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
                                         $departmentId = (string) ($staffOption->department_id ?? '');
@@ -1269,7 +1307,7 @@
                                             $initials = 'ST';
                                         }
                                     @endphp
-                                    <label class="staff-avatar-card" data-department-id="{{ $departmentId }}" data-role="chef">
+                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }}" data-department-id="{{ $departmentId }}" data-role="chef" title="{{ $isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '' }}">
                                         <input type="radio" name="serveur_chef_user_id" value="{{ $staffUserId }}" {{ (string) $oldChefUserId === (string) $staffUserId ? 'checked' : '' }}>
                                         <span class="staff-avatar">
                                             @if (!empty($staffOption->photo_path))
@@ -1280,6 +1318,9 @@
                                         </span>
                                         <span class="staff-avatar-name">{{ $staffLabel }}</span>
                                         <span class="staff-avatar-meta">{{ $departmentName }}</span>
+                                        @if ($isBusyOnParallelReservation)
+                                            <span class="staff-avatar-warning">Occupe</span>
+                                        @endif
                                     </label>
                                 @endforeach
                             </div>
@@ -1292,6 +1333,7 @@
                                 @foreach ($sortedStaffOptions as $staffOption)
                                     @php
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                        $isBusyOnParallelReservation = $parallelBusyStaffUserIds->contains($staffUserId);
                                         $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
                                         $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
                                         $departmentId = (string) ($staffOption->department_id ?? '');
@@ -1309,7 +1351,7 @@
                                             $initials = 'ST';
                                         }
                                     @endphp
-                                    <label class="staff-avatar-card" data-department-id="{{ $departmentId }}" data-role="femme-menage">
+                                    <label class="staff-avatar-card {{ $isBusyOnParallelReservation ? 'staff-avatar-card--busy' : '' }}" data-department-id="{{ $departmentId }}" data-role="femme-menage" title="{{ $isBusyOnParallelReservation ? 'Deja affecte sur une reservation en parallele.' : '' }}">
                                         <input type="checkbox" name="femme_menage_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldFemmesMenage->contains((string) $staffUserId) ? 'checked' : '' }}>
                                         <span class="staff-avatar">
                                             @if (!empty($staffOption->photo_path))
@@ -1320,6 +1362,9 @@
                                         </span>
                                         <span class="staff-avatar-name">{{ $staffLabel }}</span>
                                         <span class="staff-avatar-meta">{{ $departmentName }}</span>
+                                        @if ($isBusyOnParallelReservation)
+                                            <span class="staff-avatar-warning">Occupe</span>
+                                        @endif
                                     </label>
                                 @endforeach
                             </div>
