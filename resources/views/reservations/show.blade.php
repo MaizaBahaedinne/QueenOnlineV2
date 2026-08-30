@@ -122,6 +122,13 @@
             flex-wrap: wrap;
         }
 
+        .reservation-top-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 14px;
+            align-items: start;
+        }
+
         .reservation-show-kicker {
             margin: 0;
             font-size: 12px;
@@ -714,17 +721,114 @@
             font-size: 12px;
         }
 
+        .staff-summary-grid {
+            display: grid;
+            gap: 8px;
+        }
+
+        .staff-summary-row {
+            border: 1px solid #dbe7f4;
+            border-radius: 10px;
+            padding: 8px;
+            background: #f8fbff;
+            display: grid;
+            gap: 4px;
+        }
+
+        .staff-summary-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #5a748f;
+            font-weight: 700;
+        }
+
+        .staff-avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .staff-avatar-card {
+            border: 1px solid #d5e2f0;
+            border-radius: 12px;
+            background: #fcfdff;
+            padding: 8px;
+            display: grid;
+            justify-items: center;
+            align-content: start;
+            gap: 6px;
+            cursor: pointer;
+            transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+            text-align: center;
+        }
+
+        .staff-avatar-card:hover {
+            border-color: #9fc0e5;
+            box-shadow: 0 6px 14px rgba(20, 49, 77, 0.10);
+            transform: translateY(-1px);
+        }
+
+        .staff-avatar-card input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .staff-avatar-card:has(input:checked) {
+            border-color: #2c78b6;
+            box-shadow: 0 0 0 2px rgba(44, 120, 182, 0.18);
+            background: #f2f8ff;
+        }
+
+        .staff-avatar {
+            width: 58px;
+            height: 58px;
+            border-radius: 999px;
+            border: 1px solid #c7dbf0;
+            background: #e8f1fb;
+            color: #1e4f7b;
+            font-size: 14px;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .staff-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .staff-avatar-name {
+            font-size: 12px;
+            color: #1a3a57;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .staff-avatar-meta {
+            font-size: 11px;
+            color: #607a95;
+            line-height: 1.2;
+        }
+
         @media (max-width: 960px) {
+            .reservation-top-grid { grid-template-columns: 1fr; }
             .reservation-show-grid { grid-template-columns: 1fr; }
             .reservation-objects-grid { grid-template-columns: 1fr; }
             .payment-form-row { grid-template-columns: 1fr; }
             .client-form-grid { grid-template-columns: 1fr; }
             .slot-inline-grid { grid-template-columns: 1fr; }
             .salle-card-grid { grid-template-columns: 1fr; }
+            .staff-avatar-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         }
 
         @media (max-width: 640px) {
             .reservation-detail-row { grid-template-columns: 1fr; gap: 4px; }
+            .staff-avatar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
     </style>
 
@@ -744,45 +848,85 @@
             </div>
         @endif
 
-        <div class="reservation-show-hero">
-            <div>
-                <p class="reservation-show-kicker">Reservation detail</p>
-                <h1 class="reservation-show-title">{{ $reservation->title ?: 'Reservation #' . $reservation->id }}</h1>
-                <p class="reservation-show-sub">Type: {{ $reservationTypeLabel }} ({{ $reservationScopeLabel }}) | Salle: {{ $reservation->salle?->name ?? '-' }} | Createur: {{ $reservation->user?->name ?? '-' }}</p>
-                <div class="reservation-show-chips">
-                    <span class="reservation-chip {{ $statusTone }}">{{ $statusLabel }}</span>
-                    <span class="reservation-chip">{{ $reservationScopeLabel }}</span>
-                    <span class="reservation-chip">
-                        @if ($reservation->start_date === $reservation->end_date)
-                            @frDate($reservation->start_date)
-                        @else
-                            Du @frDate($reservation->start_date) au @frDate($reservation->end_date)
-                        @endif
-                    </span>
-                    <span class="reservation-chip">{{ $reservation->start_time ?? '--:--' }} - {{ $reservation->end_time ?? '--:--' }}</span>
-                    <span class="reservation-chip">&#127915; {{ $reservation->event_type ?: '-' }}</span>
-                    <span class="reservation-chip">&#128101; {{ $reservation->guest_count ?: '-' }}</span>
+        <div class="reservation-top-grid">
+            <div class="reservation-show-hero">
+                <div>
+                    <p class="reservation-show-kicker">Reservation detail</p>
+                    <h1 class="reservation-show-title">{{ $reservation->title ?: 'Reservation #' . $reservation->id }}</h1>
+                    <p class="reservation-show-sub">Type: {{ $reservationTypeLabel }} ({{ $reservationScopeLabel }}) | Salle: {{ $reservation->salle?->name ?? '-' }} | Createur: {{ $reservation->user?->name ?? '-' }}</p>
+                    <div class="reservation-show-chips">
+                        <span class="reservation-chip {{ $statusTone }}">{{ $statusLabel }}</span>
+                        <span class="reservation-chip">{{ $reservationScopeLabel }}</span>
+                        <span class="reservation-chip">
+                            @if ($reservation->start_date === $reservation->end_date)
+                                @frDate($reservation->start_date)
+                            @else
+                                Du @frDate($reservation->start_date) au @frDate($reservation->end_date)
+                            @endif
+                        </span>
+                        <span class="reservation-chip">{{ $reservation->start_time ?? '--:--' }} - {{ $reservation->end_time ?? '--:--' }}</span>
+                        <span class="reservation-chip">&#127915; {{ $reservation->event_type ?: '-' }}</span>
+                        <span class="reservation-chip">&#128101; {{ $reservation->guest_count ?: '-' }}</span>
+                    </div>
+                </div>
+                <div class="reservation-show-actions">
+                    @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
+                        <div class="reservation-actions-menu" id="reservation-actions-menu">
+                            <button type="button" class="btn btn-primary" id="reservation-actions-toggle">Actions reservation</button>
+                            <div class="reservation-actions-menu-panel" id="reservation-actions-panel">
+                                @if ($canCreateReservation)
+                                    <button type="button" class="btn reservation-actions-menu-item" data-open-modal="clone-reservation-modal">Cloner reservation</button>
+                                @endif
+                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-modal">Modifier reservation</button>
+                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-slot-modal">Modifier date/heure/salle</button>
+                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="cancel-reservation-modal" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Annuler la reservation</button>
+                            </div>
+                        </div>
+                    @endif
+                    @if ($canCreateReservation && ($reservation->status ?? null) === 'cancelled')
+                        <button type="button" class="btn" data-open-modal="clone-reservation-modal">Cloner reservation</button>
+                    @endif
+                    <a href="{{ route('reservations.index') }}" class="btn">Retour au calendrier</a>
                 </div>
             </div>
-            <div class="reservation-show-actions">
-                @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
-                    <div class="reservation-actions-menu" id="reservation-actions-menu">
-                        <button type="button" class="btn btn-primary" id="reservation-actions-toggle">Actions reservation</button>
-                        <div class="reservation-actions-menu-panel" id="reservation-actions-panel">
-                            @if ($canCreateReservation)
-                                <button type="button" class="btn reservation-actions-menu-item" data-open-modal="clone-reservation-modal">Cloner reservation</button>
-                            @endif
-                            <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-modal">Modifier reservation</button>
-                            <button type="button" class="btn reservation-actions-menu-item" data-open-modal="reservation-slot-modal">Modifier date/heure/salle</button>
-                            <button type="button" class="btn reservation-actions-menu-item" data-open-modal="cancel-reservation-modal" style="border-color:#efc1bf;color:#a9362f;background:#fff3f2;">Annuler la reservation</button>
+
+            <article class="reservation-card">
+                <div class="reservation-object-head">
+                    <h3 class="reservation-object-title">Affectation staff event</h3>
+                </div>
+                <div class="reservation-object-body">
+                    @if (! $isSalleReservation)
+                        <p class="reservation-empty">L affectation staff est disponible uniquement pour les reservations de type salle.</p>
+                    @else
+                        <div class="staff-summary-grid">
+                            <div class="staff-summary-row">
+                                <span class="staff-summary-label">Gérant</span>
+                                <strong>{{ $gerantAffectation?->user?->name ?? 'Aucun' }}</strong>
+                            </div>
+                            <div class="staff-summary-row">
+                                <span class="staff-summary-label">Serveurs</span>
+                                <span>
+                                    @if ($serveurAffectations->isEmpty())
+                                        Aucun
+                                    @else
+                                        {{ $serveurAffectations->map(fn($row) => ($row->user?->name ?? ('Utilisateur #' . $row->user_id)) . ($row->is_chef ? ' (Chef)' : ''))->implode(', ') }}
+                                    @endif
+                                </span>
+                            </div>
+                            <div class="staff-summary-row">
+                                <span class="staff-summary-label">Femmes de ménage</span>
+                                <span>{{ $femmeMenageAffectations->isEmpty() ? 'Aucune' : $femmeMenageAffectations->map(fn($row) => $row->user?->name ?? ('Utilisateur #' . $row->user_id))->implode(', ') }}</span>
+                            </div>
                         </div>
-                    </div>
-                @endif
-                @if ($canCreateReservation && ($reservation->status ?? null) === 'cancelled')
-                    <button type="button" class="btn" data-open-modal="clone-reservation-modal">Cloner reservation</button>
-                @endif
-                <a href="{{ route('reservations.index') }}" class="btn">Retour au calendrier</a>
-            </div>
+
+                        @if ($canUpdateReservation)
+                            <div class="reservation-actions-row" style="justify-content:flex-start; margin-top:8px;">
+                                <button type="button" class="btn btn-primary" data-open-modal="staff-affectation-modal">Modifier affectation staff</button>
+                            </div>
+                        @endif
+                    @endif
+                </div>
+            </article>
         </div>
 
         <div class="reservation-objects-grid">
@@ -960,157 +1104,235 @@
                 </div>
             </article>
 
-            <article class="reservation-card">
-                <div class="reservation-object-head">
-                    <h3 class="reservation-object-title">Affectation staff event</h3>
-                </div>
-                <div class="reservation-object-body">
-                    @if (! $isSalleReservation)
-                        <p class="reservation-empty">L affectation staff est disponible uniquement pour les reservations de type salle.</p>
-                    @else
-                        <div class="additional-service-category">
-                            <h4>Gérant</h4>
-                            @if ($gerantAffectation?->user)
-                                <div class="additional-service-item">
-                                    <div>
-                                        <strong>{{ $gerantAffectation->user->name }}</strong>
-                                        <small>Responsable principal</small>
-                                    </div>
-                                </div>
-                            @else
-                                <p class="reservation-empty">Aucun gérant affecté.</p>
-                            @endif
-                        </div>
-
-                        <div class="additional-service-category">
-                            <h4>Serveurs</h4>
-                            @if ($serveurAffectations->isEmpty())
-                                <p class="reservation-empty">Aucun serveur affecté.</p>
-                            @else
-                                @foreach ($serveurAffectations as $row)
-                                    <div class="additional-service-item">
-                                        <div>
-                                            <strong>{{ $row->user?->name ?? ('Utilisateur #' . $row->user_id) }}</strong>
-                                            <small>{{ $row->is_chef ? 'Chef des serveurs' : 'Serveur' }}</small>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            @endif
-                        </div>
-
-                        <div class="additional-service-category">
-                            <h4>Femmes de ménage</h4>
-                            @if ($femmeMenageAffectations->isEmpty())
-                                <p class="reservation-empty">Aucune femme de ménage affectée.</p>
-                            @else
-                                @foreach ($femmeMenageAffectations as $row)
-                                    <div class="additional-service-item">
-                                        <div>
-                                            <strong>{{ $row->user?->name ?? ('Utilisateur #' . $row->user_id) }}</strong>
-                                            <small>Equipe entretien</small>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            @endif
-                        </div>
-
-                        @if ($canUpdateReservation)
-                            <form method="POST" action="{{ route('reservations.staff-affectations.update', $reservation) }}" style="display:grid; gap:10px; margin-top:8px;">
-                                @csrf
-                                @method('PATCH')
-
-                                <p class="payment-form-help">Affecter le staff qui va travailler sur cet evenement: gérant, serveurs (avec un chef), femmes de ménage.</p>
-
-                                <div>
-                                    <label for="staff-manager-user-id">Gérant</label>
-                                    <select id="staff-manager-user-id" name="manager_staff_user_id">
-                                        <option value="">Aucun</option>
-                                        @foreach ($staffOptions as $staffOption)
-                                            @php
-                                                $staffUserId = (int) ($staffOption->user_id ?? 0);
-                                                $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
-                                                $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
-                                                $selectedManagerUserId = old('manager_staff_user_id', $gerantAffectation?->user_id);
-                                            @endphp
-                                            <option value="{{ $staffUserId }}" {{ (string) $selectedManagerUserId === (string) $staffUserId ? 'selected' : '' }}>
-                                                {{ $staffLabel }}{{ !empty($staffOption->position_title) ? ' - ' . $staffOption->position_title : '' }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label for="staff-serveur-user-ids">Serveurs</label>
-                                    @php
-                                        $oldServeurs = collect(old('serveur_staff_user_ids', $selectedServeurUserIds->all()))->map(fn ($id) => (string) $id);
-                                    @endphp
-                                    <select id="staff-serveur-user-ids" name="serveur_staff_user_ids[]" multiple size="6">
-                                        @foreach ($staffOptions as $staffOption)
-                                            @php
-                                                $staffUserId = (int) ($staffOption->user_id ?? 0);
-                                                $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
-                                                $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
-                                            @endphp
-                                            <option value="{{ $staffUserId }}" {{ $oldServeurs->contains((string) $staffUserId) ? 'selected' : '' }}>
-                                                {{ $staffLabel }}{{ !empty($staffOption->position_title) ? ' - ' . $staffOption->position_title : '' }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label for="staff-serveur-chef-user-id">Chef des serveurs</label>
-                                    @php
-                                        $oldChefUserId = old('serveur_chef_user_id', $selectedChefUserId);
-                                    @endphp
-                                    <select id="staff-serveur-chef-user-id" name="serveur_chef_user_id">
-                                        <option value="">Aucun</option>
-                                        @foreach ($staffOptions as $staffOption)
-                                            @php
-                                                $staffUserId = (int) ($staffOption->user_id ?? 0);
-                                                $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
-                                                $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
-                                            @endphp
-                                            <option value="{{ $staffUserId }}" {{ (string) $oldChefUserId === (string) $staffUserId ? 'selected' : '' }}>
-                                                {{ $staffLabel }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <small style="color:#607a95;">Le chef doit faire partie de la liste des serveurs.</small>
-                                </div>
-
-                                <div>
-                                    <label for="staff-femme-menage-user-ids">Femmes de ménage</label>
-                                    @php
-                                        $oldFemmesMenage = collect(old('femme_menage_staff_user_ids', $selectedFemmeMenageUserIds->all()))->map(fn ($id) => (string) $id);
-                                    @endphp
-                                    <select id="staff-femme-menage-user-ids" name="femme_menage_staff_user_ids[]" multiple size="6">
-                                        @foreach ($staffOptions as $staffOption)
-                                            @php
-                                                $staffUserId = (int) ($staffOption->user_id ?? 0);
-                                                $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
-                                                $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
-                                            @endphp
-                                            <option value="{{ $staffUserId }}" {{ $oldFemmesMenage->contains((string) $staffUserId) ? 'selected' : '' }}>
-                                                {{ $staffLabel }}{{ !empty($staffOption->position_title) ? ' - ' . $staffOption->position_title : '' }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div class="reservation-actions-row">
-                                    <button type="submit" class="btn btn-primary">Enregistrer affectation staff</button>
-                                </div>
-                            </form>
-                        @endif
-                    @endif
-                </div>
-            </article>
-
         </div>
     </section>
 
     @if ($canUpdateReservation)
+        @if ($isSalleReservation)
+            <div class="modal-overlay" id="staff-affectation-modal">
+                <div class="modal-card" style="width:min(980px,100%);">
+                    <div class="modal-head">
+                        <h3 class="modal-title">Affectation staff event</h3>
+                        <button type="button" class="btn" data-close-modal>Fermer</button>
+                    </div>
+
+                    <form method="POST" action="{{ route('reservations.staff-affectations.update', $reservation) }}" style="display:grid;gap:12px;">
+                        @csrf
+                        @method('PATCH')
+
+                        <p class="payment-form-help">Selectionne les membres par section. Filtre possible par departement. Tri alphabetique applique.</p>
+
+                        @php
+                            $departments = $staffOptions
+                                ->map(function ($staffOption) {
+                                    return [
+                                        'id' => (string) ($staffOption->department_id ?? ''),
+                                        'name' => (string) ($staffOption->department?->name ?? 'Sans departement'),
+                                    ];
+                                })
+                                ->unique('id')
+                                ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+                                ->values();
+
+                            $sortedStaffOptions = $staffOptions
+                                ->sortBy(function ($staffOption) {
+                                    return mb_strtolower((string) ($staffOption->full_name ?: ($staffOption->user?->name ?? '')));
+                                }, SORT_NATURAL | SORT_FLAG_CASE)
+                                ->values();
+
+                            $oldManagerUserId = old('manager_staff_user_id', $gerantAffectation?->user_id);
+                            $oldServeurs = collect(old('serveur_staff_user_ids', $selectedServeurUserIds->all()))->map(fn ($id) => (string) $id);
+                            $oldChefUserId = old('serveur_chef_user_id', $selectedChefUserId);
+                            $oldFemmesMenage = collect(old('femme_menage_staff_user_ids', $selectedFemmeMenageUserIds->all()))->map(fn ($id) => (string) $id);
+                        @endphp
+
+                        <div>
+                            <label for="staff-department-filter">Filtre departement</label>
+                            <select id="staff-department-filter">
+                                <option value="">Tous les departements</option>
+                                @foreach ($departments as $department)
+                                    <option value="{{ $department['id'] }}">{{ $department['name'] }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="additional-service-category">
+                            <h4>Section Gérant</h4>
+                            <div class="staff-avatar-grid">
+                                <label class="staff-avatar-card" data-department-id="" data-role="gerant">
+                                    <input type="radio" name="manager_staff_user_id" value="" {{ (string) $oldManagerUserId === '' ? 'checked' : '' }}>
+                                    <span class="staff-avatar">-</span>
+                                    <span class="staff-avatar-name">Aucun</span>
+                                    <span class="staff-avatar-meta">Affectation vide</span>
+                                </label>
+                                @foreach ($sortedStaffOptions as $staffOption)
+                                    @php
+                                        $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                        $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
+                                        $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
+                                        $departmentId = (string) ($staffOption->department_id ?? '');
+                                        $departmentName = (string) ($staffOption->department?->name ?? 'Sans departement');
+                                        $initials = '';
+                                        foreach (preg_split('/\s+/', $staffLabel) ?: [] as $part) {
+                                            if ($part !== '') {
+                                                $initials .= mb_strtoupper(mb_substr($part, 0, 1));
+                                            }
+                                            if (mb_strlen($initials) >= 2) {
+                                                break;
+                                            }
+                                        }
+                                        if ($initials === '') {
+                                            $initials = 'ST';
+                                        }
+                                    @endphp
+                                    <label class="staff-avatar-card" data-department-id="{{ $departmentId }}" data-role="gerant">
+                                        <input type="radio" name="manager_staff_user_id" value="{{ $staffUserId }}" {{ (string) $oldManagerUserId === (string) $staffUserId ? 'checked' : '' }}>
+                                        <span class="staff-avatar">
+                                            @if (!empty($staffOption->photo_path))
+                                                <img src="{{ asset('storage/' . ltrim($staffOption->photo_path, '/')) }}" alt="{{ $staffLabel }}">
+                                            @else
+                                                {{ $initials }}
+                                            @endif
+                                        </span>
+                                        <span class="staff-avatar-name">{{ $staffLabel }}</span>
+                                        <span class="staff-avatar-meta">{{ $departmentName }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="additional-service-category">
+                            <h4>Section Serveurs</h4>
+                            <div class="staff-avatar-grid">
+                                @foreach ($sortedStaffOptions as $staffOption)
+                                    @php
+                                        $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                        $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
+                                        $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
+                                        $departmentId = (string) ($staffOption->department_id ?? '');
+                                        $departmentName = (string) ($staffOption->department?->name ?? 'Sans departement');
+                                        $initials = '';
+                                        foreach (preg_split('/\s+/', $staffLabel) ?: [] as $part) {
+                                            if ($part !== '') {
+                                                $initials .= mb_strtoupper(mb_substr($part, 0, 1));
+                                            }
+                                            if (mb_strlen($initials) >= 2) {
+                                                break;
+                                            }
+                                        }
+                                        if ($initials === '') {
+                                            $initials = 'ST';
+                                        }
+                                    @endphp
+                                    <label class="staff-avatar-card" data-department-id="{{ $departmentId }}" data-role="serveur">
+                                        <input type="checkbox" name="serveur_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldServeurs->contains((string) $staffUserId) ? 'checked' : '' }}>
+                                        <span class="staff-avatar">
+                                            @if (!empty($staffOption->photo_path))
+                                                <img src="{{ asset('storage/' . ltrim($staffOption->photo_path, '/')) }}" alt="{{ $staffLabel }}">
+                                            @else
+                                                {{ $initials }}
+                                            @endif
+                                        </span>
+                                        <span class="staff-avatar-name">{{ $staffLabel }}</span>
+                                        <span class="staff-avatar-meta">{{ $departmentName }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="additional-service-category">
+                            <h4>Chef des serveurs</h4>
+                            <div class="staff-avatar-grid">
+                                <label class="staff-avatar-card" data-department-id="" data-role="chef">
+                                    <input type="radio" name="serveur_chef_user_id" value="" {{ (string) $oldChefUserId === '' ? 'checked' : '' }}>
+                                    <span class="staff-avatar">-</span>
+                                    <span class="staff-avatar-name">Aucun</span>
+                                    <span class="staff-avatar-meta">Pas de chef</span>
+                                </label>
+                                @foreach ($sortedStaffOptions as $staffOption)
+                                    @php
+                                        $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                        $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
+                                        $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
+                                        $departmentId = (string) ($staffOption->department_id ?? '');
+                                        $departmentName = (string) ($staffOption->department?->name ?? 'Sans departement');
+                                        $initials = '';
+                                        foreach (preg_split('/\s+/', $staffLabel) ?: [] as $part) {
+                                            if ($part !== '') {
+                                                $initials .= mb_strtoupper(mb_substr($part, 0, 1));
+                                            }
+                                            if (mb_strlen($initials) >= 2) {
+                                                break;
+                                            }
+                                        }
+                                        if ($initials === '') {
+                                            $initials = 'ST';
+                                        }
+                                    @endphp
+                                    <label class="staff-avatar-card" data-department-id="{{ $departmentId }}" data-role="chef">
+                                        <input type="radio" name="serveur_chef_user_id" value="{{ $staffUserId }}" {{ (string) $oldChefUserId === (string) $staffUserId ? 'checked' : '' }}>
+                                        <span class="staff-avatar">
+                                            @if (!empty($staffOption->photo_path))
+                                                <img src="{{ asset('storage/' . ltrim($staffOption->photo_path, '/')) }}" alt="{{ $staffLabel }}">
+                                            @else
+                                                {{ $initials }}
+                                            @endif
+                                        </span>
+                                        <span class="staff-avatar-name">{{ $staffLabel }}</span>
+                                        <span class="staff-avatar-meta">{{ $departmentName }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            <small style="color:#607a95;">Le chef doit etre selectionne parmi les serveurs.</small>
+                        </div>
+
+                        <div class="additional-service-category">
+                            <h4>Section Femmes de ménage</h4>
+                            <div class="staff-avatar-grid">
+                                @foreach ($sortedStaffOptions as $staffOption)
+                                    @php
+                                        $staffUserId = (int) ($staffOption->user_id ?? 0);
+                                        $staffLabel = trim((string) (($staffOption->full_name ?? '') !== '' ? $staffOption->full_name : ($staffOption->user?->name ?? '')));
+                                        $staffLabel = $staffLabel !== '' ? $staffLabel : ('Staff #' . $staffOption->id);
+                                        $departmentId = (string) ($staffOption->department_id ?? '');
+                                        $departmentName = (string) ($staffOption->department?->name ?? 'Sans departement');
+                                        $initials = '';
+                                        foreach (preg_split('/\s+/', $staffLabel) ?: [] as $part) {
+                                            if ($part !== '') {
+                                                $initials .= mb_strtoupper(mb_substr($part, 0, 1));
+                                            }
+                                            if (mb_strlen($initials) >= 2) {
+                                                break;
+                                            }
+                                        }
+                                        if ($initials === '') {
+                                            $initials = 'ST';
+                                        }
+                                    @endphp
+                                    <label class="staff-avatar-card" data-department-id="{{ $departmentId }}" data-role="femme-menage">
+                                        <input type="checkbox" name="femme_menage_staff_user_ids[]" value="{{ $staffUserId }}" {{ $oldFemmesMenage->contains((string) $staffUserId) ? 'checked' : '' }}>
+                                        <span class="staff-avatar">
+                                            @if (!empty($staffOption->photo_path))
+                                                <img src="{{ asset('storage/' . ltrim($staffOption->photo_path, '/')) }}" alt="{{ $staffLabel }}">
+                                            @else
+                                                {{ $initials }}
+                                            @endif
+                                        </span>
+                                        <span class="staff-avatar-name">{{ $staffLabel }}</span>
+                                        <span class="staff-avatar-meta">{{ $departmentName }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="reservation-actions-row">
+                            <button type="submit" class="btn btn-primary">Enregistrer affectation staff</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @endif
+
         <div class="modal-overlay" id="cancel-reservation-modal">
             <div class="modal-card">
                 <div class="modal-head">
@@ -2012,7 +2234,22 @@
             } else if (hasClientErrors) {
                 openModal('client-modal');
             } else if (hasStaffAffectationErrors) {
-                // Les erreurs d'affectation staff sont affichees dans la carte principale, pas en modal.
+                openModal('staff-affectation-modal');
+            }
+
+            const staffDepartmentFilter = document.getElementById('staff-department-filter');
+            if (staffDepartmentFilter) {
+                const applyStaffDepartmentFilter = () => {
+                    const selectedDepartmentId = String(staffDepartmentFilter.value || '');
+                    document.querySelectorAll('#staff-affectation-modal .staff-avatar-card').forEach((card) => {
+                        const cardDepartmentId = String(card.getAttribute('data-department-id') || '');
+                        const shouldShow = selectedDepartmentId === '' || cardDepartmentId === '' || cardDepartmentId === selectedDepartmentId;
+                        card.style.display = shouldShow ? '' : 'none';
+                    });
+                };
+
+                staffDepartmentFilter.addEventListener('change', applyStaffDepartmentFilter);
+                applyStaffDepartmentFilter();
             }
         })();
     </script>

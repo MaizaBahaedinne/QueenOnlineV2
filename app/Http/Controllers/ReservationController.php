@@ -357,12 +357,12 @@ class ReservationController extends MatrixAwareController
         $clientCreditBalance = $this->getClientCreditBalance((int) $reservation->client_id, $reservationServiceSlug);
 
         $staffOptions = Staff::query()
-            ->with('user:id,name')
+            ->with(['user:id,name', 'department:id,name'])
             ->where('status', 'active')
             ->whereNotNull('user_id')
             ->orderBy('first_name')
             ->orderBy('last_name')
-            ->get(['id', 'user_id', 'first_name', 'last_name', 'position_title'])
+            ->get(['id', 'user_id', 'department_id', 'photo_path', 'first_name', 'last_name', 'position_title'])
             ->filter(fn (Staff $staff) => $staff->user !== null)
             ->values();
 
