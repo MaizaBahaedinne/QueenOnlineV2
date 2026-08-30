@@ -16,6 +16,9 @@
         $remainingGlobalQuantity = max($totalEntreeQuantity - $totalSortieQuantity, 0);
         $isInventoryClosed = $serviceEntreesRows->isNotEmpty() && $remainingGlobalQuantity === 0;
         $defaultWizardStep = old('quantite_retournee') ? 2 : 1;
+        if ($errors->has('quantite_add') || $errors->has('history_note')) {
+            $defaultWizardStep = 1;
+        }
         if ($errors->has('service_retour') || $errors->has('quantite_retournee') || $errors->has('note_retour')) {
             $defaultWizardStep = 2;
         }
@@ -263,6 +266,23 @@
             color: #1d6a3d;
         }
 
+        .inventory-history-list {
+            display: grid;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .inventory-history-item {
+            border: 1px solid #d7e4f2;
+            border-radius: 9px;
+            background: #fff;
+            padding: 7px 8px;
+            display: grid;
+            gap: 2px;
+            font-size: 12px;
+            color: #345675;
+        }
+
         @media (max-width: 860px) {
             .payment-form-row {
                 grid-template-columns: 1fr;
@@ -356,9 +376,61 @@
                 @else
                     <div style="display:grid;gap:8px;">
                         @foreach ($serviceEntreesRows as $entree)
-                            <div class="reservation-kv">
-                                <span class="reservation-kv-key">{{ $entree->nature }}</span>
-                                <span class="reservation-kv-value">Quantite entree: {{ (int) $entree->quantite }} | Moment: {{ $entree->moment_service ?: '-' }} | Heure: {{ $entree->heure_prevu ? \Illuminate\Support\Carbon::parse($entree->heure_prevu)->format('H:i') : '--:--' }}</span>
+                            <div class="additional-service-category">
+                                <h4>{{ $entree->nature }} (Qte entree: {{ (int) $entree->quantite }})</h4>
+                                <small style="color:#5f7690;">
+                                    Moment: {{ $entree->moment_service ?: '-' }}
+                                    | Cree le:
+                                    @if ($entree->created_dtm)
+                                        @frDateTime($entree->created_dtm)
+                                    @else
+                                        @frDateTime($entree->created_at)
+                                    @endif
+                                    | Cree par: {{ $entree->creator?->name ?? '-' }}
+                                </small>
+
+                                @if ($canUpdateReservation && ($reservation->status ?? null) !== 'cancelled')
+                                    <form method="POST" action="{{ route('reservations.service-entrees.increment', [$reservation, $entree]) }}" class="payment-form" style="margin-top:4px;">
+                                        @csrf
+                                        <div class="payment-form-row">
+                                            <div>
+                                                <label>Ajouter a la quantite existante</label>
+                                                <input type="number" name="quantite_add" min="1" required placeholder="Ex: 5">
+                                            </div>
+                                            <div>
+                                                <label>Note changement</label>
+                                                <input type="text" name="history_note" placeholder="Optionnel (raison, correction...)">
+                                            </div>
+                                        </div>
+                                        <div class="reservation-actions-row">
+                                            <button type="submit" class="btn">Ajouter quantite</button>
+                                        </div>
+                                    </form>
+                                @endif
+
+                                <div class="inventory-history-list">
+                                    @forelse ($entree->histories->sortByDesc(function ($historyRow) { return $historyRow->created_dtm ?? $historyRow->created_at; }) as $historyRow)
+                                        <div class="inventory-history-item">
+                                            <strong>
+                                                {{ $historyRow->action === 'create' ? 'Creation ligne' : 'Augmentation quantite' }}:
+                                                {{ (int) $historyRow->previous_quantite }} + {{ (int) $historyRow->delta_quantite }} = {{ (int) $historyRow->new_quantite }}
+                                            </strong>
+                                            <span>
+                                                @if ($historyRow->created_dtm)
+                                                    @frDateTime($historyRow->created_dtm)
+                                                @else
+                                                    @frDateTime($historyRow->created_at)
+                                                @endif
+                                                | Par: {{ $historyRow->creator?->name ?? '-' }}
+                                            </span>
+                                            @if (! empty($historyRow->note))
+                                                <span>Note: {{ $historyRow->note }}</span>
+                                            @endif
+                                        </div>
+                                    @empty
+                                        <p class="reservation-empty">Aucun changement enregistre.</p>
+                                    @endforelse
+                                </div>
                             </div>
                         @endforeach
                     </div>

@@ -11,6 +11,7 @@ use App\Models\ReservationSalleOption;
 use App\Models\ReservationCancellation;
 use App\Models\ServiceAffectation;
 use App\Models\ServiceEntree;
+use App\Models\ServiceEntreeHistory;
 use App\Models\ServiceRetour;
 use App\Models\Salle;
 use App\Models\SalleOption;
@@ -476,6 +477,7 @@ class ReservationController extends MatrixAwareController
             'client',
             'serviceEntrees.creator',
             'serviceEntrees.retours.creator',
+            'serviceEntrees.histories.creator',
         ]);
 
         return view('reservations.service-inventory', [
@@ -679,7 +681,7 @@ class ReservationController extends MatrixAwareController
             'note' => ['nullable', 'string'],
         ]);
 
-        ServiceEntree::query()->create([
+        $entree = ServiceEntree::query()->create([
             'reservation_id' => $reservation->id,
             'nature' => trim((string) $validated['nature']),
             'quantite' => (int) $validated['quantite'],
@@ -690,8 +692,63 @@ class ReservationController extends MatrixAwareController
             'created_dtm' => now(),
         ]);
 
+        ServiceEntreeHistory::query()->create([
+            'entree_id' => $entree->id,
+            'action' => 'create',
+            'previous_quantite' => 0,
+            'delta_quantite' => (int) $entree->quantite,
+            'new_quantite' => (int) $entree->quantite,
+            'note' => 'Creation de la ligne d entree.',
+            'created_by' => Auth::id(),
+            'created_dtm' => now(),
+        ]);
+
         return redirect()->route('reservations.service-inventory', $reservation)
             ->with('success', 'Entree de service ajoutee.');
+    }
+
+    public function incrementServiceEntreeQuantity(Request $request, Reservation $reservation, ServiceEntree $serviceEntree)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        if (($reservation->service_slug ?? 'salles') !== 'salles') {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'service_entree' => 'Les entrees de services sont reservees aux reservations de type salle.',
+            ])->withInput();
+        }
+
+        if ((int) $serviceEntree->reservation_id !== (int) $reservation->id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'quantite_add' => ['required', 'integer', 'min:1'],
+            'history_note' => ['nullable', 'string'],
+        ]);
+
+        DB::transaction(function () use ($serviceEntree, $validated): void {
+            $oldQuantity = (int) $serviceEntree->quantite;
+            $delta = (int) $validated['quantite_add'];
+            $newQuantity = $oldQuantity + $delta;
+
+            $serviceEntree->update([
+                'quantite' => $newQuantity,
+            ]);
+
+            ServiceEntreeHistory::query()->create([
+                'entree_id' => $serviceEntree->id,
+                'action' => 'increment',
+                'previous_quantite' => $oldQuantity,
+                'delta_quantite' => $delta,
+                'new_quantite' => $newQuantity,
+                'note' => filled($validated['history_note'] ?? null) ? trim((string) $validated['history_note']) : null,
+                'created_by' => Auth::id(),
+                'created_dtm' => now(),
+            ]);
+        });
+
+        return redirect()->route('reservations.service-inventory', $reservation)
+            ->with('success', 'Quantite d entree mise a jour avec historique.');
     }
 
     public function storeServiceRetour(Request $request, Reservation $reservation, ServiceEntree $serviceEntree)

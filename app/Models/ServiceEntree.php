@@ -63,6 +63,11 @@ class ServiceEntree extends Model
         return $this->hasMany(ServiceRetour::class, 'entree_id');
     }
 
+    public function histories()
+    {
+        return $this->hasMany(ServiceEntreeHistory::class, 'entree_id');
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
