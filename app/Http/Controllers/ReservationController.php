@@ -462,6 +462,28 @@ class ReservationController extends MatrixAwareController
         ]);
     }
 
+    public function serviceInventory(Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'list', 'view');
+
+        if (($reservation->service_slug ?? 'salles') !== 'salles') {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'service_entree' => 'Les entrees de services sont reservees aux reservations de type salle.',
+            ]);
+        }
+
+        $reservation->load([
+            'client',
+            'serviceEntrees.creator',
+            'serviceEntrees.retours.creator',
+        ]);
+
+        return view('reservations.service-inventory', [
+            'title' => 'Entrees / sorties services',
+            'reservation' => $reservation,
+        ]);
+    }
+
     public function invoice(Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'list', 'view');
@@ -668,7 +690,7 @@ class ReservationController extends MatrixAwareController
             'created_dtm' => now(),
         ]);
 
-        return redirect()->to(route('reservations.show', $reservation) . '#service-inventory')
+        return redirect()->route('reservations.service-inventory', $reservation)
             ->with('success', 'Entree de service ajoutee.');
     }
 
@@ -696,7 +718,7 @@ class ReservationController extends MatrixAwareController
         $quantityToReturn = (int) $validated['quantite_retournee'];
 
         if ($quantityToReturn > $remainingQuantity) {
-            return redirect()->to(route('reservations.show', $reservation) . '#service-inventory')
+            return redirect()->route('reservations.service-inventory', $reservation)
                 ->withErrors([
                     'service_retour' => 'Quantite retournee invalide. Reste disponible: ' . $remainingQuantity . '.',
                 ])
@@ -711,7 +733,7 @@ class ReservationController extends MatrixAwareController
             'created_dtm' => now(),
         ]);
 
-        return redirect()->to(route('reservations.show', $reservation) . '#service-inventory')
+        return redirect()->route('reservations.service-inventory', $reservation)
             ->with('success', 'Sortie de service enregistree.');
     }
 
