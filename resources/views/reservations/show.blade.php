@@ -74,6 +74,13 @@
         $tvaRate = 0.19;
         $invoiceTotalTtc = (float) ($reservation->total_amount ?? 0);
         $parallelBusyStaffUserIds = collect($parallelBusyStaffUserIds ?? [])->map(fn ($id) => (int) $id)->unique()->values();
+        $feedbackCount = $reservation->serviceFeedbacks->count();
+        $averageSalleNote = $feedbackCount > 0
+            ? round((float) $reservation->serviceFeedbacks->avg('note_salle'), 1)
+            : null;
+        $averageServiceNote = $feedbackCount > 0
+            ? round((float) $reservation->serviceFeedbacks->avg('note_service'), 1)
+            : null;
     @endphp
 
     <style>
@@ -168,6 +175,29 @@
             gap: 8px;
             flex-wrap: wrap;
             justify-content: flex-end;
+        }
+
+        .reservation-hero-bottom {
+            width: 100%;
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px dashed #cfe0f2;
+            display: grid;
+            gap: 10px;
+        }
+
+        .reservation-hero-inline-title {
+            margin: 0;
+            font-size: 12px;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+            color: #335a80;
+        }
+
+        .reservation-rating-summary {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         .reservation-actions-menu {
@@ -1017,19 +1047,13 @@
                     @endif
                     <a href="{{ route('reservations.index') }}" class="btn">Retour au calendrier</a>
                 </div>
-            </div>
 
-            <article class="reservation-card">
-                <div class="reservation-object-head">
-                    <h3 class="reservation-object-title">Reservation detail - Affectation et satisfaction</h3>
-                </div>
-                <div class="reservation-object-body">
-                    <div class="reservation-detail-section">
-                        <h4 class="reservation-detail-section-title">Affectation staff event</h4>
-                        @if (! $isSalleReservation)
-                            <p class="reservation-empty">L affectation staff est disponible uniquement pour les reservations de type salle.</p>
-                        @else
-                            <div class="staff-summary-grid">
+                <div class="reservation-hero-bottom">
+                    <h4 class="reservation-hero-inline-title">Affectation staff event</h4>
+                    @if (! $isSalleReservation)
+                        <p class="reservation-empty" style="padding:0;">L affectation staff est disponible uniquement pour les reservations de type salle.</p>
+                    @else
+                        <div class="staff-summary-grid">
                             <div class="staff-summary-row">
                                 <span class="staff-summary-label">Chef de service</span>
                                 @if ($gerantAffectation && ($staffByUserId->get($gerantAffectation->user_id) ?? null))
@@ -1065,6 +1089,7 @@
                                     <strong>Aucun</strong>
                                 @endif
                             </div>
+
                             <div class="staff-summary-row">
                                 <span class="staff-summary-label">Serveur</span>
                                 @if ($serveurAffectations->isNotEmpty())
@@ -1103,9 +1128,10 @@
                                     <strong>Aucun</strong>
                                 @endif
                             </div>
-                            <div class="staff-summary-row">
-                                <span class="staff-summary-label">Annimateur</span>
-                                @if ($annimateurAffectations->isNotEmpty())
+
+                            @if ($annimateurAffectations->isNotEmpty())
+                                <div class="staff-summary-row">
+                                    <span class="staff-summary-label">Annimateur</span>
                                     <div class="staff-assignment-preview-grid">
                                         @foreach ($annimateurAffectations as $row)
                                             @php
@@ -1137,13 +1163,12 @@
                                             </div>
                                         @endforeach
                                     </div>
-                                @else
-                                    <strong>Aucun</strong>
-                                @endif
-                            </div>
-                            <div class="staff-summary-row">
-                                <span class="staff-summary-label">Femme de menage</span>
-                                @if ($femmeMenageAffectations->isNotEmpty())
+                                </div>
+                            @endif
+
+                            @if ($femmeMenageAffectations->isNotEmpty())
+                                <div class="staff-summary-row">
+                                    <span class="staff-summary-label">Femme de menage</span>
                                     <div class="staff-assignment-preview-grid">
                                         @foreach ($femmeMenageAffectations as $row)
                                             @php
@@ -1175,13 +1200,12 @@
                                             </div>
                                         @endforeach
                                     </div>
-                                @else
-                                    <strong>Aucune</strong>
-                                @endif
-                            </div>
-                            <div class="staff-summary-row">
-                                <span class="staff-summary-label">Agent de securite</span>
-                                @if ($agentSecuriteAffectations->isNotEmpty())
+                                </div>
+                            @endif
+
+                            @if ($agentSecuriteAffectations->isNotEmpty())
+                                <div class="staff-summary-row">
+                                    <span class="staff-summary-label">Agent de securite</span>
                                     <div class="staff-assignment-preview-grid">
                                         @foreach ($agentSecuriteAffectations as $row)
                                             @php
@@ -1213,15 +1237,25 @@
                                             </div>
                                         @endforeach
                                     </div>
-                                @else
-                                    <strong>Aucun</strong>
-                                @endif
-                            </div>
-                            </div>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
 
-                        @endif
+                    <h4 class="reservation-hero-inline-title">Moyennes satisfaction</h4>
+                    <div class="reservation-rating-summary">
+                        <span class="reservation-chip info">Salle: {{ $averageSalleNote !== null ? number_format($averageSalleNote, 1, '.', ' ') : '-' }} / 10</span>
+                        <span class="reservation-chip info">Service: {{ $averageServiceNote !== null ? number_format($averageServiceNote, 1, '.', ' ') : '-' }} / 10</span>
+                        <span class="reservation-chip">{{ $feedbackCount }} note(s)</span>
                     </div>
+                </div>
+            </div>
 
+            <article class="reservation-card">
+                <div class="reservation-object-head">
+                    <h3 class="reservation-object-title">Details satisfaction client</h3>
+                </div>
+                <div class="reservation-object-body">
                     <div class="reservation-detail-section">
                         <h4 class="reservation-detail-section-title">Notes satisfaction client</h4>
                         @if ($reservation->serviceFeedbacks->isEmpty())
