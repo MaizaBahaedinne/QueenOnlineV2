@@ -330,8 +330,6 @@
                                 <label for="entree-quantite">Quantite entree</label>
                                 <input id="entree-quantite" name="quantite" type="number" min="1" required value="{{ old('quantite') }}">
                             </div>
-                        </div>
-                        <div class="payment-form-row">
                             <div>
                                 <label for="entree-moment-service">Moment service</label>
                                 <select id="entree-moment-service" name="moment_service">
@@ -341,10 +339,6 @@
                                     <option value="milieu" {{ old('moment_service') === 'milieu' ? 'selected' : '' }}>Milieu</option>
                                     <option value="fin" {{ old('moment_service') === 'fin' ? 'selected' : '' }}>Fin</option>
                                 </select>
-                            </div>
-                            <div>
-                                <label for="entree-heure-prevu">Heure prevue</label>
-                                <input id="entree-heure-prevu" name="heure_prevu" type="time" value="{{ old('heure_prevu') }}">
                             </div>
                         </div>
                         <div>
