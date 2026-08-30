@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -81,6 +82,14 @@ class ReservationController extends MatrixAwareController
         'Annimateur',
         'Femme de menage',
         'Agent de securite',
+    ];
+
+    private const STAFF_AFFECTATION_SECTIONS = [
+        'chef-service' => 'Chef de service',
+        'serveur' => 'Serveur',
+        'annimateur' => 'Annimateur',
+        'femme-menage' => 'Femme de menage',
+        'agent-securite' => 'Agent de securite',
     ];
 
     public function index()
@@ -370,12 +379,19 @@ class ReservationController extends MatrixAwareController
             ->with(['user:id,name', 'department:id,name'])
             ->where('status', 'active')
             ->whereNotNull('user_id')
-            ->whereIn('position_title', self::STAFF_AFFECTATION_POSITION_TITLES)
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get(['id', 'user_id', 'department_id', 'photo_path', 'first_name', 'last_name', 'position_title'])
-            ->filter(fn (Staff $staff) => $staff->user !== null)
+            ->filter(function (Staff $staff) {
+                return $staff->user !== null && $this->staffSectionSlug($staff->position_title) !== null;
+            })
             ->values();
+
+        $staffOptions = $staffOptions->map(function (Staff $staff) {
+            $staff->setAttribute('reservation_section_slug', $this->staffSectionSlug($staff->position_title));
+
+            return $staff;
+        });
 
         $parallelBusyStaffUserIds = collect();
         if ($currentStart && $currentEnd) {
@@ -2173,6 +2189,43 @@ class ReservationController extends MatrixAwareController
             return null;
         }
 
+
+    private function staffSectionSlug(?string $positionTitle): ?string
+    {
+        $normalized = Str::of((string) $positionTitle)
+            ->lower()
+            ->ascii()
+            ->replaceMatches('/[^a-z]+/', ' ')
+            ->trim()
+            ->squish()
+            ->value();
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (Str::contains($normalized, ['chef', 'service'])) {
+            return 'chef-service';
+        }
+
+        if (Str::contains($normalized, 'serveur')) {
+            return 'serveur';
+        }
+
+        if (Str::contains($normalized, ['anim', 'annim'])) {
+            return 'annimateur';
+        }
+
+        if (Str::contains($normalized, ['femme', 'menag', 'menage'])) {
+            return 'femme-menage';
+        }
+
+        if (Str::contains($normalized, ['secur', 'securite'])) {
+            return 'agent-securite';
+        }
+
+        return null;
+    }
         try {
             return Carbon::parse($dateValue . ' ' . $timeValue);
         } catch (\Throwable) {

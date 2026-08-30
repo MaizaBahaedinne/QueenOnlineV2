@@ -1415,7 +1415,7 @@
                                 </label>
                                 @foreach ($sortedStaffOptions as $staffOption)
                                     @php
-                                        if (! in_array((string) ($staffOption->position_title ?? ''), ['Chef Service', 'Chef de service'], true)) {
+                                        if ((string) ($staffOption->reservation_section_slug ?? '') !== 'chef-service') {
                                             continue;
                                         }
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
@@ -1461,7 +1461,7 @@
                             <div class="staff-avatar-grid">
                                 @foreach ($sortedStaffOptions as $staffOption)
                                     @php
-                                        if (! in_array((string) ($staffOption->position_title ?? ''), ['Serveur', 'serveur'], true)) {
+                                        if ((string) ($staffOption->reservation_section_slug ?? '') !== 'serveur') {
                                             continue;
                                         }
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
@@ -1507,7 +1507,7 @@
                             <div class="staff-avatar-grid">
                                 @foreach ($sortedStaffOptions as $staffOption)
                                     @php
-                                        if ((string) ($staffOption->position_title ?? '') !== 'Annimateur') {
+                                        if ((string) ($staffOption->reservation_section_slug ?? '') !== 'annimateur') {
                                             continue;
                                         }
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
@@ -1553,7 +1553,7 @@
                             <div class="staff-avatar-grid">
                                 @foreach ($sortedStaffOptions as $staffOption)
                                     @php
-                                        if ((string) ($staffOption->position_title ?? '') !== 'Femme de menage') {
+                                        if ((string) ($staffOption->reservation_section_slug ?? '') !== 'femme-menage') {
                                             continue;
                                         }
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
@@ -1599,7 +1599,7 @@
                             <div class="staff-avatar-grid">
                                 @foreach ($sortedStaffOptions as $staffOption)
                                     @php
-                                        if ((string) ($staffOption->position_title ?? '') !== 'Agent de securite') {
+                                        if ((string) ($staffOption->reservation_section_slug ?? '') !== 'agent-securite') {
                                             continue;
                                         }
                                         $staffUserId = (int) ($staffOption->user_id ?? 0);
