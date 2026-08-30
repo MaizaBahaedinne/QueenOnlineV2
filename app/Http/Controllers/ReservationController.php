@@ -355,6 +355,7 @@ class ReservationController extends MatrixAwareController
         return view('reservations.show', [
             'title' => 'Detail reservation',
             'reservation' => $reservation,
+            'salles' => Salle::query()->orderBy('name')->get(['id', 'name', 'capacity']),
             'governorates' => self::GOVERNORATES,
             'sources' => self::SOURCES,
             'eventTypes' => self::EVENT_TYPES,
