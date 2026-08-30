@@ -117,10 +117,7 @@
             border: 1px solid #d5e3f2;
             border-radius: 18px;
             padding: 18px;
-            background:
-                radial-gradient(circle at 10% 15%, rgba(64, 162, 230, 0.20) 0%, rgba(64, 162, 230, 0) 48%),
-                radial-gradient(circle at 88% 18%, rgba(14, 111, 186, 0.18) 0%, rgba(14, 111, 186, 0) 40%),
-                linear-gradient(145deg, var(--rs-bg-a) 0%, var(--rs-bg-b) 100%);
+            background: linear-gradient(145deg, var(--reservation-salle-color, var(--rs-bg-a)) 0%, #ffffff 100%);
             box-shadow: var(--rs-shadow);
             display: flex;
             gap: 14px;
@@ -988,11 +985,10 @@
         @endif
 
         <div class="reservation-top-grid">
-            <div class="reservation-show-hero">
+            <div class="reservation-show-hero" style="--reservation-salle-color: {{ $currentSalleColor }};">
                 <div>
                     <p class="reservation-show-kicker">Reservation detail</p>
                     <h1 class="reservation-show-title">{{ $reservation->title ?: 'Reservation #' . $reservation->id }}</h1>
-                    <p class="reservation-show-sub">Type: {{ $reservationTypeLabel }} ({{ $reservationScopeLabel }}) | Salle: {{ $reservation->salle?->name ?? '-' }} | Createur: {{ $reservation->user?->name ?? '-' }}</p>
                     <div class="reservation-show-chips">
                         <span class="reservation-chip {{ $statusTone }}">{{ $statusLabel }}</span>
                         <span class="reservation-chip">{{ $reservationScopeLabel }}</span>
@@ -1038,6 +1034,7 @@
                     <div class="reservation-switch" id="reservation-summary-switch">
                         <button type="button" class="reservation-switch-btn is-active" data-switch-target="staff">Affectation staff event</button>
                         <button type="button" class="reservation-switch-btn" data-switch-target="client">Informations client</button>
+                        <button type="button" class="reservation-switch-btn" data-switch-target="satisfaction">Notes satisfaction client</button>
                     </div>
                 </div>
                 <div class="reservation-object-body">
@@ -1255,6 +1252,22 @@
                             </div>
                         @endif
                     </div>
+
+                    <div class="reservation-switch-panel" data-switch-panel="satisfaction">
+                        @if ($reservation->serviceFeedbacks->isEmpty())
+                            <p class="reservation-empty">Aucune note de satisfaction enregistree.</p>
+                        @else
+                            @foreach ($reservation->serviceFeedbacks->sortByDesc('created_dtm') as $feedback)
+                                <div class="reservation-kv">
+                                    <span class="reservation-kv-key">{{ $feedback->nom ?: ($feedback->creator?->name ?? 'Client') }} - @frDateTime($feedback->created_dtm)</span>
+                                    <span class="reservation-kv-value">
+                                        Salle: {{ $feedback->note_salle ?? '-' }} / 10 | Service: {{ $feedback->note_service ?? '-' }} / 10<br>
+                                        {{ $feedback->commentaire ?: 'Sans commentaire.' }}
+                                    </span>
+                                </div>
+                            @endforeach
+                        @endif
+                    </div>
                 </div>
             </article>
         </div>
@@ -1357,27 +1370,6 @@
                                     @endforeach
                                 </div>
                             @endif
-                        @endforeach
-                    @endif
-                </div>
-            </article>
-
-            <article class="reservation-card">
-                <div class="reservation-object-head">
-                    <h3 class="reservation-object-title">Notes satisfaction client</h3>
-                </div>
-                <div class="reservation-object-body">
-                    @if ($reservation->serviceFeedbacks->isEmpty())
-                        <p class="reservation-empty">Aucune note de satisfaction enregistree.</p>
-                    @else
-                        @foreach ($reservation->serviceFeedbacks->sortByDesc('created_dtm') as $feedback)
-                            <div class="reservation-kv">
-                                <span class="reservation-kv-key">{{ $feedback->nom ?: ($feedback->creator?->name ?? 'Client') }} - @frDateTime($feedback->created_dtm)</span>
-                                <span class="reservation-kv-value">
-                                    Salle: {{ $feedback->note_salle ?? '-' }} / 10 | Service: {{ $feedback->note_service ?? '-' }} / 10<br>
-                                    {{ $feedback->commentaire ?: 'Sans commentaire.' }}
-                                </span>
-                            </div>
                         @endforeach
                     @endif
                 </div>
