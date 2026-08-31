@@ -373,15 +373,15 @@
         }
 
         .feedback-capture-wrap {
-            display: flex;
+            width: 100%;
+            display: grid;
             gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
+            justify-items: center;
         }
 
         .feedback-camera-circle {
-            width: 84px;
-            height: 84px;
+            width: 168px;
+            height: 168px;
             border-radius: 999px;
             border: 2px solid #c7dbf0;
             overflow: hidden;
@@ -405,6 +405,7 @@
             display: flex;
             gap: 6px;
             flex-wrap: wrap;
+            justify-content: center;
         }
 
         .feedback-star-group {
