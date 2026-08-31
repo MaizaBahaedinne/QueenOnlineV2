@@ -228,6 +228,10 @@
             background: #edfaf1;
         }
 
+        .inventory-wizard-step.is-locked {
+            opacity: 0.65;
+        }
+
         .inventory-wizard-panel {
             display: none;
             gap: 10px;
@@ -665,14 +669,17 @@
             const defaultStep = Number("{{ $defaultWizardStep }}") || 1;
             const stepButtons = Array.from(document.querySelectorAll('#inventory-wizard-steps .inventory-wizard-step'));
             const stepPanels = Array.from(document.querySelectorAll('.inventory-wizard-panel'));
+            let currentStep = 1;
 
             const activateStep = (step) => {
                 const normalizedStep = Math.min(3, Math.max(1, Number(step) || 1));
+                currentStep = normalizedStep;
 
                 stepButtons.forEach((btn) => {
                     const btnStep = Number(btn.dataset.step || 1);
                     btn.classList.toggle('is-active', btnStep === normalizedStep);
                     btn.classList.toggle('is-done', btnStep < normalizedStep);
+                    btn.classList.toggle('is-locked', btnStep < normalizedStep);
                 });
 
                 stepPanels.forEach((panel) => {
@@ -682,7 +689,36 @@
             };
 
             stepButtons.forEach((btn) => {
-                btn.addEventListener('click', () => activateStep(Number(btn.dataset.step || 1)));
+                btn.addEventListener('click', () => {
+                    const targetStep = Number(btn.dataset.step || 1);
+
+                    if (targetStep < currentStep) {
+                        window.alert('Retour en arriere non autorise dans ce wizard.');
+                        return;
+                    }
+
+                    if (targetStep === currentStep) {
+                        return;
+                    }
+
+                    if (targetStep > currentStep + 1) {
+                        window.alert('Passe par les etapes dans l ordre: Entree -> Sortie -> Cloture.');
+                        return;
+                    }
+
+                    const stepNames = {
+                        1: 'Entree',
+                        2: 'Sortie',
+                        3: 'Cloture',
+                    };
+
+                    const message = `Tu vas passer a l etape ${targetStep} (${stepNames[targetStep]}). Confirmer ?`;
+                    if (!window.confirm(message)) {
+                        return;
+                    }
+
+                    activateStep(targetStep);
+                });
             });
 
             const toggleIncrementButtons = Array.from(document.querySelectorAll('.js-toggle-increment-form'));
