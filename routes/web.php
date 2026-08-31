@@ -65,6 +65,7 @@ Route::middleware('auth')->group(function () {
 	Route::post('reservations/{reservation}/service-entrees', [ReservationController::class, 'storeServiceEntree'])->name('reservations.service-entrees.store');
 	Route::post('reservations/{reservation}/service-entrees/{serviceEntree}/increment', [ReservationController::class, 'incrementServiceEntreeQuantity'])->name('reservations.service-entrees.increment');
 	Route::post('reservations/{reservation}/service-entrees/{serviceEntree}/retours', [ReservationController::class, 'storeServiceRetour'])->name('reservations.service-retours.store');
+	Route::post('reservations/{reservation}/service-feedbacks', [ReservationController::class, 'storeServiceFeedback'])->name('reservations.service-feedbacks.store');
 	Route::post('reservations/{reservation}/salle-options', [ReservationController::class, 'storeSalleOption'])->name('reservations.salle-options.store');
 	Route::delete('reservations/{reservation}/salle-options/{salleOptionRow}', [ReservationController::class, 'destroySalleOption'])->name('reservations.salle-options.destroy');
 	Route::resource('reservations', ReservationController::class);

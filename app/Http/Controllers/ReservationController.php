@@ -12,6 +12,7 @@ use App\Models\ReservationCancellation;
 use App\Models\ServiceAffectation;
 use App\Models\ServiceEntree;
 use App\Models\ServiceEntreeHistory;
+use App\Models\ServiceFeedback;
 use App\Models\ServiceRetour;
 use App\Models\Salle;
 use App\Models\SalleOption;
@@ -23,6 +24,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -478,6 +480,7 @@ class ReservationController extends MatrixAwareController
             'serviceEntrees.creator',
             'serviceEntrees.retours.creator',
             'serviceEntrees.histories.creator',
+            'serviceFeedbacks.creator',
         ]);
 
         return view('reservations.service-inventory', [
@@ -749,6 +752,44 @@ class ReservationController extends MatrixAwareController
 
         return redirect()->route('reservations.service-inventory', $reservation)
             ->with('success', 'Quantite d entree mise a jour avec historique.');
+    }
+
+    public function storeServiceFeedback(Request $request, Reservation $reservation)
+    {
+        $this->enforcePermission('reservations', 'update', 'update');
+
+        if (($reservation->service_slug ?? 'salles') !== 'salles') {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'service_feedback' => 'La satisfaction client est reservee aux reservations de type salle.',
+            ])->withInput();
+        }
+
+        $validated = $request->validate([
+            'nom' => ['required', 'string', 'max:255'],
+            'photo_user' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'commentaire' => ['required', 'string', 'max:2000'],
+            'note_salle' => ['required', 'integer', 'min:1', 'max:10'],
+            'note_service' => ['required', 'integer', 'min:1', 'max:10'],
+        ]);
+
+        $photoPath = null;
+        if ($request->hasFile('photo_user')) {
+            $photoPath = $request->file('photo_user')->store('service-feedbacks', 'public');
+        }
+
+        ServiceFeedback::query()->create([
+            'reservation_id' => $reservation->id,
+            'created_by' => Auth::id(),
+            'commentaire' => trim((string) $validated['commentaire']),
+            'created_dtm' => now(),
+            'note_salle' => (int) $validated['note_salle'],
+            'note_service' => (int) $validated['note_service'],
+            'nom' => trim((string) $validated['nom']),
+            'photo_user' => $photoPath,
+        ]);
+
+        return redirect()->route('reservations.service-inventory', $reservation)
+            ->with('success', 'Retour client enregistre avec succes.');
     }
 
     public function storeServiceRetour(Request $request, Reservation $reservation, ServiceEntree $serviceEntree)

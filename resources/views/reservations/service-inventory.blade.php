@@ -27,6 +27,11 @@
         }
         $openIncrementEntreeId = (int) old('entree_id', 0);
         $openSortieEntreeId = (int) old('entree_id_sortie', 0);
+        $feedbackRows = $reservation->serviceFeedbacks
+            ->sortByDesc(function ($feedback) {
+                return $feedback->created_dtm ?? $feedback->created_at;
+            })
+            ->values();
     @endphp
 
     <style>
@@ -358,6 +363,15 @@
             font-weight: 700;
         }
 
+        .feedback-photo {
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+            object-fit: cover;
+            border: 1px solid #c8d9ea;
+            background: #e9f1fb;
+        }
+
         @media (max-width: 860px) {
             .payment-form-row {
                 grid-template-columns: 1fr;
@@ -630,6 +644,38 @@
             <section class="inventory-wizard-panel" data-step-panel="3">
                 <h2 class="inventory-wizard-title">Etape 3: Cloture</h2>
 
+                <h3 class="inventory-wizard-title" style="font-size:14px;">Rapport complet service</h3>
+                @if ($serviceEntreesRows->isEmpty())
+                    <p class="reservation-empty">Aucune ligne service disponible pour le rapport.</p>
+                @else
+                    <div class="inventory-table-wrap">
+                        <table class="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th>QTE d entree</th>
+                                    <th>Produit</th>
+                                    <th>QTE consommee</th>
+                                    <th>QTE de sortie</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($serviceEntreesRows as $entree)
+                                    @php
+                                        $qteSortie = (int) $entree->retours->sum('quantite_retournee');
+                                        $qteConsommee = $qteSortie;
+                                    @endphp
+                                    <tr>
+                                        <td><strong>{{ (int) $entree->quantite }}</strong></td>
+                                        <td>{{ $entree->nature }}</td>
+                                        <td>{{ $qteConsommee }}</td>
+                                        <td>{{ $qteSortie }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+
                 <div class="inventory-summary-grid">
                     <div class="reservation-kv">
                         <span class="reservation-kv-key">Total entrees</span>
@@ -655,6 +701,83 @@
                     <p class="reservation-empty">Inventaire cloture: toutes les quantites saisies en entree ont ete sorties.</p>
                 @else
                     <p class="reservation-empty">La cloture sera effective quand le reste global atteindra 0.</p>
+                @endif
+
+                <h3 class="inventory-wizard-title" style="font-size:14px;">Satisfaction client</h3>
+                @if ($canUpdateReservation)
+                    <form method="POST" action="{{ route('reservations.service-feedbacks.store', $reservation) }}" enctype="multipart/form-data" class="payment-form">
+                        @csrf
+                        <div class="payment-form-row">
+                            <div>
+                                <label for="feedback-nom">Nom client</label>
+                                <input id="feedback-nom" name="nom" type="text" required value="{{ old('nom', $reservation->client?->first_name ? trim($reservation->client->first_name . ' ' . ($reservation->client->name ?? '')) : ($reservation->client?->name ?? '')) }}">
+                            </div>
+                            <div>
+                                <label for="feedback-photo">Photo client</label>
+                                <input id="feedback-photo" name="photo_user" type="file" accept="image/*" capture="user">
+                            </div>
+                        </div>
+                        <div class="payment-form-row">
+                            <div>
+                                <label for="feedback-note-salle">Note salle /10</label>
+                                <input id="feedback-note-salle" name="note_salle" type="number" min="1" max="10" required value="{{ old('note_salle') }}">
+                            </div>
+                            <div>
+                                <label for="feedback-note-service">Note service /10</label>
+                                <input id="feedback-note-service" name="note_service" type="number" min="1" max="10" required value="{{ old('note_service') }}">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="feedback-commentaire">Retour sur la qualite de reservation</label>
+                            <input id="feedback-commentaire" name="commentaire" type="text" required value="{{ old('commentaire') }}" placeholder="Ex: Service rapide, salle propre, equipe pro...">
+                        </div>
+                        <div class="reservation-actions-row">
+                            <button type="submit" class="btn btn-primary">Enregistrer satisfaction client</button>
+                        </div>
+                    </form>
+                @endif
+
+                @if ($feedbackRows->isEmpty())
+                    <p class="reservation-empty">Aucun retour client enregistre.</p>
+                @else
+                    <div class="inventory-table-wrap">
+                        <table class="inventory-table">
+                            <thead>
+                                <tr>
+                                    <th>Photo</th>
+                                    <th>Nom</th>
+                                    <th>Note salle</th>
+                                    <th>Note service</th>
+                                    <th>Retour client</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($feedbackRows as $feedback)
+                                    <tr>
+                                        <td>
+                                            @if (! empty($feedback->photo_user))
+                                                <img src="{{ asset('storage/' . ltrim($feedback->photo_user, '/')) }}" alt="{{ $feedback->nom ?? 'Client' }}" class="feedback-photo">
+                                            @else
+                                                <span>-</span>
+                                            @endif
+                                        </td>
+                                        <td>{{ $feedback->nom ?? '-' }}</td>
+                                        <td>{{ (int) ($feedback->note_salle ?? 0) }}/10</td>
+                                        <td>{{ (int) ($feedback->note_service ?? 0) }}/10</td>
+                                        <td>{{ $feedback->commentaire ?? '-' }}</td>
+                                        <td>
+                                            @if ($feedback->created_dtm)
+                                                @frDateTime($feedback->created_dtm)
+                                            @else
+                                                @frDateTime($feedback->created_at)
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 @endif
 
                 <div class="reservation-actions-row" style="justify-content:flex-start;">
