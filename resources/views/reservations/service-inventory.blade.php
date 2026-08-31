@@ -372,6 +372,64 @@
             background: #e9f1fb;
         }
 
+        .feedback-capture-wrap {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .feedback-camera-circle {
+            width: 84px;
+            height: 84px;
+            border-radius: 999px;
+            border: 2px solid #c7dbf0;
+            overflow: hidden;
+            background: #edf4fc;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #5c7894;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .feedback-camera-circle video,
+        .feedback-camera-circle img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .feedback-capture-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .feedback-star-group {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .feedback-star-btn {
+            border: 1px solid #d3e3f3;
+            background: #fff;
+            color: #a2afbc;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .feedback-star-btn.is-active {
+            color: #d19200;
+            border-color: #e2bc59;
+            background: #fff7e6;
+        }
+
         @media (max-width: 860px) {
             .payment-form-row {
                 grid-template-columns: 1fr;
@@ -676,21 +734,6 @@
                     </div>
                 @endif
 
-                <div class="inventory-summary-grid">
-                    <div class="reservation-kv">
-                        <span class="reservation-kv-key">Total entrees</span>
-                        <span class="reservation-kv-value">{{ $totalEntreeQuantity }}</span>
-                    </div>
-                    <div class="reservation-kv">
-                        <span class="reservation-kv-key">Total sorties</span>
-                        <span class="reservation-kv-value">{{ $totalSortieQuantity }}</span>
-                    </div>
-                    <div class="reservation-kv">
-                        <span class="reservation-kv-key">Reste global</span>
-                        <span class="reservation-kv-value">{{ $remainingGlobalQuantity }}</span>
-                    </div>
-                </div>
-
                 <div>
                     <span class="inventory-status-pill {{ $isInventoryClosed ? 'ok' : '' }}">
                         {{ $isInventoryClosed ? 'Cloturee' : 'Non cloturee' }}
@@ -713,18 +756,46 @@
                                 <input id="feedback-nom" name="nom" type="text" required value="{{ old('nom', $reservation->client?->first_name ? trim($reservation->client->first_name . ' ' . ($reservation->client->name ?? '')) : ($reservation->client?->name ?? '')) }}">
                             </div>
                             <div>
-                                <label for="feedback-photo">Photo client</label>
-                                <input id="feedback-photo" name="photo_user" type="file" accept="image/*" capture="user">
+                                <label>Photo client</label>
+                                <div class="feedback-capture-wrap">
+                                    <div class="feedback-camera-circle" id="feedback-camera-circle">
+                                        <span id="feedback-camera-placeholder">Photo</span>
+                                        <video id="feedback-camera-video" autoplay playsinline style="display:none;"></video>
+                                        <img id="feedback-camera-preview" alt="Photo client" style="display:none;">
+                                    </div>
+                                    <div class="feedback-capture-actions">
+                                        <button type="button" class="btn" id="feedback-camera-start">Camera</button>
+                                        <button type="button" class="btn" id="feedback-camera-capture" style="display:none;">Prendre photo</button>
+                                        <button type="button" class="btn" id="feedback-camera-reset" style="display:none;">Reprendre</button>
+                                        <button type="button" class="btn" id="feedback-photo-browse">Importer</button>
+                                    </div>
+                                </div>
+                                <input id="feedback-photo" name="photo_user" type="file" accept="image/*" capture="user" style="display:none;">
+                                <canvas id="feedback-camera-canvas" width="320" height="320" style="display:none;"></canvas>
                             </div>
                         </div>
                         <div class="payment-form-row">
                             <div>
-                                <label for="feedback-note-salle">Note salle /10</label>
-                                <input id="feedback-note-salle" name="note_salle" type="number" min="1" max="10" required value="{{ old('note_salle') }}">
+                                <label>Note salle</label>
+                                <input type="hidden" id="feedback-note-salle" name="note_salle" required value="{{ old('note_salle') }}">
+                                <div class="feedback-star-group" data-feedback-star-group="salle" data-target-input="feedback-note-salle">
+                                    @for ($i = 1; $i <= 5; $i++)
+                                        <button type="button" class="feedback-star-btn" data-star-value="{{ $i * 2 }}" aria-label="{{ $i }} etoile(s) salle">
+                                            <i class="fa fa-star" aria-hidden="true"></i>
+                                        </button>
+                                    @endfor
+                                </div>
                             </div>
                             <div>
-                                <label for="feedback-note-service">Note service /10</label>
-                                <input id="feedback-note-service" name="note_service" type="number" min="1" max="10" required value="{{ old('note_service') }}">
+                                <label>Note service</label>
+                                <input type="hidden" id="feedback-note-service" name="note_service" required value="{{ old('note_service') }}">
+                                <div class="feedback-star-group" data-feedback-star-group="service" data-target-input="feedback-note-service">
+                                    @for ($i = 1; $i <= 5; $i++)
+                                        <button type="button" class="feedback-star-btn" data-star-value="{{ $i * 2 }}" aria-label="{{ $i }} etoile(s) service">
+                                            <i class="fa fa-star" aria-hidden="true"></i>
+                                        </button>
+                                    @endfor
+                                </div>
                             </div>
                         </div>
                         <div>
@@ -1038,6 +1109,144 @@
                     }
                 });
             });
+
+            const starGroups = Array.from(document.querySelectorAll('[data-feedback-star-group]'));
+            starGroups.forEach((group) => {
+                const targetInputId = group.getAttribute('data-target-input');
+                const targetInput = targetInputId ? document.getElementById(targetInputId) : null;
+                const stars = Array.from(group.querySelectorAll('.feedback-star-btn'));
+                if (!targetInput || stars.length === 0) {
+                    return;
+                }
+
+                const renderStars = (value) => {
+                    const normalized = Number(value || 0);
+                    stars.forEach((star) => {
+                        const starValue = Number(star.getAttribute('data-star-value') || 0);
+                        star.classList.toggle('is-active', starValue <= normalized);
+                    });
+                };
+
+                stars.forEach((star) => {
+                    star.addEventListener('click', () => {
+                        const value = Number(star.getAttribute('data-star-value') || 0);
+                        targetInput.value = value > 0 ? String(value) : '';
+                        renderStars(value);
+                    });
+                });
+
+                renderStars(Number(targetInput.value || 0));
+            });
+
+            const photoInput = document.getElementById('feedback-photo');
+            const browseBtn = document.getElementById('feedback-photo-browse');
+            const startBtn = document.getElementById('feedback-camera-start');
+            const captureBtn = document.getElementById('feedback-camera-capture');
+            const resetBtn = document.getElementById('feedback-camera-reset');
+            const video = document.getElementById('feedback-camera-video');
+            const preview = document.getElementById('feedback-camera-preview');
+            const placeholder = document.getElementById('feedback-camera-placeholder');
+            const canvas = document.getElementById('feedback-camera-canvas');
+            let stream = null;
+
+            const stopCamera = () => {
+                if (stream) {
+                    stream.getTracks().forEach((track) => track.stop());
+                    stream = null;
+                }
+                if (video) {
+                    video.style.display = 'none';
+                }
+                if (captureBtn) {
+                    captureBtn.style.display = 'none';
+                }
+            };
+
+            if (browseBtn && photoInput) {
+                browseBtn.addEventListener('click', () => photoInput.click());
+            }
+
+            if (photoInput && preview && placeholder) {
+                photoInput.addEventListener('change', () => {
+                    const file = photoInput.files && photoInput.files[0] ? photoInput.files[0] : null;
+                    if (!file) {
+                        return;
+                    }
+                    const url = URL.createObjectURL(file);
+                    preview.src = url;
+                    preview.style.display = 'block';
+                    placeholder.style.display = 'none';
+                    if (resetBtn) {
+                        resetBtn.style.display = '';
+                    }
+                    stopCamera();
+                });
+            }
+
+            if (startBtn && video && captureBtn && placeholder) {
+                startBtn.addEventListener('click', async () => {
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        window.alert('Camera non supportee sur ce navigateur.');
+                        return;
+                    }
+
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+                        video.srcObject = stream;
+                        video.style.display = 'block';
+                        captureBtn.style.display = '';
+                        placeholder.style.display = 'none';
+                        if (preview) {
+                            preview.style.display = 'none';
+                        }
+                    } catch (error) {
+                        window.alert('Impossible d acceder a la camera.');
+                    }
+                });
+            }
+
+            if (captureBtn && video && canvas && photoInput && preview && resetBtn && placeholder) {
+                captureBtn.addEventListener('click', () => {
+                    if (!video.videoWidth || !video.videoHeight) {
+                        return;
+                    }
+
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        return;
+                    }
+
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    canvas.toBlob((blob) => {
+                        if (!blob) {
+                            return;
+                        }
+                        const file = new File([blob], 'client-photo.jpg', { type: 'image/jpeg' });
+                        const dt = new DataTransfer();
+                        dt.items.add(file);
+                        photoInput.files = dt.files;
+
+                        preview.src = URL.createObjectURL(file);
+                        preview.style.display = 'block';
+                        resetBtn.style.display = '';
+                        stopCamera();
+                    }, 'image/jpeg', 0.92);
+                });
+            }
+
+            if (resetBtn && photoInput && preview && placeholder) {
+                resetBtn.addEventListener('click', () => {
+                    photoInput.value = '';
+                    preview.src = '';
+                    preview.style.display = 'none';
+                    placeholder.style.display = '';
+                    resetBtn.style.display = 'none';
+                    stopCamera();
+                });
+            }
 
             activateStep(defaultStep);
         })();
