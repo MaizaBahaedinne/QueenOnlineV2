@@ -85,6 +85,14 @@
         .salle-card.is-selected { border-color: #1f5d9f; box-shadow: 0 0 0 2px rgba(31, 93, 159, 0.2); }
         .salle-card-name { font-weight: 700; margin-bottom: 4px; color: #153452; }
         .salle-card-meta { font-size: 12px; color: #5f6b7a; }
+        .salle-options-box { margin-top: 10px; border: 1px dashed #c8d9ea; border-radius: 10px; padding: 10px; background: #f8fbff; display: none; }
+        .salle-options-box.show { display: block; }
+        .salle-options-title { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: #1e456c; }
+        .salle-options-list { display: grid; gap: 8px; }
+        .salle-option-item { border: 1px solid #d7e4f2; border-radius: 9px; background: #fff; padding: 8px; display: flex; align-items: flex-start; gap: 8px; }
+        .salle-option-item-main { display: grid; gap: 2px; }
+        .salle-option-item-name { font-size: 13px; font-weight: 700; color: #17324f; }
+        .salle-option-item-meta { font-size: 12px; color: #5f6b7a; }
         .reservation-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
         .reservation-quick-box { display: none; margin-top: 10px; border: 1px solid #decfba; background: #fff9f0; border-radius: 12px; padding: 10px; }
         .reservation-quick-title { margin: 0 0 6px; font-weight: 700; font-size: 13px; color: #6a4715; }
@@ -219,6 +227,13 @@
                     <p class="reservation-hint" id="reservation-availability-status">Selectionne la date et les horaires, puis clique sur verifier.</p>
                     <input type="hidden" name="salle_id" id="reservation-create-salle-id" required>
                     <div id="reservation-salle-cards" class="salle-cards-grid"></div>
+                    @if ($effectiveCreateServiceSlug === 'salles')
+                        <div id="reservation-salle-options-box" class="salle-options-box">
+                            <p class="salle-options-title">Options de la salle</p>
+                            <p class="reservation-hint" style="margin-top:0;">Selectionne les options a ajouter automatiquement pour cette reservation.</p>
+                            <div id="reservation-salle-options-list" class="salle-options-list"></div>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="reservation-helper-box">
@@ -523,6 +538,7 @@
         const calendarDataNode = document.getElementById('reservation-calendar-data');
         const reservationCalendarData = calendarDataNode ? JSON.parse(calendarDataNode.textContent || '[]') : [];
         const reservationShowBaseUrl = "{{ url('reservations') }}";
+        const salleOptionsBySalle = JSON.parse('{!! json_encode($salleOptionsBySalle ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}');
         const reservationCalendarTitle = document.getElementById('reservation-calendar-title');
         const reservationCalendarGrid = document.getElementById('reservation-calendar-grid');
         const reservationCalendarWeekdays = document.getElementById('reservation-calendar-weekdays');
@@ -541,6 +557,8 @@
         const endDateInput = document.getElementById('reservation-create-end-date');
         const selectedSalleInput = document.getElementById('reservation-create-salle-id');
         const salleCardsContainer = document.getElementById('reservation-salle-cards');
+        const salleOptionsBox = document.getElementById('reservation-salle-options-box');
+        const salleOptionsList = document.getElementById('reservation-salle-options-list');
 
         const clientSearchStatus = document.getElementById('reservation-client-search-status');
         const clientIdInput = document.getElementById('reservation-create-client-id');
@@ -1097,10 +1115,50 @@
             if (salleCardsContainer) {
                 salleCardsContainer.innerHTML = '';
             }
+
+            if (salleOptionsList) {
+                salleOptionsList.innerHTML = '';
+            }
+
+            if (salleOptionsBox) {
+                salleOptionsBox.classList.remove('show');
+            }
         };
 
         const hasSelectedSalle = () => {
             return Boolean(selectedSalleInput && selectedSalleInput.value);
+        };
+
+        const renderSalleOptions = (salleId) => {
+            if (!salleOptionsList || !salleOptionsBox) {
+                return;
+            }
+
+            const key = String(salleId || '');
+            const options = Array.isArray(salleOptionsBySalle[key]) ? salleOptionsBySalle[key] : [];
+
+            salleOptionsList.innerHTML = '';
+
+            if (!key || options.length === 0) {
+                salleOptionsBox.classList.remove('show');
+                return;
+            }
+
+            options.forEach((option) => {
+                const wrapper = document.createElement('label');
+                wrapper.className = 'salle-option-item';
+                const notePart = option.note ? ` | ${escapeHtml(option.note)}` : '';
+                wrapper.innerHTML = `
+                    <input type="checkbox" name="salle_option_ids[]" value="${option.id}">
+                    <span class="salle-option-item-main">
+                        <span class="salle-option-item-name">${escapeHtml(option.name)}</span>
+                        <span class="salle-option-item-meta">Prix: ${Number(option.price || 0).toFixed(2)}${notePart}</span>
+                    </span>
+                `;
+                salleOptionsList.appendChild(wrapper);
+            });
+
+            salleOptionsBox.classList.add('show');
         };
 
         const renderSalleCards = (salles) => {
@@ -1126,6 +1184,7 @@
                     salleCardsContainer.querySelectorAll('.salle-card').forEach((node) => node.classList.remove('is-selected'));
                     card.classList.add('is-selected');
                     selectedSalleInput.value = String(salle.id);
+                    renderSalleOptions(salle.id);
                     setStatusMessage(clientSearchStatus, 'Salle selectionnee. Tu peux maintenant rechercher un client.');
                 });
 

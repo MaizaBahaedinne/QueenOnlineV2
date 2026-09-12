@@ -7,6 +7,9 @@
         $canDelete = auth()->user()?->canFeature('users', 'delete', 'delete') ?? false;
     @endphp
 
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.min.css">
+    <script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
+
     <style>
         .modal-overlay {
             position: fixed;
@@ -69,7 +72,7 @@
         </div>
 
         <div style="overflow-x:auto; margin-top: 12px;">
-            <table>
+            <table id="users-table" class="display" style="width:100%;">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -257,5 +260,29 @@
                 }
             });
         });
+
+        if (typeof DataTable !== 'undefined') {
+            new DataTable('#users-table', {
+                pageLength: 25,
+                order: [[0, 'desc']],
+                columnDefs: [
+                    { orderable: false, targets: [6] },
+                ],
+                language: {
+                    search: 'Rechercher:',
+                    lengthMenu: 'Afficher _MENU_ lignes',
+                    info: 'Affichage de _START_ a _END_ sur _TOTAL_',
+                    infoEmpty: 'Aucune donnee',
+                    emptyTable: 'Aucun utilisateur.',
+                    zeroRecords: 'Aucun resultat trouve',
+                    paginate: {
+                        first: 'Premier',
+                        last: 'Dernier',
+                        next: 'Suivant',
+                        previous: 'Precedent',
+                    },
+                },
+            });
+        }
     </script>
 @endsection

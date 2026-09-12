@@ -235,6 +235,24 @@ class ReservationController extends MatrixAwareController
             ];
         }
 
+        $salleOptionsBySalle = SalleOption::query()
+            ->where('status', 'active')
+            ->orderBy('salle_id')
+            ->orderBy('name')
+            ->get(['id', 'salle_id', 'name', 'price', 'note'])
+            ->groupBy('salle_id')
+            ->map(function ($rows) {
+                return $rows->map(function (SalleOption $option) {
+                    return [
+                        'id' => (int) $option->id,
+                        'name' => (string) $option->name,
+                        'price' => (float) $option->price,
+                        'note' => (string) ($option->note ?? ''),
+                    ];
+                })->values();
+            })
+            ->toArray();
+
         return view('reservations.index', [
             'title' => 'Reservations',
             'reservations' => $reservationsQuery->latest()->get(),
@@ -251,6 +269,7 @@ class ReservationController extends MatrixAwareController
             'reservationScopeExternalCount' => $externalCount,
             'serviceProvidersByModule' => $indexProvidersByModule,
             'servicePacksByModule' => $indexPacksByModule,
+            'salleOptionsBySalle' => $salleOptionsBySalle,
         ]);
     }
 
@@ -1857,6 +1876,8 @@ class ReservationController extends MatrixAwareController
         $validated = $request->validate([
             'salle_id' => ['required', 'exists:salles,id'],
             'service_slug' => ['nullable', Rule::in(array_keys(self::RESERVATION_SERVICES))],
+            'salle_option_ids' => ['nullable', 'array'],
+            'salle_option_ids.*' => ['integer', 'distinct', 'exists:salle_options,id'],
             'title' => ['required', 'string', 'max:255'],
             'guest_count' => ['nullable', 'integer', 'min:1'],
             'event_type' => ['required', Rule::in(self::EVENT_TYPES)],
@@ -1903,7 +1924,46 @@ class ReservationController extends MatrixAwareController
 
         $validated['client_id'] = $resolvedClientId;
 
-        Reservation::create($validated);
+        $selectedSalleOptionIds = collect($validated['salle_option_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($serviceSlugForValidation !== 'salles') {
+            $selectedSalleOptionIds = collect();
+        }
+
+        $selectedSalleOptions = collect();
+        if ($selectedSalleOptionIds->isNotEmpty()) {
+            $selectedSalleOptions = SalleOption::query()
+                ->whereIn('id', $selectedSalleOptionIds)
+                ->where('salle_id', (int) $validated['salle_id'])
+                ->where('status', 'active')
+                ->get(['id', 'name', 'price', 'note']);
+
+            if ($selectedSalleOptions->count() !== $selectedSalleOptionIds->count()) {
+                return redirect()->route('reservations.index')->withErrors([
+                    'salle_option_ids' => 'Options de salle invalides pour la salle selectionnee.',
+                ])->withInput();
+            }
+        }
+
+        $reservation = DB::transaction(function () use ($validated, $selectedSalleOptions) {
+            $reservation = Reservation::query()->create($validated);
+
+            foreach ($selectedSalleOptions as $option) {
+                ReservationSalleOption::query()->create([
+                    'reservation_id' => $reservation->id,
+                    'salle_option_id' => (int) $option->id,
+                    'label' => (string) $option->name,
+                    'amount' => (float) $option->price,
+                    'note' => $option->note,
+                ]);
+            }
+
+            return $reservation;
+        });
 
         return redirect()->route('reservations.index')->with('success', 'Reservation creee.');
     }
