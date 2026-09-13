@@ -409,6 +409,24 @@ class ReservationController extends MatrixAwareController
                 ->get(['id', 'name', 'price']);
         }
 
+        $salleOptionsBySalle = SalleOption::query()
+            ->where('status', 'active')
+            ->orderBy('salle_id')
+            ->orderBy('name')
+            ->get(['id', 'salle_id', 'name', 'price', 'note'])
+            ->groupBy('salle_id')
+            ->map(function ($rows) {
+                return $rows->map(function (SalleOption $option) {
+                    return [
+                        'id' => (int) $option->id,
+                        'name' => (string) $option->name,
+                        'price' => (float) $option->price,
+                        'note' => (string) ($option->note ?? ''),
+                    ];
+                })->values();
+            })
+            ->toArray();
+
         $reservationServiceSlug = $this->reservationServiceSlug($reservation);
         $clientCreditBalance = $this->getClientCreditBalance((int) $reservation->client_id, $reservationServiceSlug);
 
@@ -469,6 +487,7 @@ class ReservationController extends MatrixAwareController
             'clientCreditBalance' => $clientCreditBalance,
             'creditServiceLabel' => self::RESERVATION_SERVICES[$reservationServiceSlug] ?? 'Service',
             'reservationScopeLabel' => ($reservation->service_slug ?? 'salles') === 'salles' ? 'Interne' : 'Externe',
+            'salleOptionsBySalle' => $salleOptionsBySalle,
         ]);
     }
 
@@ -1996,6 +2015,8 @@ class ReservationController extends MatrixAwareController
 
         $validated = $request->validate([
             'salle_id' => ['required', 'exists:salles,id'],
+            'salle_option_ids' => ['nullable', 'array'],
+            'salle_option_ids.*' => ['integer', 'distinct', 'exists:salle_options,id'],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i', 'after_or_equal:08:00', 'before_or_equal:23:59'],
@@ -2053,6 +2074,27 @@ class ReservationController extends MatrixAwareController
 
         $validated['payment_due_date'] = Carbon::parse((string) $validated['start_date'])->subDays(30)->toDateString();
 
+        $selectedSalleOptionIds = collect($validated['salle_option_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values();
+
+        $selectedSalleOptions = collect();
+        if ($selectedSalleOptionIds->isNotEmpty()) {
+            $selectedSalleOptions = SalleOption::query()
+                ->whereIn('id', $selectedSalleOptionIds)
+                ->where('salle_id', $targetSalleId)
+                ->where('status', 'active')
+                ->get(['id', 'name', 'price', 'note']);
+
+            if ($selectedSalleOptions->count() !== $selectedSalleOptionIds->count()) {
+                return redirect()->route('reservations.show', $reservation)->withErrors([
+                    'salle_option_ids' => 'Options de salle invalides pour la salle selectionnee.',
+                ])->withInput();
+            }
+        }
+
         $reservation->loadMissing(['additionalServices.linkedReservation']);
         $allowedLinkedRows = $reservation->additionalServices
             ->filter(fn (ReservationAdditionalService $row) => (int) ($row->linked_reservation_id ?? 0) > 0)
@@ -2075,7 +2117,7 @@ class ReservationController extends MatrixAwareController
 
         $syncedLinkedCount = 0;
 
-        DB::transaction(function () use ($reservation, $validated, $selectedLinkedDateSyncIds, $allowedLinkedRows, &$syncedLinkedCount): void {
+        DB::transaction(function () use ($reservation, $validated, $selectedLinkedDateSyncIds, $allowedLinkedRows, $selectedSalleOptions, &$syncedLinkedCount): void {
             $reservation->update([
                 'salle_id' => $validated['salle_id'],
                 'start_date' => $validated['start_date'],
@@ -2084,6 +2126,21 @@ class ReservationController extends MatrixAwareController
                 'end_time' => $validated['end_time'],
                 'payment_due_date' => $validated['payment_due_date'],
             ]);
+
+            ReservationSalleOption::query()
+                ->where('reservation_id', $reservation->id)
+                ->whereNotNull('salle_option_id')
+                ->delete();
+
+            foreach ($selectedSalleOptions as $option) {
+                ReservationSalleOption::query()->create([
+                    'reservation_id' => $reservation->id,
+                    'salle_option_id' => (int) $option->id,
+                    'label' => (string) $option->name,
+                    'amount' => (float) $option->price,
+                    'note' => $option->note,
+                ]);
+            }
 
             foreach ($selectedLinkedDateSyncIds as $linkedReservationId) {
                 /** @var ReservationAdditionalService|null $linkedRow */

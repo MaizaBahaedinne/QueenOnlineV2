@@ -1985,6 +1985,17 @@
                     <button type="button" class="btn" data-close-modal>Fermer</button>
                 </div>
 
+                @php
+                    $slotOldSalleOptionIds = collect(old('salle_option_ids', $reservation->salleOptionRows->pluck('salle_option_id')->filter()->all()))
+                        ->map(fn ($id) => (int) $id)
+                        ->filter(fn ($id) => $id > 0)
+                        ->unique()
+                        ->values();
+                    $slotCurrentSelectedOptions = $reservation->salleOptionRows
+                        ->filter(fn ($row) => !is_null($row->salle_option_id))
+                        ->values();
+                @endphp
+
                 <form method="POST" action="{{ route('reservations.slot.update', $reservation) }}" id="reservation-slot-form" style="display:grid; gap:10px;">
                     @csrf
                     @method('PATCH')
@@ -2020,6 +2031,31 @@
                                 <span class="salle-card-meta">Salle actuelle</span>
                             </button>
                         </div>
+                    </div>
+
+                    <div style="display:grid;gap:8px;border:1px solid #dbe7f4;border-radius:10px;padding:10px;background:#f8fbff;">
+                        <strong style="font-size:13px;color:#1f4970;">Anciennes options selectionnees</strong>
+                        @if ($slotCurrentSelectedOptions->isEmpty())
+                            <small style="color:#607a95;">Aucune option de salle n'etait enregistree.</small>
+                        @else
+                            <ul style="margin:0;padding-left:18px;color:#244e76;font-size:13px;display:grid;gap:4px;">
+                                @foreach ($slotCurrentSelectedOptions as $selectedOption)
+                                    <li>{{ $selectedOption->label }} ({{ number_format((float) $selectedOption->amount, 2, '.', ' ') }})</li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+
+                    <div style="display:grid;gap:8px;border:1px solid #dbe7f4;border-radius:10px;padding:10px;background:#f8fbff;">
+                        <strong style="font-size:13px;color:#1f4970;">Re-selection des options de la salle</strong>
+                        <small id="slot-salle-options-help" style="color:#607a95;">Choisis une salle puis coche les options a conserver pour cette reservation.</small>
+                        <div id="slot-salle-options-list" style="display:grid;gap:8px;"></div>
+                        @error('salle_option_ids')
+                            <small style="color:#b42318;">{{ $message }}</small>
+                        @enderror
+                        @error('salle_option_ids.*')
+                            <small style="color:#b42318;">{{ $message }}</small>
+                        @enderror
                     </div>
 
                     @if ($activeLinkedAdditionalServiceRows->isNotEmpty())
@@ -2359,6 +2395,8 @@
     @endif
 
     <script type="application/json" id="additional-service-options-data">{!! json_encode($serviceOptionsByModule ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}</script>
+    <script type="application/json" id="slot-salle-options-data">{!! json_encode($salleOptionsBySalle ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}</script>
+    <script type="application/json" id="slot-selected-option-ids-data">{!! json_encode($slotOldSalleOptionIds ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}</script>
     <script>
         (function () {
             document.querySelectorAll('.js-salle-dot').forEach((dot) => {
@@ -2371,7 +2409,29 @@
             const slotSalleInput = document.getElementById('slot-salle-id');
             const slotSalleCards = document.getElementById('slot-salle-cards');
             const slotHelp = document.getElementById('slot-availability-help');
+            const slotSalleOptionsData = document.getElementById('slot-salle-options-data');
+            const slotSelectedOptionIdsData = document.getElementById('slot-selected-option-ids-data');
+            const slotSalleOptionsList = document.getElementById('slot-salle-options-list');
+            const slotSalleOptionsHelp = document.getElementById('slot-salle-options-help');
             const availableSallesBaseUrl = "{{ route('reservations.available-salles', $reservation) }}";
+
+            let initialSlotSalleOptionIds = [];
+            if (slotSelectedOptionIdsData) {
+                try {
+                    initialSlotSalleOptionIds = JSON.parse(slotSelectedOptionIdsData.textContent || '[]');
+                } catch (error) {
+                    initialSlotSalleOptionIds = [];
+                }
+            }
+
+            let salleOptionsBySalle = {};
+            if (slotSalleOptionsData) {
+                try {
+                    salleOptionsBySalle = JSON.parse(slotSalleOptionsData.textContent || '{}');
+                } catch (error) {
+                    salleOptionsBySalle = {};
+                }
+            }
 
             if (!slotStartDate || !slotStartTime || !slotEndTime || !slotSalleInput || !slotSalleCards) {
                 return;
@@ -2385,11 +2445,59 @@
                 }
             };
 
+            const renderSlotSalleOptions = (salleId) => {
+                if (!slotSalleOptionsList) {
+                    return;
+                }
+
+                slotSalleOptionsList.innerHTML = '';
+                const options = Array.isArray(salleOptionsBySalle?.[String(salleId)]) ? salleOptionsBySalle[String(salleId)] : [];
+                if (!salleId) {
+                    if (slotSalleOptionsHelp) {
+                        slotSalleOptionsHelp.textContent = 'Choisis une salle pour afficher ses options.';
+                    }
+                    return;
+                }
+
+                if (options.length === 0) {
+                    if (slotSalleOptionsHelp) {
+                        slotSalleOptionsHelp.textContent = 'Aucune option active pour cette salle.';
+                    }
+                    return;
+                }
+
+                options.forEach((option) => {
+                    const row = document.createElement('label');
+                    row.style.display = 'flex';
+                    row.style.alignItems = 'flex-start';
+                    row.style.gap = '8px';
+                    row.style.fontSize = '13px';
+                    row.style.color = '#244e76';
+
+                    const optionId = Number(option.id || 0);
+                    const shouldBeChecked = initialSlotSalleOptionIds.includes(optionId);
+
+                    row.innerHTML = `
+                        <input type="checkbox" name="salle_option_ids[]" value="${optionId}" ${shouldBeChecked ? 'checked' : ''}>
+                        <span>
+                            ${option.name || 'Option'}
+                            <small style="display:block;color:#607a95;">Prix: ${Number(option.price || 0).toFixed(2)}${option.note ? ` | ${option.note}` : ''}</small>
+                        </span>
+                    `;
+                    slotSalleOptionsList.appendChild(row);
+                });
+
+                if (slotSalleOptionsHelp) {
+                    slotSalleOptionsHelp.textContent = 'Recoche les options a garder pour la salle selectionnee.';
+                }
+            };
+
             const setSelectedSalle = (salleId) => {
                 slotSalleInput.value = salleId ? String(salleId) : '';
                 slotSalleCards.querySelectorAll('.salle-card').forEach((card) => {
                     card.classList.toggle('is-selected', String(card.dataset.salleId) === String(salleId));
                 });
+                renderSlotSalleOptions(salleId);
             };
 
             slotSalleCards.addEventListener('click', (event) => {
@@ -2700,7 +2808,7 @@
             const hasClientErrors = "{{ $errors->has('client_type') || $errors->has('first_name') || $errors->has('name') || $errors->has('phone') ? '1' : '0' }}" === '1';
             const hasAdditionalServiceErrors = "{{ $errors->has('module_slug') || $errors->has('service_ref') || $errors->has('service_amount') || $errors->has('service') ? '1' : '0' }}" === '1';
             const hasReservationErrors = "{{ $errors->has('title') || $errors->has('event_type') || $errors->has('guest_count') || $errors->has('total_amount') || $errors->has('note_admin') ? '1' : '0' }}" === '1';
-            const hasSlotErrors = "{{ $errors->has('salle_id') || $errors->has('start_date') || $errors->has('end_date') || $errors->has('start_time') || $errors->has('end_time') || $errors->has('sync_linked_date_ids') ? '1' : '0' }}" === '1';
+            const hasSlotErrors = "{{ $errors->has('salle_id') || $errors->has('salle_option_ids') || $errors->has('salle_option_ids.*') || $errors->has('start_date') || $errors->has('end_date') || $errors->has('start_time') || $errors->has('end_time') || $errors->has('sync_linked_date_ids') ? '1' : '0' }}" === '1';
             const hasCancelErrors = "{{ $errors->has('present_on_site') || $errors->has('termination_signed') || $errors->has('cancel') || $errors->has('cancel_linked_reservation_ids') ? '1' : '0' }}" === '1';
             const hasCreditErrors = "{{ $errors->has('credit') || $errors->has('credit_amount') ? '1' : '0' }}" === '1';
             const hasCreditTransferErrors = "{{ $errors->has('credit_transfer') || $errors->has('credit_transfer_amount') || $errors->has('target_client_id') ? '1' : '0' }}" === '1';
