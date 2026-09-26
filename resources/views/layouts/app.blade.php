@@ -16,6 +16,23 @@
         $current = request()->route()?->getName();
         $currentModuleSlug = request()->route('module');
         $reservationService = (string) request()->query('service', '');
+        $currentUser = auth()->user();
+        $canViewClients = $currentUser?->canFeature('clients', 'list', 'view') ?? false;
+        $canViewStaff = $currentUser?->canFeature('staff', 'list', 'view') ?? false;
+        $canViewPayments = $currentUser?->canFeature('payments', 'list', 'view') ?? false;
+        $canViewReservations = $currentUser?->canFeature('reservations', 'list', 'view') ?? false;
+        $canViewUsers = $currentUser?->canFeature('users', 'list', 'view') ?? false;
+        $canViewRoles = $currentUser?->canFeature('roles', 'list', 'view') ?? false;
+        $canViewModules = $currentUser?->canFeature('modules', 'list', 'view') ?? false;
+        $canViewPermissions = $currentUser?->canFeature('permissions', 'list', 'view') ?? false;
+        $canViewMigrationMappings = $currentUser?->canFeature('migration-mappings', 'list', 'view') ?? false;
+        $canViewSalles = $currentUser?->canFeature('salles', 'list', 'view') ?? false;
+        $canViewTroupe = $currentUser?->canFeature('troupe-musicale', 'list', 'view') ?? false;
+        $canViewPhotographe = $currentUser?->canFeature('photographe', 'list', 'view') ?? false;
+        $canViewChanteur = $currentUser?->canFeature('chanteur', 'list', 'view') ?? false;
+        $canViewNotaire = $currentUser?->canFeature('notaire', 'list', 'view') ?? false;
+        $canViewAnimation = $currentUser?->canFeature('animation', 'list', 'view') ?? false;
+        $canViewVoiture = $currentUser?->canFeature('voiture', 'list', 'view') ?? false;
         $isPilotage = $current === 'dashboard';
         $isExploitation = str_starts_with((string) $current, 'clients.')
             || str_starts_with((string) $current, 'staff.')
@@ -67,38 +84,46 @@
                 </button>
                 <div class="menu-section-content">
                     <ul class="menu">
-                        <li><a class="{{ str_starts_with((string) $current, 'clients.') ? 'active' : '' }}" href="{{ route('clients.index') }}"><i class="fa fa-users menu-icon" aria-hidden="true"></i><span>Clients</span></a></li>
-                        <li><a class="{{ str_starts_with((string) $current, 'staff.') ? 'active' : '' }}" href="{{ route('staff.index') }}"><i class="fa fa-id-badge menu-icon" aria-hidden="true"></i><span>Ressource Humaine</span></a></li>
-                        <li><a class="{{ str_starts_with((string) $current, 'payments.') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa fa-credit-card menu-icon" aria-hidden="true"></i><span>Paiements</span></a></li>
-                        <li>
-                            <a class="{{ str_starts_with((string) $current, 'reservations.') ? 'active' : '' }}" href="{{ route('reservations.index') }}"><i class="fa fa-calendar menu-icon" aria-hidden="true"></i><span>Reservations</span></a>
-                            @if (str_starts_with((string) $current, 'reservations.'))
-                                <ul class="menu-submenu">
-                                    <li><a class="{{ $reservationService === 'salles' ? 'active' : '' }}" href="{{ route('reservations.index') }}">Salles</a></li>
-                                    @if (auth()->user()?->canFeature('troupe-musicale', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'troupe-musicale' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'troupe-musicale']) }}">Troupe musicale</a></li>
-                                    @endif
-                                    @if (auth()->user()?->canFeature('photographe', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'photographe' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'photographe']) }}">Photographe</a></li>
-                                    @endif
-                                    @if (auth()->user()?->canFeature('chanteur', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'chanteur' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'chanteur']) }}">Chanteur</a></li>
-                                    @endif
-                                    @if (auth()->user()?->canFeature('notaire', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'notaire' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'notaire']) }}">Notaire</a></li>
-                                    @endif
-                                    @if (auth()->user()?->canFeature('animation', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'animation' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'animation']) }}">Animation</a></li>
-                                    @endif
-                                    @if (auth()->user()?->canFeature('voiture', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'voiture' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'voiture']) }}">Voiture</a></li>
-                                    @endif
-                                    @if (auth()->user()?->canFeature('salles', 'list', 'view'))
-                                        <li><a class="{{ $reservationService === 'all' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'all']) }}">Toutes</a></li>
-                                    @endif
-                                </ul>
-                            @endif
-                        </li>
+                        @if ($canViewClients)
+                            <li><a class="{{ str_starts_with((string) $current, 'clients.') ? 'active' : '' }}" href="{{ route('clients.index') }}"><i class="fa fa-users menu-icon" aria-hidden="true"></i><span>Clients</span></a></li>
+                        @endif
+                        @if ($canViewStaff)
+                            <li><a class="{{ str_starts_with((string) $current, 'staff.') ? 'active' : '' }}" href="{{ route('staff.index') }}"><i class="fa fa-id-badge menu-icon" aria-hidden="true"></i><span>Ressource Humaine</span></a></li>
+                        @endif
+                        @if ($canViewPayments)
+                            <li><a class="{{ str_starts_with((string) $current, 'payments.') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa fa-credit-card menu-icon" aria-hidden="true"></i><span>Paiements</span></a></li>
+                        @endif
+                        @if ($canViewReservations)
+                            <li>
+                                <a class="{{ str_starts_with((string) $current, 'reservations.') ? 'active' : '' }}" href="{{ route('reservations.index') }}"><i class="fa fa-calendar menu-icon" aria-hidden="true"></i><span>Reservations</span></a>
+                                @if (str_starts_with((string) $current, 'reservations.'))
+                                    <ul class="menu-submenu">
+                                        @if ($canViewSalles)
+                                            <li><a class="{{ $reservationService === 'salles' ? 'active' : '' }}" href="{{ route('reservations.index') }}">Salles</a></li>
+                                            <li><a class="{{ $reservationService === 'all' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'all']) }}">Toutes</a></li>
+                                        @endif
+                                        @if ($canViewTroupe)
+                                            <li><a class="{{ $reservationService === 'troupe-musicale' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'troupe-musicale']) }}">Troupe musicale</a></li>
+                                        @endif
+                                        @if ($canViewPhotographe)
+                                            <li><a class="{{ $reservationService === 'photographe' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'photographe']) }}">Photographe</a></li>
+                                        @endif
+                                        @if ($canViewChanteur)
+                                            <li><a class="{{ $reservationService === 'chanteur' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'chanteur']) }}">Chanteur</a></li>
+                                        @endif
+                                        @if ($canViewNotaire)
+                                            <li><a class="{{ $reservationService === 'notaire' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'notaire']) }}">Notaire</a></li>
+                                        @endif
+                                        @if ($canViewAnimation)
+                                            <li><a class="{{ $reservationService === 'animation' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'animation']) }}">Animation</a></li>
+                                        @endif
+                                        @if ($canViewVoiture)
+                                            <li><a class="{{ $reservationService === 'voiture' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'voiture']) }}">Voiture</a></li>
+                                        @endif
+                                    </ul>
+                                @endif
+                            </li>
+                        @endif
                     </ul>
                 </div>
             </div>
@@ -110,13 +135,21 @@
                 </button>
                 <div class="menu-section-content">
                     <ul class="menu">
-                        <li><a class="{{ str_starts_with((string) $current, 'users.') ? 'active' : '' }}" href="{{ route('users.index') }}"><i class="fa fa-user menu-icon" aria-hidden="true"></i><span>Utilisateurs</span></a></li>
-                        <li><a class="{{ str_starts_with((string) $current, 'roles.') ? 'active' : '' }}" href="{{ route('roles.index') }}"><i class="fa fa-shield menu-icon" aria-hidden="true"></i><span>Roles utilisateurs</span></a></li>
-                        <li><a class="{{ str_starts_with((string) $current, 'modules.') ? 'active' : '' }}" href="{{ route('modules.index') }}"><i class="fa fa-th-large menu-icon" aria-hidden="true"></i><span>Modules</span></a></li>
-                        @if (auth()->user()?->canFeature('reservations', 'list', 'view'))
+                        @if ($canViewUsers)
+                            <li><a class="{{ str_starts_with((string) $current, 'users.') ? 'active' : '' }}" href="{{ route('users.index') }}"><i class="fa fa-user menu-icon" aria-hidden="true"></i><span>Utilisateurs</span></a></li>
+                        @endif
+                        @if ($canViewRoles)
+                            <li><a class="{{ str_starts_with((string) $current, 'roles.') ? 'active' : '' }}" href="{{ route('roles.index') }}"><i class="fa fa-shield menu-icon" aria-hidden="true"></i><span>Roles utilisateurs</span></a></li>
+                        @endif
+                        @if ($canViewModules)
+                            <li><a class="{{ str_starts_with((string) $current, 'modules.') ? 'active' : '' }}" href="{{ route('modules.index') }}"><i class="fa fa-th-large menu-icon" aria-hidden="true"></i><span>Modules</span></a></li>
+                        @endif
+                        @if ($canViewMigrationMappings)
                             <li><a class="{{ str_starts_with((string) $current, 'migration-mappings.') ? 'active' : '' }}" href="{{ route('migration-mappings.index') }}"><i class="fa fa-random menu-icon" aria-hidden="true"></i><span>Mapping migration</span></a></li>
                         @endif
-                        <li><a class="{{ str_starts_with((string) $current, 'permissions.') ? 'active' : '' }}" href="{{ route('permissions.matrix') }}"><i class="fa fa-lock menu-icon" aria-hidden="true"></i><span>Matrice roles</span></a></li>
+                        @if ($canViewPermissions)
+                            <li><a class="{{ str_starts_with((string) $current, 'permissions.') ? 'active' : '' }}" href="{{ route('permissions.matrix') }}"><i class="fa fa-lock menu-icon" aria-hidden="true"></i><span>Matrice roles</span></a></li>
+                        @endif
                     </ul>
                 </div>
             </div>
@@ -129,29 +162,29 @@
                 <div class="menu-section-content">
                     <div class="menu-subtitle">Services avec packs</div>
                     <ul class="menu">
-                        @if (auth()->user()?->canFeature('troupe-musicale', 'list', 'view'))
+                        @if ($canViewTroupe)
                             <li><a class="{{ $currentModuleSlug === 'troupe-musicale' ? 'active' : '' }}" href="{{ route('service-modules.show', 'troupe-musicale') }}"><i class="fa fa-music menu-icon" aria-hidden="true"></i><span>Troupe musicale</span></a></li>
                         @endif
-                        @if (auth()->user()?->canFeature('photographe', 'list', 'view'))
+                        @if ($canViewPhotographe)
                             <li><a class="{{ $currentModuleSlug === 'photographe' ? 'active' : '' }}" href="{{ route('service-modules.show', 'photographe') }}"><i class="fa fa-camera menu-icon" aria-hidden="true"></i><span>Photographe</span></a></li>
                         @endif
                     </ul>
 
                     <div class="menu-subtitle">Services standards</div>
                     <ul class="menu">
-                        @if (auth()->user()?->canFeature('salles', 'list', 'view'))
+                        @if ($canViewSalles)
                             <li><a class="{{ str_starts_with((string) $current, 'salles.') ? 'active' : '' }}" href="{{ route('salles.index') }}"><i class="fa fa-building menu-icon" aria-hidden="true"></i><span>Salles</span></a></li>
                         @endif
-                        @if (auth()->user()?->canFeature('chanteur', 'list', 'view'))
+                        @if ($canViewChanteur)
                             <li><a class="{{ $currentModuleSlug === 'chanteur' ? 'active' : '' }}" href="{{ route('service-modules.show', 'chanteur') }}"><i class="fa fa-microphone menu-icon" aria-hidden="true"></i><span>Chanteur</span></a></li>
                         @endif
-                        @if (auth()->user()?->canFeature('notaire', 'list', 'view'))
+                        @if ($canViewNotaire)
                             <li><a class="{{ $currentModuleSlug === 'notaire' ? 'active' : '' }}" href="{{ route('service-modules.show', 'notaire') }}"><i class="fa fa-file-text-o menu-icon" aria-hidden="true"></i><span>Notaire</span></a></li>
                         @endif
-                        @if (auth()->user()?->canFeature('animation', 'list', 'view'))
+                        @if ($canViewAnimation)
                             <li><a class="{{ $currentModuleSlug === 'animation' ? 'active' : '' }}" href="{{ route('service-modules.show', 'animation') }}"><i class="fa fa-smile-o menu-icon" aria-hidden="true"></i><span>Animation</span></a></li>
                         @endif
-                        @if (auth()->user()?->canFeature('voiture', 'list', 'view'))
+                        @if ($canViewVoiture)
                             <li><a class="{{ $currentModuleSlug === 'voiture' ? 'active' : '' }}" href="{{ route('service-modules.show', 'voiture') }}"><i class="fa fa-car menu-icon" aria-hidden="true"></i><span>Voiture</span></a></li>
                         @endif
                     </ul>

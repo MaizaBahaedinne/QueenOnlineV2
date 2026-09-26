@@ -71,6 +71,10 @@ class User extends Authenticatable
             return false;
         }
 
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
         if (! $this->role_id) {
             return false;
         }
