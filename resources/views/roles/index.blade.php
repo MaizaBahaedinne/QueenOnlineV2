@@ -1,6 +1,13 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $reservationModules = $modules->filter(function ($module) {
+            return in_array($module->slug, ['reservations', 'services-salle', 'staff'], true)
+                || in_array($module->slug, ['salles', 'troupe-musicale', 'photographe', 'chanteur', 'notaire', 'animation', 'voiture'], true);
+        })->values();
+    @endphp
+
     <style>
         .modal-overlay {
             position: fixed;
@@ -45,6 +52,136 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
+        }
+
+        .permissions-shell {
+            display: grid;
+            gap: 14px;
+            margin-top: 18px;
+        }
+
+        .permissions-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .permissions-grid {
+            display: grid;
+            gap: 14px;
+        }
+
+        .permissions-card {
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .permissions-card-head {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--line);
+            background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .permissions-card-title {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .permissions-card-subtitle {
+            margin: 4px 0 0;
+            color: #607389;
+            font-size: 13px;
+        }
+
+        .permissions-table-wrap {
+            overflow-x: auto;
+        }
+
+        .permissions-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 900px;
+        }
+
+        .permissions-table th,
+        .permissions-table td {
+            border-bottom: 1px solid #e8eef5;
+            padding: 10px 12px;
+            vertical-align: top;
+        }
+
+        .permissions-table thead th {
+            position: sticky;
+            top: 0;
+            background: #f8fbff;
+            z-index: 1;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #4f687f;
+        }
+
+        .permissions-feature-name {
+            font-weight: 700;
+            color: #173957;
+            min-width: 220px;
+        }
+
+        .permissions-module-row {
+            background: #f3f8fd;
+        }
+
+        .permissions-module-row td {
+            font-weight: 700;
+            color: #214466;
+            border-top: 1px solid #dbe7f4;
+        }
+
+        .permissions-subgroup {
+            margin-top: 8px;
+            display: grid;
+            gap: 6px;
+        }
+
+        .permissions-checkbox-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 10px;
+        }
+
+        .permissions-checkbox-grid label {
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: #415a72;
+            background: #f8fbff;
+            border: 1px solid #dce7f3;
+            border-radius: 999px;
+            padding: 5px 8px;
+        }
+
+        .permissions-service-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #1f5d8f;
+            background: #eaf4ff;
+            border: 1px solid #cde0f4;
+            padding: 4px 8px;
+            border-radius: 999px;
         }
     </style>
 
@@ -118,6 +255,77 @@
                 </tbody>
             </table>
         </div>
+    </section>
+
+    <section class="panel permissions-shell">
+        <div class="permissions-toolbar">
+            <div>
+                <h2 class="panel-title" style="margin:0;">Matrice des autorisations</h2>
+                <p class="panel-sub" style="margin:6px 0 0;">Modifie les autorisations de chaque role. La partie Reservations affiche aussi les sous-autorisations par service.</p>
+            </div>
+            <a href="{{ route('permissions.matrix') }}" class="btn">Ouvrir la page matrice</a>
+        </div>
+
+        <form method="POST" action="{{ route('permissions.matrix.update') }}" class="permissions-grid">
+            @csrf
+
+            @foreach ($modules as $module)
+                <div class="permissions-card {{ $module->slug === 'reservations' ? 'permissions-reservations-card' : '' }}">
+                    <div class="permissions-card-head">
+                        <div>
+                            <h3 class="permissions-card-title">{{ $module->name }}</h3>
+                            <p class="permissions-card-subtitle">{{ $module->description ?: 'Sans description' }}</p>
+                        </div>
+                        @if ($module->slug === 'reservations')
+                            <span class="permissions-service-badge">Sous autorisations reservation</span>
+                        @endif
+                    </div>
+
+                    <div class="permissions-table-wrap">
+                        <table class="permissions-table">
+                            <thead>
+                                <tr>
+                                    <th>Fonctionnalite</th>
+                                    @foreach ($roles as $role)
+                                        <th>{{ $role->name }}</th>
+                                    @endforeach
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($module->features as $feature)
+                                    <tr class="{{ $module->slug === 'reservations' ? 'permissions-module-row' : '' }}">
+                                        <td class="permissions-feature-name">
+                                            {{ $feature->name }}
+                                            @if ($module->slug === 'reservations')
+                                                <div class="permissions-subgroup">
+                                                    <span class="permissions-service-badge">Reservations / services</span>
+                                                </div>
+                                            @endif
+                                        </td>
+                                        @foreach ($roles as $role)
+                                            @php
+                                                $key = $role->id . '_' . $feature->id;
+                                                $permission = $permissions->get($key);
+                                            @endphp
+                                            <td>
+                                                <div class="permissions-checkbox-grid">
+                                                    <label><input type="checkbox" name="matrix[{{ $role->id }}][{{ $feature->id }}][can_view]" {{ $permission?->can_view ? 'checked' : '' }}> view</label>
+                                                    <label><input type="checkbox" name="matrix[{{ $role->id }}][{{ $feature->id }}][can_create]" {{ $permission?->can_create ? 'checked' : '' }}> create</label>
+                                                    <label><input type="checkbox" name="matrix[{{ $role->id }}][{{ $feature->id }}][can_update]" {{ $permission?->can_update ? 'checked' : '' }}> update</label>
+                                                    <label><input type="checkbox" name="matrix[{{ $role->id }}][{{ $feature->id }}][can_delete]" {{ $permission?->can_delete ? 'checked' : '' }}> delete</label>
+                                                </div>
+                                            </td>
+                                        @endforeach
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endforeach
+
+            <button type="submit" class="btn btn-primary">Enregistrer la matrice</button>
+        </form>
     </section>
 
     <div class="modal-overlay" id="role-create-modal">

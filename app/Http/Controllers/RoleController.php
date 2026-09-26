@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Module;
+use App\Models\RoleFeaturePermission;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -10,9 +12,24 @@ class RoleController extends Controller
 {
     public function index()
     {
+        $modules = Module::query()
+            ->with(['features' => function ($query) {
+                $query->orderBy('sort_order')->orderBy('id');
+            }])
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $permissions = RoleFeaturePermission::query()->get()
+            ->keyBy(function (RoleFeaturePermission $permission) {
+                return $permission->role_id . '_' . $permission->module_feature_id;
+            });
+
         return view('roles.index', [
             'title' => 'Roles utilisateurs',
             'roles' => Role::query()->withCount('users')->orderBy('id')->get(),
+            'modules' => $modules,
+            'permissions' => $permissions,
         ]);
     }
 
