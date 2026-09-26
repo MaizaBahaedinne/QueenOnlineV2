@@ -32,6 +32,8 @@ Route::middleware('auth')->group(function () {
 	Route::get('clients/cin-check', [ClientController::class, 'checkCin'])->name('clients.cin-check');
 
 	Route::resource('users', UserController::class);
+	Route::post('users/{user}/impersonate', [UserController::class, 'impersonate'])->name('users.impersonate');
+	Route::post('impersonation/stop', [UserController::class, 'stopImpersonation'])->name('impersonation.stop');
 	Route::resource('clients', ClientController::class);
 	Route::post('clients/{client}/transfer-credit', [ClientController::class, 'transferCredit'])->name('clients.transfer-credit');
 	Route::post('staff/{staff}/documents', [StaffController::class, 'storeDocument'])->name('staff.documents.store');

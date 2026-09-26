@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 class UserController extends MatrixAwareController
@@ -13,9 +14,11 @@ class UserController extends MatrixAwareController
     {
         $this->enforcePermission('users', 'list', 'view');
 
+        $users = User::query()->with('role')->latest()->get();
+
         return view('users.index', [
             'title' => 'Utilisateurs',
-            'users' => User::query()->with('role')->latest()->get(),
+            'users' => $users,
             'roles' => Role::query()->orderBy('name')->get(),
         ]);
     }
@@ -83,5 +86,36 @@ class UserController extends MatrixAwareController
         $user->delete();
 
         return redirect()->route('users.index')->with('success', 'Utilisateur supprime.');
+    }
+
+    public function impersonate(Request $request, User $user)
+    {
+        $currentUser = Auth::user();
+
+        abort_unless($currentUser instanceof User && $currentUser->isSuperAdmin(), 403, 'Action reservee au super admin.');
+        abort_if($currentUser->id === $user->id, 422, 'Vous etes deja connecte avec ce compte.');
+
+        $request->session()->put('impersonator_user_id', $currentUser->id);
+        $request->session()->put('impersonating_user_id', $user->id);
+
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->route('dashboard')->with('success', 'Connexion activee en tant que ' . $user->name . '.');
+    }
+
+    public function stopImpersonation(Request $request)
+    {
+        $currentUser = Auth::user();
+
+        $impersonatorId = (int) $request->session()->pull('impersonator_user_id', 0);
+        $request->session()->forget('impersonating_user_id');
+
+        abort_if($impersonatorId <= 0, 404, 'Aucune session d impersonation active.');
+
+        Auth::loginUsingId($impersonatorId);
+        $request->session()->regenerate();
+
+        return redirect()->route('users.index')->with('success', 'Retour a votre compte admin.');
     }
 }

@@ -40,6 +40,11 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->role?->slug === 'admin';
+    }
+
     public function reservations()
     {
         return $this->hasMany(Reservation::class, 'user_id');

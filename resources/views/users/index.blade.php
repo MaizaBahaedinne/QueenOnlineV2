@@ -5,6 +5,7 @@
         $canCreate = auth()->user()?->canFeature('users', 'create', 'create') ?? false;
         $canUpdate = auth()->user()?->canFeature('users', 'update', 'update') ?? false;
         $canDelete = auth()->user()?->canFeature('users', 'delete', 'delete') ?? false;
+        $canImpersonate = auth()->user()?->isSuperAdmin() ?? false;
     @endphp
 
     <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.min.css">
@@ -95,6 +96,12 @@
                             <td>{{ $user->status ?? 'active' }}</td>
                             <td>
                                 <div class="action-row">
+                                    @if ($canImpersonate && $user->id !== auth()->id())
+                                        <form method="POST" action="{{ route('users.impersonate', $user) }}">
+                                            @csrf
+                                            <button type="submit" class="btn">Se connecter</button>
+                                        </form>
+                                    @endif
                                     @if ($canUpdate)
                                         <button
                                             type="button"

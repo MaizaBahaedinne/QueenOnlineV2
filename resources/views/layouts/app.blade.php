@@ -31,6 +31,17 @@
     @endphp
 
     <div class="app-shell">
+        @if (session()->has('impersonator_user_id'))
+            <div style="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;background:#fff4d6;border:1px solid #f2d28a;color:#7a5310;padding:10px 14px;border-radius:999px;box-shadow:0 10px 24px rgba(0,0,0,.12);display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:min(94vw,760px);">
+                <strong>Mode impersonation actif</strong>
+                <span>Tu consultes l application en tant que {{ auth()->user()?->name ?? 'utilisateur' }}.</span>
+                <form method="POST" action="{{ route('impersonation.stop') }}">
+                    @csrf
+                    <button type="submit" class="btn" style="background:#7a5310;color:#fff;border-color:#7a5310;">Retour a mon compte</button>
+                </form>
+            </div>
+        @endif
+
         <aside class="sidebar">
             <div class="brand">
                 <div class="brand-badge">Q</div>
