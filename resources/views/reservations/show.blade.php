@@ -257,6 +257,82 @@
             flex-wrap: wrap;
         }
 
+        .reservation-feedback-summary {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .reservation-feedback-card {
+            border: 1px solid #dbe7f4;
+            border-radius: 14px;
+            padding: 12px;
+            background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+            display: grid;
+            gap: 8px;
+            box-shadow: 0 10px 22px rgba(20, 49, 77, 0.06);
+        }
+
+        .reservation-feedback-card-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .reservation-feedback-label {
+            margin: 0;
+            font-size: 12px;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+            color: #54708d;
+            font-weight: 700;
+        }
+
+        .reservation-feedback-score {
+            margin: 4px 0 0;
+            font-size: 28px;
+            line-height: 1;
+            font-weight: 800;
+            color: #163651;
+        }
+
+        .reservation-feedback-score small {
+            font-size: 14px;
+            font-weight: 700;
+            color: #6a8197;
+        }
+
+        .reservation-feedback-stars {
+            display: inline-flex;
+            gap: 2px;
+            color: #d39a00;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .reservation-feedback-stars .off {
+            opacity: 0.22;
+        }
+
+        .reservation-feedback-empty {
+            margin: 0;
+            color: #58728d;
+            font-size: 12px;
+        }
+
+        .reservation-feedback-foot {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            padding-top: 2px;
+            border-top: 1px dashed #d9e6f1;
+            color: #5e7690;
+            font-size: 12px;
+        }
+
         .reservation-rating-stars {
             color: #c89300;
             margin-left: 4px;
@@ -1296,33 +1372,58 @@
                     </div>
 
                     <div class="reservation-hero-panel">
-                        <h4 class="reservation-hero-inline-title">Moyennes satisfaction</h4>
-                        <div class="reservation-rating-summary">
-                            <span class="reservation-chip info">
-                                Salle:
-                                @if ($averageSalleStars !== null)
-                                    <span class="reservation-rating-stars" aria-hidden="true">
-                                        @for ($i = 1; $i <= 5; $i++)
-                                            <i class="fa fa-star {{ $i <= (int) round($averageSalleStars) ? '' : 'off' }}"></i>
-                                        @endfor
-                                    </span>
-                                @else
-                                    -
-                                @endif
-                            </span>
-                            <span class="reservation-chip info">
-                                Service:
-                                @if ($averageServiceStars !== null)
-                                    <span class="reservation-rating-stars" aria-hidden="true">
-                                        @for ($i = 1; $i <= 5; $i++)
-                                            <i class="fa fa-star {{ $i <= (int) round($averageServiceStars) ? '' : 'off' }}"></i>
-                                        @endfor
-                                    </span>
-                                @else
-                                    -
-                                @endif
-                            </span>
+                        <div class="reservation-hero-panel-head">
+                            <div>
+                                <h4 class="reservation-hero-inline-title">Moyennes satisfaction</h4>
+                                <p class="reservation-feedback-empty">Synthese des avis clients pour cette reservation.</p>
+                            </div>
                             <span class="reservation-chip">{{ $feedbackCount }} note(s)</span>
+                        </div>
+
+                        <div class="reservation-feedback-summary">
+                            <div class="reservation-feedback-card">
+                                <div class="reservation-feedback-card-head">
+                                    <div>
+                                        <p class="reservation-feedback-label">Salle</p>
+                                        @if ($averageSalleNote !== null)
+                                            <div class="reservation-feedback-score">{{ number_format($averageSalleNote, 1, ',', ' ') }}<small>/10</small></div>
+                                            <div class="reservation-feedback-stars" aria-hidden="true">
+                                                @for ($i = 1; $i <= 5; $i++)
+                                                    <i class="fa fa-star {{ $i <= (int) round($averageSalleStars) ? '' : 'off' }}"></i>
+                                                @endfor
+                                            </div>
+                                        @else
+                                            <p class="reservation-feedback-empty">Aucune note salle disponible.</p>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="reservation-feedback-foot">
+                                    <span>Qualite de la salle</span>
+                                    <strong>{{ $averageSalleNote !== null ? 'Score calcule' : 'En attente' }}</strong>
+                                </div>
+                            </div>
+
+                            <div class="reservation-feedback-card">
+                                <div class="reservation-feedback-card-head">
+                                    <div>
+                                        <p class="reservation-feedback-label">Service</p>
+                                        @if ($averageServiceNote !== null)
+                                            <div class="reservation-feedback-score">{{ number_format($averageServiceNote, 1, ',', ' ') }}<small>/10</small></div>
+                                            <div class="reservation-feedback-stars" aria-hidden="true">
+                                                @for ($i = 1; $i <= 5; $i++)
+                                                    <i class="fa fa-star {{ $i <= (int) round($averageServiceStars) ? '' : 'off' }}"></i>
+                                                @endfor
+                                            </div>
+                                        @else
+                                            <p class="reservation-feedback-empty">Aucune note service disponible.</p>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="reservation-feedback-foot">
+                                    <span>Qualite du service</span>
+                                    <strong>{{ $averageServiceNote !== null ? 'Score calcule' : 'En attente' }}</strong>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
