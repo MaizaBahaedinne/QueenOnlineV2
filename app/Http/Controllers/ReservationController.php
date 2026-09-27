@@ -1204,6 +1204,8 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'update', 'update');
 
+        $serviceSlug = $this->reservationServiceSlug($reservation);
+
         $request->merge([
             'start_time' => substr((string) $request->input('start_time', ''), 0, 5),
             'end_time' => substr((string) $request->input('end_time', ''), 0, 5),
@@ -1243,30 +1245,12 @@ class ReservationController extends MatrixAwareController
         $startTime = (string) $validated['start_time'];
         $endTime = (string) $validated['end_time'];
 
-        $salles = Salle::query()
-            ->where('status', 'active')
-            ->whereDoesntHave('reservations', function ($query) use ($reservation, $eventDate, $startTime, $endTime) {
-                $query
-                    ->where('id', '!=', $reservation->id)
-                    ->where('status', '!=', 'cancelled')
-                    ->whereDate('start_date', '<=', $eventDate)
-                    ->whereDate('end_date', '>=', $eventDate)
-                    ->where(function ($timeQuery) use ($startTime, $endTime) {
-                        $timeQuery
-                            ->whereNull('start_time')
-                            ->orWhereNull('end_time')
-                            ->orWhere(function ($overlapQuery) use ($startTime, $endTime) {
-                                $overlapQuery
-                                    ->where('start_time', '<', $endTime)
-                                    ->where('end_time', '>', $startTime);
-                            });
-                    });
-            })
-            ->orderBy('name')
-            ->get(['id', 'name', 'capacity', 'price_per_day', 'salle_type', 'color_code']);
+        $payload = $this->buildAvailabilityPayload($serviceSlug, $eventDate, $startTime, $endTime, $reservation->id);
 
         return response()->json([
-            'salles' => $salles,
+            'salles' => $payload['salles'],
+            'resources' => $payload['resources'],
+            'service_slug' => $serviceSlug,
         ]);
     }
 
@@ -1948,6 +1932,7 @@ class ReservationController extends MatrixAwareController
         $validated = $request->validate([
             'salle_id' => ['required', 'exists:salles,id'],
             'service_slug' => ['nullable', Rule::in(array_keys(self::RESERVATION_SERVICES))],
+            'service_resource_id' => ['nullable', 'integer'],
             'address_number' => ['nullable', 'string', 'max:50'],
             'address_street' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
@@ -1988,6 +1973,24 @@ class ReservationController extends MatrixAwareController
         ]);
 
         $validated['payment_due_date'] = Carbon::parse((string) $validated['start_date'])->subDays(30)->toDateString();
+
+        if (($validated['service_slug'] ?? 'salles') === 'voiture') {
+            $serviceResource = ServiceModuleItem::query()
+                ->where('id', (int) ($validated['service_resource_id'] ?? 0))
+                ->where('module_slug', 'voiture')
+                ->where('status', 'active')
+                ->first();
+
+            if (! $serviceResource) {
+                return redirect()->route('reservations.index')->withErrors([
+                    'service_resource_id' => 'Selectionne une voiture disponible avant de valider.',
+                ])->withInput();
+            }
+
+            $existingNote = trim((string) ($validated['note_admin'] ?? ''));
+            $carNote = 'Voiture selectionnee: ' . $serviceResource->name;
+            $validated['note_admin'] = $existingNote !== '' ? ($existingNote . PHP_EOL . $carNote) : $carNote;
+        }
 
         if ($serviceSlugForValidation !== 'salles' && empty(trim((string) ($validated['address_street'] ?? '')))) {
             return redirect()->route('reservations.index')->withErrors([
@@ -2249,6 +2252,7 @@ class ReservationController extends MatrixAwareController
         $validated = $request->validate([
             'salle_id' => ['required', 'exists:salles,id'],
             'service_slug' => ['nullable', Rule::in(array_keys(self::RESERVATION_SERVICES))],
+            'service_resource_id' => ['nullable', 'integer'],
             'address_number' => ['nullable', 'string', 'max:50'],
             'address_street' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
@@ -2293,6 +2297,24 @@ class ReservationController extends MatrixAwareController
                 ->route('reservations.show', $reservation)
                 ->withErrors(['address_street' => 'L adresse complete est obligatoire pour une reservation de service hors salle.'])
                 ->withInput();
+        }
+
+        if (($validated['service_slug'] ?? 'salles') === 'voiture') {
+            $serviceResource = ServiceModuleItem::query()
+                ->where('id', (int) ($validated['service_resource_id'] ?? 0))
+                ->where('module_slug', 'voiture')
+                ->where('status', 'active')
+                ->first();
+
+            if (! $serviceResource) {
+                return redirect()->route('reservations.show', $reservation)->withErrors([
+                    'service_resource_id' => 'Selectionne une voiture disponible avant de valider.',
+                ])->withInput();
+            }
+
+            $existingNote = trim((string) ($validated['note_admin'] ?? ''));
+            $carNote = 'Voiture selectionnee: ' . $serviceResource->name;
+            $validated['note_admin'] = $existingNote !== '' ? ($existingNote . PHP_EOL . $carNote) : $carNote;
         }
 
         if (Schema::hasColumn('reservations', 'service_slug')) {
@@ -2390,38 +2412,22 @@ class ReservationController extends MatrixAwareController
         }
 
         $validated = $validator->validated();
+        $serviceSlug = trim((string) $request->input('service_slug', 'salles'));
+        if (! array_key_exists($serviceSlug, self::RESERVATION_SERVICES)) {
+            $serviceSlug = 'salles';
+        }
 
         $eventDate = $validated['event_date'];
         $startTime = $validated['start_time'];
         $endTime = $validated['end_time'];
         $excludeReservationId = $validated['exclude_reservation_id'] ?? null;
 
-        $salles = Salle::query()
-            ->where('status', 'active')
-            ->whereDoesntHave('reservations', function ($query) use ($eventDate, $startTime, $endTime, $excludeReservationId) {
-                $query
-                    ->where('status', '!=', 'cancelled')
-                    ->whereDate('start_date', '<=', $eventDate)
-                    ->whereDate('end_date', '>=', $eventDate)
-                    ->when($excludeReservationId, function ($subQuery) use ($excludeReservationId) {
-                        $subQuery->where('id', '!=', $excludeReservationId);
-                    })
-                    ->where(function ($timeQuery) use ($startTime, $endTime) {
-                        $timeQuery
-                            ->whereNull('start_time')
-                            ->orWhereNull('end_time')
-                            ->orWhere(function ($overlapQuery) use ($startTime, $endTime) {
-                                $overlapQuery
-                                    ->where('start_time', '<', $endTime)
-                                    ->where('end_time', '>', $startTime);
-                            });
-                    });
-            })
-            ->orderBy('name')
-            ->get(['id', 'name', 'capacity', 'price_per_day', 'salle_type']);
+        $payload = $this->buildAvailabilityPayload($serviceSlug, $eventDate, $startTime, $endTime, $excludeReservationId);
 
         return response()->json([
-            'salles' => $salles,
+            'salles' => $payload['salles'],
+            'resources' => $payload['resources'],
+            'service_slug' => $serviceSlug,
         ]);
     }
 
@@ -2711,6 +2717,57 @@ class ReservationController extends MatrixAwareController
         if ($reservation->linkedAdditionalService()->exists()) {
             abort(403, 'La reservation liee au service supplementaire est verrouillee.');
         }
+    }
+
+    private function buildAvailabilityPayload(string $serviceSlug, string $eventDate, string $startTime, string $endTime, ?int $excludeReservationId = null): array
+    {
+        $salles = Salle::query()
+            ->where('status', 'active')
+            ->whereDoesntHave('reservations', function ($query) use ($eventDate, $startTime, $endTime, $excludeReservationId) {
+                $query
+                    ->where('status', '!=', 'cancelled')
+                    ->whereDate('start_date', '<=', $eventDate)
+                    ->whereDate('end_date', '>=', $eventDate)
+                    ->when($excludeReservationId, function ($subQuery) use ($excludeReservationId) {
+                        $subQuery->where('id', '!=', $excludeReservationId);
+                    })
+                    ->where(function ($timeQuery) use ($startTime, $endTime) {
+                        $timeQuery
+                            ->whereNull('start_time')
+                            ->orWhereNull('end_time')
+                            ->orWhere(function ($overlapQuery) use ($startTime, $endTime) {
+                                $overlapQuery
+                                    ->where('start_time', '<', $endTime)
+                                    ->where('end_time', '>', $startTime);
+                            });
+                    });
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'capacity', 'price_per_day', 'salle_type', 'color_code']);
+
+        $resources = collect();
+        if ($serviceSlug !== 'salles') {
+            $resources = ServiceModuleItem::query()
+                ->where('module_slug', $serviceSlug)
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name', 'phone', 'base_price', 'notes'])
+                ->map(function (ServiceModuleItem $item) {
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'phone' => $item->phone,
+                        'base_price' => (float) $item->base_price,
+                        'notes' => $item->notes,
+                    ];
+                })
+                ->values();
+        }
+
+        return [
+            'salles' => $salles,
+            'resources' => $resources,
+        ];
     }
 
     private function reservationDateTime(?string $dateValue, ?string $timeValue): ?Carbon

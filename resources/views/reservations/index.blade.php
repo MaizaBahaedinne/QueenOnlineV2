@@ -227,6 +227,7 @@
                     </div>
                     <p class="reservation-hint" id="reservation-availability-status">{{ $effectiveCreateServiceSlug === 'salles' ? 'Selectionne la date et les horaires, puis clique sur verifier.' : ('Service selectionne: ' . $effectiveCreateServiceLabel . '. Selectionne la date et les horaires, puis clique sur verifier.') }}</p>
                     <input type="hidden" name="salle_id" id="reservation-create-salle-id" required>
+                    <input type="hidden" name="service_resource_id" id="reservation-create-service-resource-id">
                     <div id="reservation-salle-cards" class="salle-cards-grid"></div>
                     @if ($effectiveCreateServiceSlug === 'salles')
                         <div id="reservation-salle-options-box" class="salle-options-box">
@@ -603,6 +604,7 @@
         const endTimeInput = document.getElementById('reservation-create-end-time');
         const endDateInput = document.getElementById('reservation-create-end-date');
         const selectedSalleInput = document.getElementById('reservation-create-salle-id');
+        const selectedServiceResourceInput = document.getElementById('reservation-create-service-resource-id');
         const salleCardsContainer = document.getElementById('reservation-salle-cards');
         const salleOptionsBox = document.getElementById('reservation-salle-options-box');
         const salleOptionsList = document.getElementById('reservation-salle-options-list');
@@ -1162,6 +1164,10 @@
                 selectedSalleInput.value = '';
             }
 
+            if (selectedServiceResourceInput) {
+                selectedServiceResourceInput.value = '';
+            }
+
             if (salleCardsContainer) {
                 salleCardsContainer.innerHTML = '';
             }
@@ -1234,12 +1240,58 @@
                     salleCardsContainer.querySelectorAll('.salle-card').forEach((node) => node.classList.remove('is-selected'));
                     card.classList.add('is-selected');
                     selectedSalleInput.value = String(salle.id);
+                    if (selectedServiceResourceInput) {
+                        selectedServiceResourceInput.value = '';
+                    }
                     renderSalleOptions(salle.id);
                     setStatusMessage(clientSearchStatus, 'Salle selectionnee. Tu peux maintenant rechercher un client.');
                 });
 
                 salleCardsContainer.appendChild(card);
             });
+        };
+
+        const renderServiceResourceCards = (resources, availableSalles = []) => {
+            if (!salleCardsContainer || !selectedServiceResourceInput) return;
+
+            salleCardsContainer.innerHTML = '';
+
+            if (!Array.isArray(resources) || resources.length === 0) {
+                return;
+            }
+
+            const fallbackSalleId = availableSalles.length > 0 ? String(availableSalles[0].id) : '';
+            if (selectedSalleInput) {
+                selectedSalleInput.value = fallbackSalleId;
+            }
+
+            resources.forEach((resource) => {
+                const card = document.createElement('button');
+                card.type = 'button';
+                card.className = 'salle-card';
+                card.dataset.resourceId = String(resource.id);
+                card.innerHTML = `
+                    <div class="salle-card-name">${escapeHtml(resource.name)}</div>
+                    <div class="salle-card-meta">Base: ${Number(resource.base_price || 0).toFixed(2)}${resource.phone ? ` | Tel: ${escapeHtml(resource.phone)}` : ''}</div>
+                `;
+
+                card.addEventListener('click', () => {
+                    salleCardsContainer.querySelectorAll('.salle-card').forEach((node) => node.classList.remove('is-selected'));
+                    card.classList.add('is-selected');
+                    selectedServiceResourceInput.value = String(resource.id);
+                    if (selectedSalleInput && fallbackSalleId) {
+                        selectedSalleInput.value = fallbackSalleId;
+                    }
+                    setStatusMessage(clientSearchStatus, `${createServiceLabel} selectionne. Tu peux maintenant rechercher un client.`);
+                });
+
+                salleCardsContainer.appendChild(card);
+            });
+
+            if (resources.length === 1) {
+                selectedServiceResourceInput.value = String(resources[0].id);
+                salleCardsContainer.querySelector('.salle-card')?.classList.add('is-selected');
+            }
         };
 
         const resetClientSelect = () => {
@@ -1319,7 +1371,7 @@
         }
 
         const runCinSearch = async () => {
-            if (!hasSelectedSalle()) {
+            if (createServiceSlug === 'salles' && !hasSelectedSalle()) {
                 setStatusMessage(clientSearchStatus, 'Selectionne d abord une salle disponible.', 'error');
                 return;
             }
@@ -1417,6 +1469,7 @@
                         event_date: eventDate,
                         start_time: startTime,
                         end_time: endTime,
+                        service_slug: createServiceSlug,
                     });
 
                     const response = await fetch(`${availabilityUrl}?${params.toString()}`, {
@@ -1430,19 +1483,33 @@
                         throw new Error(extractErrorMessage(payload, 'Erreur API disponibilite'));
                     }
                     const availableSalles = payload.salles ?? [];
+                    const availableResources = payload.resources ?? [];
 
-                    renderSalleCards(availableSalles);
+                    if (createServiceSlug === 'salles') {
+                        renderSalleCards(availableSalles);
 
-                    if (availableSalles.length === 0) {
-                        setStatusMessage(availabilityStatus, createServiceSlug === 'salles'
-                            ? 'Aucune salle disponible pour ce creneau.'
-                            : `Aucune disponibilite trouvee pour le service ${createServiceLabel} sur ce creneau.`);
+                        if (availableSalles.length === 0) {
+                            setStatusMessage(availabilityStatus, 'Aucune salle disponible pour ce creneau.');
+                            return;
+                        }
+
+                        setStatusMessage(availabilityStatus, `${availableSalles.length} salle(s) disponible(s). Selectionne une salle.`);
                         return;
                     }
 
-                        setStatusMessage(availabilityStatus, createServiceSlug === 'salles'
-                            ? `${availableSalles.length} salle(s) disponible(s). Selectionne une salle.`
-                            : `${availableSalles.length} option(s) disponibles pour le service ${createServiceLabel}. Selectionne l'option d'accueil.`);
+                    renderServiceResourceCards(availableResources, availableSalles);
+
+                    if (availableResources.length === 0) {
+                        setStatusMessage(availabilityStatus, `Aucune voiture active disponible pour ${createServiceLabel}.`);
+                        return;
+                    }
+
+                    if (availableSalles.length === 0) {
+                        setStatusMessage(availabilityStatus, 'Aucune salle disponible pour le support de cette reservation.');
+                        return;
+                    }
+
+                    setStatusMessage(availabilityStatus, `${availableResources.length} voiture(s) disponible(s). Selectionne une voiture.`);
                 } catch (error) {
                     setStatusMessage(availabilityStatus, error instanceof Error ? error.message : 'Impossible de verifier la disponibilite pour le moment.', 'error');
                 }
