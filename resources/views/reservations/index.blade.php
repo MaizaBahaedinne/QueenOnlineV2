@@ -205,7 +205,7 @@
                 <div class="reservation-helper-box">
                     <div class="reservation-step-head">
                         <span class="reservation-step-badge">1</span>
-                        <p class="reservation-helper-title">Disponibilite des salles</p>
+                        <p class="reservation-helper-title">{{ $effectiveCreateServiceSlug === 'salles' ? 'Disponibilite des salles' : 'Service de reservation selectionne' }}</p>
                     </div>
                     <div class="reservation-inline-grid">
                         <div class="reservation-field">
@@ -225,7 +225,7 @@
                     <div class="reservation-actions">
                         <button type="button" class="btn btn-primary" id="reservation-check-availability">Verifier disponibilite</button>
                     </div>
-                    <p class="reservation-hint" id="reservation-availability-status">Selectionne la date et les horaires, puis clique sur verifier.</p>
+                    <p class="reservation-hint" id="reservation-availability-status">{{ $effectiveCreateServiceSlug === 'salles' ? 'Selectionne la date et les horaires, puis clique sur verifier.' : ('Service selectionne: ' . $effectiveCreateServiceLabel . '. Selectionne la date et les horaires, puis clique sur verifier.') }}</p>
                     <input type="hidden" name="salle_id" id="reservation-create-salle-id" required>
                     <div id="reservation-salle-cards" class="salle-cards-grid"></div>
                     @if ($effectiveCreateServiceSlug === 'salles')
@@ -597,6 +597,7 @@
 
         const availabilityButton = document.getElementById('reservation-check-availability');
         const availabilityStatus = document.getElementById('reservation-availability-status');
+        const createServiceSlugInput = document.querySelector('#reservation-create-form input[name="service_slug"]');
         const eventDateInput = document.getElementById('reservation-create-event-date');
         const startTimeInput = document.getElementById('reservation-create-start-time');
         const endTimeInput = document.getElementById('reservation-create-end-time');
@@ -659,6 +660,9 @@
             targetElement.textContent = message;
             targetElement.classList.toggle('is-error', type === 'error');
         };
+
+        const createServiceSlug = createServiceSlugInput?.value || 'salles';
+        const createServiceLabel = "{{ e($effectiveCreateServiceLabel) }}";
 
         const extractErrorMessage = (payload, fallbackMessage) => {
             if (payload && payload.errors && typeof payload.errors === 'object') {
@@ -1281,10 +1285,14 @@
 
             if (lockDate && selectedDate) {
                 lockCreateEventDate(true, selectedDate);
-                setStatusMessage(availabilityStatus, `Date selectionnee: ${selectedDate}. Clique sur verifier disponibilite.`);
+                setStatusMessage(availabilityStatus, createServiceSlug === 'salles'
+                    ? `Date selectionnee: ${selectedDate}. Clique sur verifier disponibilite.`
+                    : `Date selectionnee: ${selectedDate}. Le service ${createServiceLabel} est deja selectionne.`);
             } else {
                 lockCreateEventDate(false);
-                setStatusMessage(availabilityStatus, 'Selectionne la date et les horaires, puis clique sur verifier.');
+                setStatusMessage(availabilityStatus, createServiceSlug === 'salles'
+                    ? 'Selectionne la date et les horaires, puis clique sur verifier.'
+                    : `Service selectionne: ${createServiceLabel}. Selectionne la date et les horaires, puis clique sur verifier.`);
             }
         };
 
@@ -1426,11 +1434,15 @@
                     renderSalleCards(availableSalles);
 
                     if (availableSalles.length === 0) {
-                        setStatusMessage(availabilityStatus, 'Aucune salle disponible pour ce creneau.');
+                        setStatusMessage(availabilityStatus, createServiceSlug === 'salles'
+                            ? 'Aucune salle disponible pour ce creneau.'
+                            : `Aucune disponibilite trouvee pour le service ${createServiceLabel} sur ce creneau.`);
                         return;
                     }
 
-                    setStatusMessage(availabilityStatus, `${availableSalles.length} salle(s) disponible(s). Selectionne une salle.`);
+                        setStatusMessage(availabilityStatus, createServiceSlug === 'salles'
+                            ? `${availableSalles.length} salle(s) disponible(s). Selectionne une salle.`
+                            : `${availableSalles.length} option(s) disponibles pour le service ${createServiceLabel}. Selectionne l'option d'accueil.`);
                 } catch (error) {
                     setStatusMessage(availabilityStatus, error instanceof Error ? error.message : 'Impossible de verifier la disponibilite pour le moment.', 'error');
                 }
