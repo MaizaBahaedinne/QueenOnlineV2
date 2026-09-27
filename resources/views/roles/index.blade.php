@@ -222,6 +222,18 @@
             padding: 4px 8px;
             border-radius: 999px;
         }
+
+        .permissions-select-all {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #2a5478;
+            background: #eef6ff;
+            border: 1px solid #cfe2f6;
+            border-radius: 999px;
+            padding: 5px 9px;
+        }
     </style>
 
     <section class="panel">
@@ -262,6 +274,13 @@
                             <td>{{ $role->users_count }}</td>
                             <td>
                                 <div class="action-row">
+                                    <button
+                                        type="button"
+                                        class="btn"
+                                        data-role-focus="{{ $role->id }}"
+                                    >
+                                        Voir autorisations
+                                    </button>
                                     <button
                                         type="button"
                                         class="btn"
@@ -332,9 +351,15 @@
                                 <h3 class="permissions-card-title">{{ $module->name }}</h3>
                                 <p class="permissions-card-subtitle">{{ $module->description ?: 'Sans description' }}</p>
                             </div>
-                            @if ($module->slug === 'reservations' || in_array($module->slug, ['salles', 'troupe-musicale', 'photographe', 'chanteur', 'notaire', 'animation', 'voiture'], true))
-                                <span class="permissions-service-badge">Reservation / service</span>
-                            @endif
+                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                @if ($module->slug === 'reservations' || in_array($module->slug, ['salles', 'troupe-musicale', 'photographe', 'chanteur', 'notaire', 'animation', 'voiture'], true))
+                                    <span class="permissions-service-badge">Reservation / service</span>
+                                @endif
+                                <label class="permissions-select-all">
+                                    <input type="checkbox" data-module-select-all="{{ $role->id }}_{{ $module->id }}">
+                                    Select all
+                                </label>
+                            </div>
                         </div>
 
                         <div class="permissions-table-wrap">
@@ -355,10 +380,10 @@
                                             <td class="permissions-feature-name">{{ $feature->name }}</td>
                                             <td>
                                                 <div class="permissions-checkbox-grid">
-                                                    <label><input type="checkbox" name="matrix[{{ $role->id }}][{{ $feature->id }}][can_view]" {{ $permission?->can_view ? 'checked' : '' }}> view</label>
-                                                    <label><input type="checkbox" name="matrix[{{ $role->id }}][{{ $feature->id }}][can_create]" {{ $permission?->can_create ? 'checked' : '' }}> create</label>
-                                                    <label><input type="checkbox" name="matrix[{{ $role->id }}][{{ $feature->id }}][can_update]" {{ $permission?->can_update ? 'checked' : '' }}> update</label>
-                                                    <label><input type="checkbox" name="matrix[{{ $role->id }}][{{ $feature->id }}][can_delete]" {{ $permission?->can_delete ? 'checked' : '' }}> delete</label>
+                                                    <label><input type="checkbox" data-module-checkbox="{{ $role->id }}_{{ $module->id }}" name="matrix[{{ $role->id }}][{{ $feature->id }}][can_view]" {{ $permission?->can_view ? 'checked' : '' }}> view</label>
+                                                    <label><input type="checkbox" data-module-checkbox="{{ $role->id }}_{{ $module->id }}" name="matrix[{{ $role->id }}][{{ $feature->id }}][can_create]" {{ $permission?->can_create ? 'checked' : '' }}> create</label>
+                                                    <label><input type="checkbox" data-module-checkbox="{{ $role->id }}_{{ $module->id }}" name="matrix[{{ $role->id }}][{{ $feature->id }}][can_update]" {{ $permission?->can_update ? 'checked' : '' }}> update</label>
+                                                    <label><input type="checkbox" data-module-checkbox="{{ $role->id }}_{{ $module->id }}" name="matrix[{{ $role->id }}][{{ $feature->id }}][can_delete]" {{ $permission?->can_delete ? 'checked' : '' }}> delete</label>
                                                 </div>
                                             </td>
                                         </tr>
@@ -478,6 +503,8 @@
 
         const roleSelect = document.getElementById('permissions-role-select');
         const rolePanels = document.querySelectorAll('[data-role-panel]');
+        const roleFocusButtons = document.querySelectorAll('[data-role-focus]');
+        const moduleSelectAllCheckboxes = document.querySelectorAll('[data-module-select-all]');
 
         const showRolePanel = (roleId) => {
             rolePanels.forEach((panel) => {
@@ -489,5 +516,43 @@
             showRolePanel(roleSelect.value);
             roleSelect.addEventListener('change', () => showRolePanel(roleSelect.value));
         }
+
+        roleFocusButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const roleId = button.getAttribute('data-role-focus');
+                if (!roleId || !roleSelect) return;
+                roleSelect.value = roleId;
+                showRolePanel(roleId);
+                document.querySelector('.permissions-shell')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+
+        const syncModuleSelectAllState = (groupId) => {
+            const children = Array.from(document.querySelectorAll(`[data-module-checkbox="${groupId}"]`));
+            const master = document.querySelector(`[data-module-select-all="${groupId}"]`);
+            if (!master || children.length === 0) return;
+            master.checked = children.every((input) => input.checked);
+            master.indeterminate = !master.checked && children.some((input) => input.checked);
+        };
+
+        moduleSelectAllCheckboxes.forEach((master) => {
+            const groupId = master.getAttribute('data-module-select-all');
+            if (!groupId) return;
+
+            const children = Array.from(document.querySelectorAll(`[data-module-checkbox="${groupId}"]`));
+
+            master.addEventListener('change', () => {
+                children.forEach((input) => {
+                    input.checked = master.checked;
+                });
+                syncModuleSelectAllState(groupId);
+            });
+
+            children.forEach((input) => {
+                input.addEventListener('change', () => syncModuleSelectAllState(groupId));
+            });
+
+            syncModuleSelectAllState(groupId);
+        });
     </script>
 @endsection
