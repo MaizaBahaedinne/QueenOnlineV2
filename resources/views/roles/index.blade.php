@@ -73,6 +73,45 @@
             gap: 14px;
         }
 
+        .permissions-role-picker {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .permissions-role-picker select {
+            min-width: 240px;
+            max-width: 100%;
+            border: 1px solid #d9e5f1;
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 13px;
+            color: #264865;
+            background: #fff;
+        }
+
+        .permissions-role-panel {
+            display: none;
+            gap: 14px;
+        }
+
+        .permissions-role-panel.is-active {
+            display: grid;
+        }
+
+        .permissions-role-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            flex-wrap: wrap;
+            border: 1px solid #dbe7f4;
+            background: #f6fbff;
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+
         .permissions-card {
             border: 1px solid var(--line);
             border-radius: 14px;
@@ -261,52 +300,59 @@
         <div class="permissions-toolbar">
             <div>
                 <h2 class="panel-title" style="margin:0;">Matrice des autorisations</h2>
-                <p class="panel-sub" style="margin:6px 0 0;">Modifie les autorisations de chaque role. La partie Reservations affiche aussi les sous-autorisations par service.</p>
+                <p class="panel-sub" style="margin:6px 0 0;">Affichage separe par role: choisis un role pour voir et modifier uniquement ses autorisations.</p>
             </div>
             <a href="{{ route('permissions.matrix') }}" class="btn">Ouvrir la page matrice</a>
         </div>
 
-        <form method="POST" action="{{ route('permissions.matrix.update') }}" class="permissions-grid">
-            @csrf
+        <div class="permissions-role-picker">
+            <label for="permissions-role-select" style="font-size:13px;font-weight:700;color:#2f4d69;">Role</label>
+            <select id="permissions-role-select">
+                @foreach ($roles as $role)
+                    <option value="{{ $role->id }}">{{ $role->name }} ({{ $role->slug }})</option>
+                @endforeach
+            </select>
+        </div>
 
-            @foreach ($modules as $module)
-                <div class="permissions-card {{ $module->slug === 'reservations' ? 'permissions-reservations-card' : '' }}">
-                    <div class="permissions-card-head">
-                        <div>
-                            <h3 class="permissions-card-title">{{ $module->name }}</h3>
-                            <p class="permissions-card-subtitle">{{ $module->description ?: 'Sans description' }}</p>
-                        </div>
-                        @if ($module->slug === 'reservations')
-                            <span class="permissions-service-badge">Sous autorisations reservation</span>
-                        @endif
+        @foreach ($roles as $role)
+            <form method="POST" action="{{ route('permissions.matrix.update') }}" class="permissions-role-panel {{ $loop->first ? 'is-active' : '' }}" data-role-panel="{{ $role->id }}">
+                @csrf
+                <div class="permissions-role-head">
+                    <div>
+                        <strong>{{ $role->name }}</strong>
+                        <div class="panel-sub" style="margin-top:4px;">Slug: {{ $role->slug }}{{ $role->description ? ' • ' . $role->description : '' }}</div>
                     </div>
+                    <button type="submit" class="btn btn-primary">Enregistrer ce role</button>
+                </div>
 
-                    <div class="permissions-table-wrap">
-                        <table class="permissions-table">
-                            <thead>
-                                <tr>
-                                    <th>Fonctionnalite</th>
-                                    @foreach ($roles as $role)
-                                        <th>{{ $role->name }}</th>
-                                    @endforeach
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($module->features as $feature)
-                                    <tr class="{{ $module->slug === 'reservations' ? 'permissions-module-row' : '' }}">
-                                        <td class="permissions-feature-name">
-                                            {{ $feature->name }}
-                                            @if ($module->slug === 'reservations')
-                                                <div class="permissions-subgroup">
-                                                    <span class="permissions-service-badge">Reservations / services</span>
-                                                </div>
-                                            @endif
-                                        </td>
-                                        @foreach ($roles as $role)
-                                            @php
-                                                $key = $role->id . '_' . $feature->id;
-                                                $permission = $permissions->get($key);
-                                            @endphp
+                @foreach ($modules as $module)
+                    <div class="permissions-card {{ $module->slug === 'reservations' ? 'permissions-reservations-card' : '' }}">
+                        <div class="permissions-card-head">
+                            <div>
+                                <h3 class="permissions-card-title">{{ $module->name }}</h3>
+                                <p class="permissions-card-subtitle">{{ $module->description ?: 'Sans description' }}</p>
+                            </div>
+                            @if ($module->slug === 'reservations' || in_array($module->slug, ['salles', 'troupe-musicale', 'photographe', 'chanteur', 'notaire', 'animation', 'voiture'], true))
+                                <span class="permissions-service-badge">Reservation / service</span>
+                            @endif
+                        </div>
+
+                        <div class="permissions-table-wrap">
+                            <table class="permissions-table" style="min-width:560px;">
+                                <thead>
+                                    <tr>
+                                        <th>Fonctionnalite</th>
+                                        <th>Autorisations</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($module->features as $feature)
+                                        @php
+                                            $key = $role->id . '_' . $feature->id;
+                                            $permission = $permissions->get($key);
+                                        @endphp
+                                        <tr class="{{ $module->slug === 'reservations' ? 'permissions-module-row' : '' }}">
+                                            <td class="permissions-feature-name">{{ $feature->name }}</td>
                                             <td>
                                                 <div class="permissions-checkbox-grid">
                                                     <label><input type="checkbox" name="matrix[{{ $role->id }}][{{ $feature->id }}][can_view]" {{ $permission?->can_view ? 'checked' : '' }}> view</label>
@@ -315,17 +361,15 @@
                                                     <label><input type="checkbox" name="matrix[{{ $role->id }}][{{ $feature->id }}][can_delete]" {{ $permission?->can_delete ? 'checked' : '' }}> delete</label>
                                                 </div>
                                             </td>
-                                        @endforeach
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
-            @endforeach
-
-            <button type="submit" class="btn btn-primary">Enregistrer la matrice</button>
-        </form>
+                @endforeach
+            </form>
+        @endforeach
     </section>
 
     <div class="modal-overlay" id="role-create-modal">
@@ -431,5 +475,19 @@
                 }
             });
         });
+
+        const roleSelect = document.getElementById('permissions-role-select');
+        const rolePanels = document.querySelectorAll('[data-role-panel]');
+
+        const showRolePanel = (roleId) => {
+            rolePanels.forEach((panel) => {
+                panel.classList.toggle('is-active', panel.getAttribute('data-role-panel') === String(roleId));
+            });
+        };
+
+        if (roleSelect) {
+            showRolePanel(roleSelect.value);
+            roleSelect.addEventListener('change', () => showRolePanel(roleSelect.value));
+        }
     </script>
 @endsection
