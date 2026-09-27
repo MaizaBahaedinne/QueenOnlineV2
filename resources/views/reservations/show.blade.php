@@ -17,7 +17,8 @@
         };
         $clientFullName = trim((string) ($reservation->client?->first_name . ' ' . $reservation->client?->name));
         $clientFullName = $clientFullName !== '' ? $clientFullName : ($reservation->client?->name ?? '-');
-        $canUpdateReservation = auth()->user()?->canFeature('reservations', 'update', 'update') ?? false;
+        $isLinkedAdditionalServiceReservation = $reservation->linkedAdditionalService !== null;
+        $canUpdateReservation = (auth()->user()?->canFeature('reservations', 'update', 'update') ?? false) && ! $isLinkedAdditionalServiceReservation;
         $canCreateReservation = auth()->user()?->canFeature('reservations', 'create', 'create') ?? false;
         $canCreatePayment = auth()->user()?->canFeature('payments', 'create', 'create') ?? false;
         $totalAmount = (float) ($reservation->total_amount ?? 0);
@@ -1440,6 +1441,9 @@
                     @endif
                 </div>
                 <div class="reservation-object-body">
+                    @if ($isLinkedAdditionalServiceReservation)
+                        <div class="reservation-flash" style="margin-bottom:12px;background:#eef6ff;border-color:#c7dbf3;color:#173f69;">Cette reservation est liee a une reservation racine. Les informations de service suivent automatiquement la reservation parent et ne sont pas modifiables manuellement.</div>
+                    @endif
                     <div class="reservation-kv"><span class="reservation-kv-key">Nom complet</span><span class="reservation-kv-value">{{ $clientFullName }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">CIN</span><span class="reservation-kv-value">{{ $reservation->client?->cin ?? '-' }}</span></div>
                     <div class="reservation-kv"><span class="reservation-kv-key">Mobile 1</span><span class="reservation-kv-value">{{ $reservation->client?->phone ?? '-' }}{{ $reservation->client?->phone_label_1 ? ' (' . $reservation->client->phone_label_1 . ')' : '' }}</span></div>
@@ -1520,27 +1524,25 @@
                                                     <small>Reste a payer: <strong>{{ number_format($linkedReste, 2, '.', ' ') }}</strong></small>
                                                 @endif
                                             </div>
-                                            @if ($canUpdateReservation)
-                                                <div class="additional-service-item-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-                                                    @if ($row->linkedReservation)
-                                                        <a href="{{ route('reservations.show', $row->linkedReservation) }}" class="btn">Afficher</a>
-                                                    @else
-                                                        <button type="button" class="btn" disabled>Afficher</button>
-                                                    @endif
-                                                    @if ($row->linkedReservation)
-                                                        <div style="display:flex;align-items:center;gap:4px;">
-                                                            <label style="font-size:0.8em;white-space:nowrap;">Heure:</label>
-                                                            <input type="time"
-                                                                value="{{ $row->linkedReservation->start_time ? \Carbon\Carbon::parse($row->linkedReservation->start_time)->format('H:i') : '' }}"
-                                                                style="font-size:0.8em;padding:2px 4px;width:95px;"
-                                                                data-url="{{ route('reservations.additional-services.start-time.update', [$reservation, $row]) }}"
-                                                                data-token="{{ csrf_token() }}"
-                                                                class="js-service-start-time">
-                                                            <span class="js-start-time-status" style="font-size:0.75em;"></span>
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                            @endif
+                                            <div class="additional-service-item-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                                                @if ($row->linkedReservation)
+                                                    <a href="{{ route('reservations.show', $row->linkedReservation) }}" class="btn">Afficher</a>
+                                                @else
+                                                    <button type="button" class="btn" disabled>Afficher</button>
+                                                @endif
+                                                @if ($row->module_slug === 'voiture' && $row->linkedReservation)
+                                                    <div style="font-size:0.8em;color:#4f6b86;text-align:right;max-width:260px;">
+                                                        <div><strong>Depart:</strong> {{ $row->linkedReservation->itinerary_departure ?: '-' }}</div>
+                                                        @if (! empty($row->linkedReservation->itinerary_stops))
+                                                            <div><strong>Arrets:</strong> {{ $row->linkedReservation->itinerary_stops }}</div>
+                                                        @endif
+                                                        @if (! empty($row->linkedReservation->itinerary_return))
+                                                            <div><strong>Retour:</strong> {{ $row->linkedReservation->itinerary_return }}</div>
+                                                        @endif
+                                                        <div><strong>Arrivee:</strong> {{ $reservation->salle?->name ?? 'Salle' }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
                                         </div>
                                     @endforeach
                                 </div>
@@ -2161,23 +2163,19 @@
 
                     @if ($activeLinkedAdditionalServiceRows->isNotEmpty())
                         <div style="display:grid;gap:6px;border:1px solid #dbe7f4;border-radius:10px;padding:10px;background:#f8fbff;">
-                            <strong style="font-size:13px;color:#1f4970;">Modifier aussi la date des reservations de services supplementaires ?</strong>
-                            <small style="color:#4f6b86;">Selection service par service. Les heures restent inchangees.</small>
-                            @php
-                                $oldSyncLinkedIds = collect(old('sync_linked_date_ids', []))->map(fn ($id) => (string) $id);
-                            @endphp
+                            <strong style="font-size:13px;color:#1f4970;">Services supplementaires lies</strong>
+                            <small style="color:#4f6b86;">Ils suivent automatiquement la reservation racine. La date et l'heure ne se modifient pas ici.</small>
                             @foreach ($activeLinkedAdditionalServiceRows as $serviceRow)
                                 @php
                                     $linked = $serviceRow->linkedReservation;
                                     $serviceLabel = $additionalServiceModules[$serviceRow->module_slug] ?? ucfirst((string) $serviceRow->module_slug);
                                 @endphp
-                                <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#244e76;margin:0;">
-                                    <input type="checkbox" name="sync_linked_date_ids[]" value="{{ $linked->id }}" {{ $oldSyncLinkedIds->contains((string) $linked->id) ? 'checked' : '' }}>
+                                <div style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#244e76;margin:0;">
                                     <span>
                                         {{ $serviceLabel }} - {{ $serviceRow->label }} (Reservation #{{ $linked->id }})
-                                        <small style="display:block;color:#607a95;">Date actuelle: @frDate($linked->start_date) @if($linked->start_date !== $linked->end_date) -> @frDate($linked->end_date) @endif | Heure conservee: {{ $linked->start_time ?? '--:--' }} - {{ $linked->end_time ?? '--:--' }}</small>
+                                        <small style="display:block;color:#607a95;">Date actuelle: @frDate($linked->start_date) @if($linked->start_date !== $linked->end_date) -> @frDate($linked->end_date) @endif | Heure: {{ $linked->start_time ?? '--:--' }} - {{ $linked->end_time ?? '--:--' }}</small>
                                     </span>
-                                </label>
+                                </div>
                             @endforeach
                         </div>
                     @endif
@@ -2424,6 +2422,23 @@
                             <label for="additional-service-note">Note</label>
                             <input id="additional-service-note" name="note" type="text" value="{{ old('note') }}" placeholder="Optionnel">
                         </div>
+                    </div>
+
+                    <div id="additional-service-voiture-box" style="display:none;gap:10px;padding:10px;border:1px dashed #cfddef;border-radius:10px;background:#f8fbff;">
+                        <strong style="font-size:13px;color:#1f4970;">Trajet voiture</strong>
+                        <div>
+                            <label for="additional-service-itinerary-departure">Point de depart</label>
+                            <input id="additional-service-itinerary-departure" name="itinerary_departure" type="text" placeholder="Adresse de depart" value="{{ old('itinerary_departure') }}">
+                        </div>
+                        <div>
+                            <label for="additional-service-itinerary-stops">Points d arret</label>
+                            <textarea id="additional-service-itinerary-stops" name="itinerary_stops" rows="2" placeholder="Separés par virgule">{{ old('itinerary_stops') }}</textarea>
+                        </div>
+                        <div>
+                            <label for="additional-service-itinerary-return">Point de retour</label>
+                            <input id="additional-service-itinerary-return" name="itinerary_return" type="text" placeholder="Optionnel" value="{{ old('itinerary_return') }}">
+                        </div>
+                        <small style="color:#607a95;">Le point d arrivee reste la salle elle-meme pour ce service.</small>
                     </div>
 
                     <p class="payment-form-help" id="additional-service-help">Selectionne une categorie puis un service.</p>
@@ -2831,6 +2846,7 @@
             const additionalServiceRef = document.getElementById('additional-service-ref');
             const additionalServiceAmount = document.getElementById('additional-service-amount');
             const additionalServiceHelp = document.getElementById('additional-service-help');
+            const additionalServiceVoitureBox = document.getElementById('additional-service-voiture-box');
 
             if (reservationSalleOptionSelect && reservationSalleOptionAmount) {
                 reservationSalleOptionSelect.addEventListener('change', () => {
@@ -2852,6 +2868,9 @@
                 }
 
                 const slug = additionalServiceModule.value;
+                if (additionalServiceVoitureBox) {
+                    additionalServiceVoitureBox.style.display = slug === 'voiture' ? 'grid' : 'none';
+                }
                 const bucket = serviceOptionsByModule[slug] || { options: [] };
                 const options = Array.isArray(bucket.options) ? bucket.options : [];
 
@@ -2907,7 +2926,7 @@
 
             const hasPaymentErrors = "{{ $errors->has('amount') || $errors->has('phase') || $errors->has('method') || $errors->has('note') ? '1' : '0' }}" === '1';
             const hasClientErrors = "{{ $errors->has('client_type') || $errors->has('first_name') || $errors->has('name') || $errors->has('phone') ? '1' : '0' }}" === '1';
-            const hasAdditionalServiceErrors = "{{ $errors->has('module_slug') || $errors->has('service_ref') || $errors->has('service_amount') || $errors->has('service') ? '1' : '0' }}" === '1';
+            const hasAdditionalServiceErrors = "{{ $errors->has('module_slug') || $errors->has('service_ref') || $errors->has('service_amount') || $errors->has('service') || $errors->has('itinerary_departure') || $errors->has('itinerary_stops') || $errors->has('itinerary_return') ? '1' : '0' }}" === '1';
             const hasReservationErrors = "{{ $errors->has('title') || $errors->has('event_type') || $errors->has('guest_count') || $errors->has('total_amount') || $errors->has('note_admin') ? '1' : '0' }}" === '1';
             const hasSlotErrors = "{{ $errors->has('salle_id') || $errors->has('salle_option_ids') || $errors->has('salle_option_ids.*') || $errors->has('start_date') || $errors->has('end_date') || $errors->has('start_time') || $errors->has('end_time') || $errors->has('sync_linked_date_ids') ? '1' : '0' }}" === '1';
             const hasCancelErrors = "{{ $errors->has('present_on_site') || $errors->has('termination_signed') || $errors->has('cancel') || $errors->has('cancel_linked_reservation_ids') ? '1' : '0' }}" === '1';

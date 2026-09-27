@@ -22,6 +22,15 @@ class Reservation extends Model
         'status',
         'total_amount',
         'note_admin',
+        'address_number',
+        'address_street',
+        'city',
+        'governorate',
+        'latitude',
+        'longitude',
+        'itinerary_departure',
+        'itinerary_stops',
+        'itinerary_return',
     ];
 
     public function client()
@@ -49,6 +58,11 @@ class Reservation extends Model
         return $this->hasMany(ReservationAdditionalService::class);
     }
 
+    public function linkedAdditionalService()
+    {
+        return $this->hasOne(ReservationAdditionalService::class, 'linked_reservation_id');
+    }
+
     public function salleOptionRows()
     {
         return $this->hasMany(ReservationSalleOption::class);
@@ -72,5 +86,10 @@ class Reservation extends Model
     public function isSalleReservation(): bool
     {
         return ($this->service_slug ?? 'salles') === 'salles';
+    }
+
+    public function isLinkedAdditionalServiceReservation(): bool
+    {
+        return $this->linkedAdditionalService()->exists();
     }
 }

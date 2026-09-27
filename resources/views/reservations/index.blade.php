@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="" crossorigin="" />
     @php
         $canCreate = auth()->user()?->canFeature('reservations', 'create', 'create') ?? false;
         $canUpdate = auth()->user()?->canFeature('reservations', 'update', 'update') ?? false;
@@ -453,6 +454,51 @@
                                         <option value="{{ $provider['id'] }}">{{ $provider['name'] }} @if((float) $provider['base_price'] > 0)(Base {{ number_format((float) $provider['base_price'], 2, '.', ' ') }})@endif</option>
                                     @endforeach
                                 </select>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if ($effectiveCreateServiceSlug !== 'salles')
+                        <div class="reservation-service-specific-box" style="display:grid;gap:10px;">
+                            <p class="reservation-service-specific-title">Adresse du service</p>
+                            <div class="reservation-inline-grid-2">
+                                <div class="reservation-field">
+                                    <label for="reservation-service-address-number">N</label>
+                                    <input class="search" id="reservation-service-address-number" style="max-width:none;" type="text" name="address_number" value="{{ old('address_number') }}" placeholder="Numero">
+                                </div>
+                                <div class="reservation-field">
+                                    <label for="reservation-service-address-street">Rue</label>
+                                    <input class="search" id="reservation-service-address-street" style="max-width:none;" type="text" name="address_street" value="{{ old('address_street') }}" placeholder="Rue" required>
+                                </div>
+                            </div>
+                            <div class="reservation-inline-grid-2">
+                                <div class="reservation-field">
+                                    <label for="reservation-service-city">Ville</label>
+                                    <input class="search" id="reservation-service-city" style="max-width:none;" type="text" name="city" value="{{ old('city') }}" placeholder="Ville">
+                                </div>
+                                <div class="reservation-field">
+                                    <label for="reservation-service-governorate">Gouvernorat</label>
+                                    <select class="search" id="reservation-service-governorate" style="max-width:none;" name="governorate">
+                                        <option value="">Gouvernorat</option>
+                                        @foreach ($governorates as $governorate)
+                                            <option value="{{ $governorate }}" {{ old('governorate') === $governorate ? 'selected' : '' }}>{{ $governorate }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="reservation-inline-grid-2">
+                                <div class="reservation-field">
+                                    <label for="reservation-service-latitude">Latitude</label>
+                                    <input class="search" id="reservation-service-latitude" style="max-width:none;" type="text" name="latitude" value="{{ old('latitude') }}" placeholder="36.80...">
+                                </div>
+                                <div class="reservation-field">
+                                    <label for="reservation-service-longitude">Longitude</label>
+                                    <input class="search" id="reservation-service-longitude" style="max-width:none;" type="text" name="longitude" value="{{ old('longitude') }}" placeholder="10.18...">
+                                </div>
+                            </div>
+                            <div>
+                                <div id="reservation-service-map" style="height:260px;border:1px solid #d7e4f2;border-radius:12px;overflow:hidden;"></div>
+                                <p class="reservation-hint" style="margin-top:8px;">Clique sur la carte pour positionner le pin du service.</p>
                             </div>
                         </div>
                     @endif
@@ -1465,5 +1511,80 @@
         });
         closeModalButtons.forEach((button) => button.addEventListener('click', () => { const modal = button.closest('.modal-overlay'); if (modal) closeModal(modal); }));
         document.querySelectorAll('.modal-overlay').forEach((modal) => modal.addEventListener('click', (event) => { if (event.target === modal) closeModal(modal); }));
+    </script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        (function () {
+            const mapElement = document.getElementById('reservation-service-map');
+            const latitudeInput = document.getElementById('reservation-service-latitude');
+            const longitudeInput = document.getElementById('reservation-service-longitude');
+            const createModal = document.getElementById('reservation-create-modal');
+
+            if (!mapElement || !latitudeInput || !longitudeInput || typeof L === 'undefined') {
+                return;
+            }
+
+            const defaultCenter = [36.8065, 10.1815];
+            const initialLatitude = parseFloat(latitudeInput.value || '');
+            const initialLongitude = parseFloat(longitudeInput.value || '');
+            const startCenter = Number.isFinite(initialLatitude) && Number.isFinite(initialLongitude)
+                ? [initialLatitude, initialLongitude]
+                : defaultCenter;
+
+            const map = L.map(mapElement).setView(startCenter, 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19,
+            }).addTo(map);
+
+            const marker = L.marker(startCenter, { draggable: true }).addTo(map);
+
+            const syncInputsFromLatLng = (lat, lng) => {
+                latitudeInput.value = Number(lat).toFixed(7);
+                longitudeInput.value = Number(lng).toFixed(7);
+            };
+
+            marker.on('dragend', () => {
+                const position = marker.getLatLng();
+                syncInputsFromLatLng(position.lat, position.lng);
+            });
+
+            map.on('click', (event) => {
+                marker.setLatLng(event.latlng);
+                syncInputsFromLatLng(event.latlng.lat, event.latlng.lng);
+            });
+
+            latitudeInput.addEventListener('change', () => {
+                const lat = parseFloat(latitudeInput.value);
+                const lng = parseFloat(longitudeInput.value);
+                if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                    const position = L.latLng(lat, lng);
+                    marker.setLatLng(position);
+                    map.setView(position, map.getZoom());
+                }
+            });
+
+            longitudeInput.addEventListener('change', () => {
+                const lat = parseFloat(latitudeInput.value);
+                const lng = parseFloat(longitudeInput.value);
+                if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                    const position = L.latLng(lat, lng);
+                    marker.setLatLng(position);
+                    map.setView(position, map.getZoom());
+                }
+            });
+
+            document.querySelectorAll('[data-open-modal="reservation-create-modal"]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    setTimeout(() => map.invalidateSize(), 120);
+                });
+            });
+
+            if (createModal) {
+                createModal.addEventListener('transitionend', () => {
+                    map.invalidateSize();
+                });
+            }
+        })();
     </script>
 @endsection

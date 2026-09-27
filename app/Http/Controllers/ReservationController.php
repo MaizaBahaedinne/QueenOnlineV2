@@ -987,6 +987,9 @@ class ReservationController extends MatrixAwareController
             'service_ref' => ['required', 'string', 'max:80'],
             'service_amount' => ['nullable', 'numeric', 'min:0'],
             'note' => ['nullable', 'string'],
+            'itinerary_departure' => ['nullable', 'string', 'max:255'],
+            'itinerary_stops' => ['nullable', 'string', 'max:2000'],
+            'itinerary_return' => ['nullable', 'string', 'max:255'],
         ]);
 
         $serviceRef = (string) $validated['service_ref'];
@@ -1042,6 +1045,12 @@ class ReservationController extends MatrixAwareController
 
         $serviceAmount = isset($validated['service_amount']) ? (float) $validated['service_amount'] : $defaultAmount;
 
+        if ($validated['module_slug'] === 'voiture' && empty(trim((string) ($validated['itinerary_departure'] ?? '')))) {
+            return redirect()->route('reservations.show', $reservation)->withErrors([
+                'itinerary_departure' => 'Le point de depart est obligatoire pour le service voiture.',
+            ])->withInput();
+        }
+
         DB::transaction(function () use ($reservation, $validated, $itemId, $packId, $label, $serviceAmount): void {
             $linkedTitle = trim(($reservation->title ?: ('Reservation #' . $reservation->id)) . ' - ' . $label);
             if ($linkedTitle === '') {
@@ -1067,6 +1076,9 @@ class ReservationController extends MatrixAwareController
                 'status' => 'pending',
                 'total_amount' => $serviceAmount,
                 'note_admin' => 'Reservation supplementaire liee a la reservation salle #' . $reservation->id,
+                'itinerary_departure' => $validated['module_slug'] === 'voiture' ? ($validated['itinerary_departure'] ?? null) : null,
+                'itinerary_stops' => $validated['module_slug'] === 'voiture' ? ($validated['itinerary_stops'] ?? null) : null,
+                'itinerary_return' => $validated['module_slug'] === 'voiture' ? ($validated['itinerary_return'] ?? null) : null,
             ]);
 
             ReservationAdditionalService::query()->create([
@@ -1122,25 +1134,16 @@ class ReservationController extends MatrixAwareController
 
         abort_if((int) $additionalService->reservation_id !== (int) $reservation->id, 404);
 
-        $request->validate([
-            'start_time' => ['required', 'date_format:H:i'],
+        return redirect()->route('reservations.show', $reservation)->withErrors([
+            'service' => 'La reservation liee au service supplementaire est verrouillee et ne peut pas etre modifiee manuellement.',
         ]);
-
-        $linkedReservation = $additionalService->linkedReservation;
-        if ($linkedReservation) {
-            $linkedReservation->update(['start_time' => $request->start_time . ':00']);
-        }
-
-        if ($request->expectsJson()) {
-            return response()->json(['ok' => true]);
-        }
-
-        return redirect()->route('reservations.show', $reservation)->with('success', 'Heure de debut mise a jour.');
     }
 
     public function updateClient(Request $request, Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'update', 'update');
+        $this->ensureReservationIsEditable($reservation);
+        $this->ensureReservationServiceActionAccess($this->reservationServiceSlug($reservation), 'update');
 
         $client = $reservation->client;
         if (! $client) {
@@ -1945,6 +1948,15 @@ class ReservationController extends MatrixAwareController
         $validated = $request->validate([
             'salle_id' => ['required', 'exists:salles,id'],
             'service_slug' => ['nullable', Rule::in(array_keys(self::RESERVATION_SERVICES))],
+            'address_number' => ['nullable', 'string', 'max:50'],
+            'address_street' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'governorate' => ['nullable', Rule::in(self::GOVERNORATES)],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'itinerary_departure' => ['nullable', 'string', 'max:255'],
+            'itinerary_stops' => ['nullable', 'string', 'max:2000'],
+            'itinerary_return' => ['nullable', 'string', 'max:255'],
             'salle_option_ids' => ['nullable', 'array'],
             'salle_option_ids.*' => ['integer', 'distinct', 'exists:salle_options,id'],
             'title' => ['required', 'string', 'max:255'],
@@ -1976,6 +1988,12 @@ class ReservationController extends MatrixAwareController
         ]);
 
         $validated['payment_due_date'] = Carbon::parse((string) $validated['start_date'])->subDays(30)->toDateString();
+
+        if ($serviceSlugForValidation !== 'salles' && empty(trim((string) ($validated['address_street'] ?? '')))) {
+            return redirect()->route('reservations.index')->withErrors([
+                'address_street' => 'L adresse complete est obligatoire pour une reservation de service hors salle.',
+            ])->withInput();
+        }
 
         if (Schema::hasColumn('reservations', 'service_slug')) {
             $validated['service_slug'] = $validated['service_slug'] ?? 'salles';
@@ -2040,9 +2058,10 @@ class ReservationController extends MatrixAwareController
     public function updateDetails(Request $request, Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'update', 'update');
+        $this->ensureReservationIsEditable($reservation);
+        $this->ensureReservationServiceActionAccess($this->reservationServiceSlug($reservation), 'update');
 
         $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
             'guest_count' => ['nullable', 'integer', 'min:1'],
             'event_type' => ['required', Rule::in(self::EVENT_TYPES)],
             'note_admin' => ['nullable', 'string'],
@@ -2057,9 +2076,10 @@ class ReservationController extends MatrixAwareController
     public function updateSlot(Request $request, Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'update', 'update');
+        $this->ensureReservationIsEditable($reservation);
+        $this->ensureReservationServiceActionAccess($this->reservationServiceSlug($reservation), 'update');
 
         $request->merge([
-            'start_time' => substr((string) $request->input('start_time', ''), 0, 5),
             'end_time' => substr((string) $request->input('end_time', ''), 0, 5),
         ]);
 
@@ -2087,8 +2107,6 @@ class ReservationController extends MatrixAwareController
                     }
                 },
             ],
-            'sync_linked_date_ids' => ['nullable', 'array'],
-            'sync_linked_date_ids.*' => ['integer', 'exists:reservations,id'],
         ]);
 
         $targetSalleId = (int) $validated['salle_id'];
@@ -2150,24 +2168,9 @@ class ReservationController extends MatrixAwareController
             ->filter(fn (ReservationAdditionalService $row) => (int) ($row->linked_reservation_id ?? 0) > 0)
             ->keyBy(fn (ReservationAdditionalService $row) => (int) $row->linked_reservation_id);
 
-        $selectedLinkedDateSyncIds = collect($validated['sync_linked_date_ids'] ?? [])
-            ->map(fn ($id) => (int) $id)
-            ->filter(fn (int $id) => $id > 0)
-            ->unique()
-            ->values();
-
-        $forbiddenSyncSelection = $selectedLinkedDateSyncIds
-            ->first(fn (int $id) => ! $allowedLinkedRows->has($id));
-
-        if ($forbiddenSyncSelection !== null) {
-            return redirect()->route('reservations.show', $reservation)->withErrors([
-                'sync_linked_date_ids' => 'Selection de reservation liee invalide.',
-            ])->withInput();
-        }
-
         $syncedLinkedCount = 0;
 
-        DB::transaction(function () use ($reservation, $validated, $selectedLinkedDateSyncIds, $allowedLinkedRows, $selectedSalleOptions, &$syncedLinkedCount): void {
+        DB::transaction(function () use ($reservation, $validated, $allowedLinkedRows, $selectedSalleOptions, &$syncedLinkedCount): void {
             $reservation->update([
                 'salle_id' => $validated['salle_id'],
                 'start_date' => $validated['start_date'],
@@ -2175,6 +2178,15 @@ class ReservationController extends MatrixAwareController
                 'start_time' => $validated['start_time'],
                 'end_time' => $validated['end_time'],
                 'payment_due_date' => $validated['payment_due_date'],
+                'address_number' => $validated['address_number'] ?? null,
+                'address_street' => $validated['address_street'] ?? null,
+                'city' => $validated['city'] ?? null,
+                'governorate' => $validated['governorate'] ?? null,
+                'latitude' => $validated['latitude'] ?? null,
+                'longitude' => $validated['longitude'] ?? null,
+                'itinerary_departure' => $validated['itinerary_departure'] ?? null,
+                'itinerary_stops' => $validated['itinerary_stops'] ?? null,
+                'itinerary_return' => $validated['itinerary_return'] ?? null,
             ]);
 
             ReservationSalleOption::query()
@@ -2192,9 +2204,7 @@ class ReservationController extends MatrixAwareController
                 ]);
             }
 
-            foreach ($selectedLinkedDateSyncIds as $linkedReservationId) {
-                /** @var ReservationAdditionalService|null $linkedRow */
-                $linkedRow = $allowedLinkedRows->get($linkedReservationId);
+            foreach ($allowedLinkedRows as $linkedRow) {
                 $linkedReservation = $linkedRow?->linkedReservation;
 
                 if (! $linkedReservation || (string) $linkedReservation->status === 'cancelled') {
@@ -2205,6 +2215,12 @@ class ReservationController extends MatrixAwareController
                     'start_date' => $validated['start_date'],
                     'end_date' => $validated['end_date'],
                     'payment_due_date' => $validated['payment_due_date'],
+                    'address_number' => $validated['address_number'] ?? null,
+                    'address_street' => $validated['address_street'] ?? null,
+                    'city' => $validated['city'] ?? null,
+                    'governorate' => $validated['governorate'] ?? null,
+                    'latitude' => $validated['latitude'] ?? null,
+                    'longitude' => $validated['longitude'] ?? null,
                 ]);
 
                 $syncedLinkedCount++;
@@ -2223,6 +2239,7 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'update', 'update');
         $this->ensureReservationServiceActionAccess($this->reservationServiceSlug($reservation), 'update');
+        $this->ensureReservationIsEditable($reservation);
 
         $request->merge([
             'start_time' => substr((string) $request->input('start_time', ''), 0, 5),
@@ -2230,9 +2247,17 @@ class ReservationController extends MatrixAwareController
         ]);
 
         $validated = $request->validate([
-            'client_id' => ['required', 'exists:clients,id'],
             'salle_id' => ['required', 'exists:salles,id'],
             'service_slug' => ['nullable', Rule::in(array_keys(self::RESERVATION_SERVICES))],
+            'address_number' => ['nullable', 'string', 'max:50'],
+            'address_street' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'governorate' => ['nullable', Rule::in(self::GOVERNORATES)],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'itinerary_departure' => ['nullable', 'string', 'max:255'],
+            'itinerary_stops' => ['nullable', 'string', 'max:2000'],
+            'itinerary_return' => ['nullable', 'string', 'max:255'],
             'title' => ['required', 'string', 'max:255'],
             'guest_count' => ['nullable', 'integer', 'min:1'],
             'event_type' => ['required', Rule::in(self::EVENT_TYPES)],
@@ -2257,12 +2282,18 @@ class ReservationController extends MatrixAwareController
                 },
             ],
             'payment_due_date' => ['nullable', 'date'],
-            'status' => ['nullable', Rule::in(['pending', 'confirmed', 'cancelled', 'completed'])],
             'note_admin' => ['nullable', 'string'],
             'total_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $validated['payment_due_date'] = Carbon::parse((string) $validated['start_date'])->subDays(30)->toDateString();
+
+        if (($validated['service_slug'] ?? 'salles') !== 'salles' && empty(trim((string) ($validated['address_street'] ?? '')))) {
+            return redirect()
+                ->route('reservations.show', $reservation)
+                ->withErrors(['address_street' => 'L adresse complete est obligatoire pour une reservation de service hors salle.'])
+                ->withInput();
+        }
 
         if (Schema::hasColumn('reservations', 'service_slug')) {
             $validated['service_slug'] = $validated['service_slug'] ?? ($reservation->service_slug ?: 'salles');
@@ -2312,6 +2343,7 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'delete', 'delete');
         $this->ensureReservationServiceActionAccess($this->reservationServiceSlug($reservation), 'delete');
+        $this->ensureReservationIsEditable($reservation);
 
         $reservation->delete();
 
@@ -2671,6 +2703,13 @@ class ReservationController extends MatrixAwareController
 
         if (! $user->canFeature(self::RESERVATION_SERVICE_MODULES[$serviceSlug], $featureSlug, $permissionAction)) {
             abort(403);
+        }
+    }
+
+    private function ensureReservationIsEditable(Reservation $reservation): void
+    {
+        if ($reservation->linkedAdditionalService()->exists()) {
+            abort(403, 'La reservation liee au service supplementaire est verrouillee.');
         }
     }
 
