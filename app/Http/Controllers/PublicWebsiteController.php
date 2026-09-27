@@ -19,43 +19,43 @@ class PublicWebsiteController extends Controller
         'salles' => [
             'name' => 'Salles de fete',
             'headline' => 'Des espaces pour mariages, fiancailles et evenements prives.',
-            'summary' => 'Capacites, tarifs et disponibilites de nos salles, directement depuis la plateforme.',
+            'summary' => 'Decouvrez nos salles, leurs capacites et leurs conditions d accueil pour vos plus beaux evenements.',
             'accent' => 'Reception',
         ],
         'troupe-musicale' => [
             'name' => 'Troupe musicale',
             'headline' => 'Des formations pour accompagner chaque temps fort.',
-            'summary' => 'Selection de troupes, formules et budgets issus de la gestion interne.',
+            'summary' => 'Une selection de troupes et de formules pour creer une ambiance elegante et memorable.',
             'accent' => 'Ambiance live',
         ],
         'photographe' => [
             'name' => 'Photographe',
             'headline' => 'Couverture photo pour immortaliser chaque moment.',
-            'summary' => 'Prestataires, packs et fourchettes tarifaires mis a jour depuis la plateforme.',
+            'summary' => 'Des professionnels de l image et des formules adaptees pour conserver chaque souvenir.',
             'accent' => 'Image',
         ],
         'chanteur' => [
             'name' => 'Chanteur',
             'headline' => 'Voix, scene et presence pour vos soirees et ceremonies.',
-            'summary' => 'Artistes et tarifs de base relies a la gestion de service.',
+            'summary' => 'Des artistes selectionnes pour sublimer vos ceremonies, receptions et soirees.',
             'accent' => 'Performance',
         ],
         'notaire' => [
             'name' => 'Notaire',
             'headline' => 'Un accompagnement administratif dans votre parcours evenementiel.',
-            'summary' => 'Intervenants disponibles et organisation simplifiee pour les formalites.',
+            'summary' => 'Un accompagnement clair et serein pour vos formalites et etapes administratives.',
             'accent' => 'Formalites',
         ],
         'animation' => [
             'name' => 'Animation',
             'headline' => 'Des interventions pour rythmer et energiser l evenement.',
-            'summary' => 'Options d animation gerees dans la meme base que vos services operationnels.',
+            'summary' => 'Des animations pensees pour donner du rythme, de la chaleur et du caractere a votre evenement.',
             'accent' => 'Experience',
         ],
         'voiture' => [
             'name' => 'Voiture',
             'headline' => 'Vehicules et trajets pour vos arrivees, departs et deplacements.',
-            'summary' => 'Ressources transport et niveaux de prix issus de la plateforme de reservation.',
+            'summary' => 'Des solutions de transport elegantes pour vos arrivees, deplacements et sorties en toute serenite.',
             'accent' => 'Transport',
         ],
     ];
@@ -126,7 +126,7 @@ class PublicWebsiteController extends Controller
         if (! Schema::hasTable('public_inquiries')) {
             return back()
                 ->withInput()
-                ->withErrors(['site' => 'Le module de demandes publiques n est pas encore initialise. Lance la migration avant de recevoir des demandes.']);
+                ->withErrors(['site' => 'Le service de demande en ligne est temporairement indisponible. Merci de nous contacter directement.']);
         }
 
         $allowedServiceSlugs = array_keys(self::SERVICE_META);
@@ -269,9 +269,9 @@ class PublicWebsiteController extends Controller
                 'packs' => 0,
             ],
             'highlights' => [
-                $rooms->count() . ' salle(s) active(s)',
+                $rooms->count() . ' salle(s) disponibles',
                 'Capacites jusqu a ' . ($rooms->max('capacity') ?: 0) . ' invites',
-                'Tarifs relies a la gestion interne',
+                'Informations utiles pour preparer votre reception',
             ],
             'items' => [],
             'packs' => [],
@@ -332,20 +332,20 @@ class PublicWebsiteController extends Controller
     private function buildHighlights(string $slug, Collection $items, Collection $packs): array
     {
         $highlights = [
-            $items->count() . ' prestataire(s) actif(s)',
+            $items->count() . ' prestation(s) disponible(s)',
         ];
 
         if ($packs->isNotEmpty()) {
-            $highlights[] = $packs->count() . ' pack(s) disponible(s)';
+            $highlights[] = $packs->count() . ' formule(s) proposee(s)';
         }
 
         $phoneCount = $items->pluck('phone')->filter()->count();
         if ($phoneCount > 0) {
-            $highlights[] = $phoneCount . ' contact(s) operationnel(s)';
+            $highlights[] = $phoneCount . ' contact(s) direct(s)';
         }
 
         if ($slug === 'voiture') {
-            $highlights[] = 'Trajets et ressources relies au module de reservation';
+            $highlights[] = 'Des solutions adaptees a vos arrivees et deplacements';
         }
 
         return array_slice($highlights, 0, 3);

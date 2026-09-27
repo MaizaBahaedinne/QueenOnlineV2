@@ -12,8 +12,8 @@
             <div class="container hero-stage">
                 <article class="hero-panel">
                     <span class="eyebrow">A propos</span>
-                    <h1 class="hero-title">Queen Park aligne enfin la vitrine et l exploitation.</h1>
-                    <p class="lead">Le site public n est pas une vitrine deconnectee. Il reprend les services que vous avez deja structures dans la plateforme afin de limiter les doublons, garder des prix cohérents et simplifier la prise de contact.</p>
+                    <h1 class="hero-title">Queen Park Tunisie, un lieu pense pour celebrer avec elegance.</h1>
+                    <p class="lead">Queen Park accompagne les familles et les organisateurs dans la preparation de leurs receptions avec un cadre raffine, des services soignes et une equipe attentive a chaque detail.</p>
                 </article>
             </div>
         </div>
@@ -24,18 +24,18 @@
             <div class="process-grid">
                 <article class="process-step">
                     <span class="process-step-index">1</span>
-                    <h3>{{ $siteStats['active_rooms'] }} salle(s) actives</h3>
-                    <p class="muted" style="margin-top:10px;">Issues du module de salles et exploitables sur la vitrine.</p>
+                    <h3>{{ $siteStats['active_rooms'] }} salle(s) a decouvrir</h3>
+                    <p class="muted" style="margin-top:10px;">Des espaces adaptes a differents styles de receptions et capacites d accueil.</p>
                 </article>
                 <article class="process-step">
                     <span class="process-step-index">2</span>
-                    <h3>{{ $siteStats['active_items'] }} ressource(s) services</h3>
-                    <p class="muted" style="margin-top:10px;">Lues depuis les modules internes sans ressaisie manuelle.</p>
+                    <h3>{{ $siteStats['active_items'] }} prestation(s) disponibles</h3>
+                    <p class="muted" style="margin-top:10px;">Des options pour enrichir votre evenement selon vos envies et votre budget.</p>
                 </article>
                 <article class="process-step">
                     <span class="process-step-index">3</span>
-                    <h3>{{ $siteStats['active_packs'] }} pack(s) affichables</h3>
-                    <p class="muted" style="margin-top:10px;">Disponibles pour enrichir les pages publiques par service.</p>
+                    <h3>{{ $siteStats['active_packs'] }} formule(s) proposee(s)</h3>
+                    <p class="muted" style="margin-top:10px;">Des combinaisons pensees pour simplifier votre choix et mieux vous orienter.</p>
                 </article>
             </div>
         </div>
@@ -44,19 +44,19 @@
     <section class="section">
         <div class="container section-surface card-grid">
             <article class="info-card">
-                <span class="eyebrow">1. Source unique</span>
-                <h3 style="margin-top:14px;">Les donnees viennent de la plateforme</h3>
-                <p style="margin-top:12px;">Les services presentes ici derivent des tables deja maintenues par vos equipes: salles, items de service et packs actifs.</p>
+                <span class="eyebrow">1. Notre promesse</span>
+                <h3 style="margin-top:14px;">Un accueil soigne pour chaque celebration</h3>
+                <p style="margin-top:12px;">Mariages, fiancailles, receptions et evenements prives meritent un lieu qui conjugue charme, confort et sens du detail.</p>
             </article>
             <article class="info-card">
-                <span class="eyebrow">2. Demandes tracables</span>
-                <h3 style="margin-top:14px;">Contact et devis centralises</h3>
-                <p style="margin-top:12px;">Les formulaires publics alimentent une table de demandes dediee afin de preparer une future interface de suivi interne.</p>
+                <span class="eyebrow">2. Notre accompagnement</span>
+                <h3 style="margin-top:14px;">Une equipe a votre ecoute</h3>
+                <p style="margin-top:12px;">De la premiere demande d information jusqu au devis, nous vous orientons avec clarte et disponibilite.</p>
             </article>
             <article class="info-card">
-                <span class="eyebrow">3. Evolution simple</span>
-                <h3 style="margin-top:14px;">Chaque service peut grandir page par page</h3>
-                <p style="margin-top:12px;">La structure est deja prete pour des contenus plus riches: FAQ, temoignages, galeries ou parametres admin plus tard.</p>
+                <span class="eyebrow">3. Notre univers</span>
+                <h3 style="margin-top:14px;">Des prestations pour completer votre evenement</h3>
+                <p style="margin-top:12px;">Animation, musique, photo, transport ou formalites: Queen Park rassemble plusieurs services pour vous offrir une experience plus complete.</p>
             </article>
         </div>
     </section>
@@ -65,8 +65,8 @@
         <div class="container">
             <div class="quote-band">
                 <div>
-                    <strong>Besoin d un parcours client plus riche ?</strong>
-                    <p>La base est posee: pages publiques, formulaires stockes en base et passerelle directe vers l espace de connexion.</p>
+                    <strong>Parlons de votre evenement</strong>
+                    <p>Notre equipe est a votre disposition pour vous renseigner et preparer une proposition adaptee a vos attentes.</p>
                 </div>
                 <a href="{{ route('site.quote') }}" class="btn btn-secondary">Demander un devis</a>
             </div>

@@ -17,11 +17,11 @@
                     <div class="hero-meta-strip">
                         <div class="hero-meta-card">
                             <strong>{{ $servicePage['stats']['items'] }}</strong>
-                            <span>ressource(s) actives</span>
+                            <span>option(s) disponibles</span>
                         </div>
                         <div class="hero-meta-card">
                             <strong>{{ $servicePage['stats']['packs'] }}</strong>
-                            <span>pack(s) associe(s)</span>
+                            <span>formule(s) proposee(s)</span>
                         </div>
                         <div class="hero-meta-card">
                             <strong>{{ $servicePage['startingPrice'] ?: 'Sur demande' }}</strong>
@@ -41,7 +41,7 @@
         <div class="container section-head">
             <div>
                 <span class="eyebrow">Apercu</span>
-                <h2>Ce que le module expose actuellement</h2>
+                <h2>Ce qu il faut savoir sur ce service</h2>
                 <p>{{ $servicePage['summary'] }}</p>
             </div>
         </div>
@@ -60,7 +60,7 @@
                     <article class="process-step">
                         <span class="process-step-index">{{ $loop->iteration }}</span>
                         <h3>{{ $highlight }}</h3>
-                        <p class="muted" style="margin-top:10px;">Lecture rapide pour aider le visiteur a comprendre le positionnement du service.</p>
+                        <p class="muted" style="margin-top:10px;">Un apercu rapide pour vous aider a identifier la formule qui vous correspond.</p>
                     </article>
                 @endforeach
             </div>
@@ -77,13 +77,13 @@
     <section class="section">
         <div class="container two-col">
             <article class="info-card">
-                <h3>Ressources actives</h3>
+                <h3>Prestations disponibles</h3>
                 @if (count($servicePage['items']) > 0)
                     <div class="mini-grid" style="margin-top:18px; grid-template-columns: 1fr;">
                         @foreach ($servicePage['items'] as $item)
                             <div class="mini-card">
                                 <strong>{{ $item['name'] }}</strong>
-                                <p>{{ $item['notes'] ?: 'Ressource active disponible dans la plateforme.' }}</p>
+                                <p>{{ $item['notes'] ?: 'Une prestation disponible pour accompagner votre evenement.' }}</p>
                                 <div class="metric-row" style="margin-top:12px;">
                                     @if ($item['price'])
                                         <span class="metric">{{ $item['price'] }}</span>
@@ -97,7 +97,7 @@
                         @foreach ($servicePage['rooms'] as $room)
                             <div class="room-card">
                                 <strong>{{ $room['name'] }}</strong>
-                                <p>{{ $room['description'] ?: 'Salle active disponible pour la vitrine.' }}</p>
+                                <p>{{ $room['description'] ?: 'Une salle Queen Park prete a accueillir votre reception.' }}</p>
                                 <div class="metric-row" style="margin-top:12px;">
                                     <span class="metric">{{ $room['capacity'] }} invites</span>
                                     @if ($room['price'])
@@ -111,18 +111,18 @@
                         @endforeach
                     </div>
                 @else
-                    <div class="empty-state" style="margin-top:18px;">Aucune ressource active n est visible pour ce service.</div>
+                    <div class="empty-state" style="margin-top:18px;">Aucune prestation n est disponible pour le moment sur cette page.</div>
                 @endif
             </article>
 
             <article class="info-card">
-                <h3>Packs et formule</h3>
+                <h3>Formules</h3>
                 @if (count($servicePage['packs']) > 0)
                     <div class="mini-grid" style="margin-top:18px; grid-template-columns: 1fr;">
                         @foreach ($servicePage['packs'] as $pack)
                             <div class="mini-card">
                                 <strong>{{ $pack['name'] }}</strong>
-                                <p>{{ $pack['description'] ?: 'Pack actif disponible pour ce service.' }}</p>
+                                <p>{{ $pack['description'] ?: 'Une formule disponible pour ce service.' }}</p>
                                 @if ($pack['price'])
                                     <div class="metric-row" style="margin-top:12px;">
                                         <span class="metric">{{ $pack['price'] }}</span>
@@ -132,11 +132,11 @@
                         @endforeach
                     </div>
                 @else
-                    <div class="empty-state" style="margin-top:18px;">Aucun pack actif n est encore rattache a ce service.</div>
+                    <div class="empty-state" style="margin-top:18px;">Aucune formule n est proposee pour le moment sur ce service.</div>
                 @endif
 
                 @if (count($servicePage['contactPhones']) > 0)
-                    <h3 style="margin-top:24px;">Contacts reperes</h3>
+                    <h3 style="margin-top:24px;">Contacts utiles</h3>
                     <div class="metric-row" style="margin-top:14px;">
                         @foreach ($servicePage['contactPhones'] as $phone)
                             <span class="metric">{{ $phone }}</span>
@@ -150,8 +150,8 @@
     <section class="section">
         <div class="container cta-panel">
             <span class="eyebrow" style="background:rgba(255,255,255,0.14); color:#fff;">Action</span>
-            <h2 style="margin-top:14px; color:#fff;">Passer du parcours de lecture au besoin concret</h2>
-            <p>Si ce service correspond au besoin du client, la suite logique doit etre immediate: demande de devis ou prise de contact, sans aller-retour inutile.</p>
+            <h2 style="margin-top:14px; color:#fff;">Demandez une proposition adaptee a votre evenement</h2>
+            <p>Si ce service correspond a vos attentes, notre equipe peut vous orienter rapidement avec un devis ou une prise de contact directe.</p>
             <div class="hero-actions">
                 <a href="{{ route('site.quote', ['service' => $servicePage['slug']]) }}" class="btn btn-secondary">Demander un devis</a>
                 <a href="{{ route('site.contact') }}" class="btn btn-secondary">Contacter l equipe</a>

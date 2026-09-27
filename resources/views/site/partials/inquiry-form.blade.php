@@ -22,7 +22,7 @@
     <div class="form-copy" style="margin-bottom:18px;">
         <span class="eyebrow">{{ $requestType === 'quote' ? 'Devis' : 'Contact' }}</span>
         <h3 style="margin-top:14px;">{{ $formTitle }}</h3>
-        <p style="margin-top:10px;">Decris ton besoin. La demande sera enregistree dans la base de la plateforme pour suivi.</p>
+        <p style="margin-top:10px;">Decrivez votre besoin. Notre equipe utilisera ces informations pour vous repondre dans les meilleurs delais.</p>
     </div>
 
     <form method="POST" action="{{ route('site.inquiries.store') }}" class="form-grid">

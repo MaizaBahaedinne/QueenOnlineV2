@@ -12,8 +12,8 @@
             <div class="container hero-stage">
                 <article class="hero-panel">
                     <span class="eyebrow">Devis</span>
-                    <h1 class="hero-title">Faire passer l interet en demande concrete.</h1>
-                    <p class="lead">Le visiteur choisit un service, precise sa date, son volume et son budget. La demande est stockee dans la base pour traitement par l equipe.</p>
+                    <h1 class="hero-title">Obtenez votre devis Queen Park</h1>
+                    <p class="lead">Indiquez le service souhaite, la date de votre evenement et les informations utiles. Notre equipe vous recontactera avec une proposition adaptee.</p>
                     <div class="hero-meta-strip">
                         <div class="hero-meta-card">
                             <strong>Service</strong>
@@ -38,18 +38,18 @@
             <div class="process-grid">
                 <article class="process-step">
                     <span class="process-step-index">1</span>
-                    <h3>Bon service</h3>
-                    <p class="muted" style="margin-top:10px;">Le visiteur entre directement dans le bon univers de prestation.</p>
+                    <h3>Selectionnez votre service</h3>
+                    <p class="muted" style="margin-top:10px;">Choisissez l univers qui correspond a votre evenement.</p>
                 </article>
                 <article class="process-step">
                     <span class="process-step-index">2</span>
-                    <h3>Prix publics comme repere</h3>
-                    <p class="muted" style="margin-top:10px;">Le site guide sans promettre un devis ferme trop tot.</p>
+                    <h3>Precisez votre besoin</h3>
+                    <p class="muted" style="margin-top:10px;">Ajoutez les informations essentielles pour orienter notre proposition.</p>
                 </article>
                 <article class="process-step">
                     <span class="process-step-index">3</span>
-                    <h3>Traitement interne ensuite</h3>
-                    <p class="muted" style="margin-top:10px;">Les informations recueillies permettent un retour equipe plus rapide.</p>
+                    <h3>Recevez notre retour</h3>
+                    <p class="muted" style="margin-top:10px;">Nous revenons vers vous rapidement avec une reponse claire et personnalisee.</p>
                 </article>
             </div>
         </div>
@@ -61,14 +61,14 @@
 
             <article class="info-card">
                 <span class="eyebrow">Services</span>
-                <h3 style="margin-top:14px;">Points d entree disponibles</h3>
+                <h3 style="margin-top:14px;">Prestations disponibles</h3>
                 <div class="mini-grid" style="margin-top:18px; grid-template-columns: 1fr;">
                     @foreach ($servicePages as $servicePage)
                         <div class="mini-card">
                             <strong>{{ $servicePage['name'] }}</strong>
                             <p>{{ $servicePage['headline'] }}</p>
                             <div class="metric-row" style="margin-top:12px;">
-                                <span class="metric">{{ $servicePage['stats']['items'] }} ressource(s)</span>
+                                <span class="metric">{{ $servicePage['stats']['items'] }} option(s)</span>
                                 @if ($servicePage['startingPrice'])
                                     <span class="metric">{{ $servicePage['startingPrice'] }}</span>
                                 @endif
