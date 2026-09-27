@@ -329,7 +329,7 @@ class ReservationController extends MatrixAwareController
     public function show(Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'list', 'view');
-        $this->ensureReservationServiceAccess($this->reservationServiceSlug($reservation));
+        $this->ensureReservationServiceActionAccess($this->reservationServiceSlug($reservation), 'view');
 
         $reservation->load([
             'client',
@@ -1848,7 +1848,7 @@ class ReservationController extends MatrixAwareController
         $resolvedClientId = $this->resolveReservationClient($request);
         $requestServiceSlug = trim((string) $request->input('service_slug', 'salles'));
         $serviceSlugForValidation = in_array($requestServiceSlug, array_keys(self::RESERVATION_SERVICES), true) ? $requestServiceSlug : 'salles';
-        $this->ensureReservationServiceAccess($serviceSlugForValidation);
+        $this->ensureReservationServiceActionAccess($serviceSlugForValidation, 'create');
 
         $serviceSpecificLines = [];
 
@@ -2222,7 +2222,7 @@ class ReservationController extends MatrixAwareController
     public function update(Request $request, Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'update', 'update');
-        $this->ensureReservationServiceAccess($this->reservationServiceSlug($reservation));
+        $this->ensureReservationServiceActionAccess($this->reservationServiceSlug($reservation), 'update');
 
         $request->merge([
             'start_time' => substr((string) $request->input('start_time', ''), 0, 5),
@@ -2311,7 +2311,7 @@ class ReservationController extends MatrixAwareController
     public function destroy(Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'delete', 'delete');
-        $this->ensureReservationServiceAccess($this->reservationServiceSlug($reservation));
+        $this->ensureReservationServiceActionAccess($this->reservationServiceSlug($reservation), 'delete');
 
         $reservation->delete();
 
@@ -2644,9 +2644,32 @@ class ReservationController extends MatrixAwareController
         return $allowedServices;
     }
 
-    private function ensureReservationServiceAccess(string $serviceSlug): void
+    private function ensureReservationServiceActionAccess(string $serviceSlug, string $action): void
     {
-        if (! in_array($serviceSlug, $this->allowedReservationServiceSlugs(), true)) {
+        $serviceActionsMap = [
+            'view' => ['list', 'view'],
+            'create' => ['create', 'create'],
+            'update' => ['update', 'update'],
+            'delete' => ['delete', 'delete'],
+        ];
+
+        if (! array_key_exists($action, $serviceActionsMap)) {
+            abort(403);
+        }
+
+        if (! array_key_exists($serviceSlug, self::RESERVATION_SERVICE_MODULES)) {
+            abort(403);
+        }
+
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+        if (! $user instanceof \App\Models\User) {
+            abort(403);
+        }
+
+        [$featureSlug, $permissionAction] = $serviceActionsMap[$action];
+
+        if (! $user->canFeature(self::RESERVATION_SERVICE_MODULES[$serviceSlug], $featureSlug, $permissionAction)) {
             abort(403);
         }
     }
