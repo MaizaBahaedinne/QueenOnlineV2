@@ -22,17 +22,6 @@
                     </div>
                 </div>
             </article>
-            <aside class="hero-aside">
-                <article class="hero-showcase">
-                    <span class="eyebrow" style="background:rgba(255,255,255,0.14); color:#fff;">Lecture rapide</span>
-                    <h3 style="margin-top:14px;">Le visiteur voit tout de suite</h3>
-                    <ul class="showcase-list">
-                        <li><span>Le type de service</span><strong>clair</strong></li>
-                        <li><span>Le niveau d offre</span><strong>visible</strong></li>
-                        <li><span>L action suivante</span><strong>devis</strong></li>
-                    </ul>
-                </article>
-            </aside>
         </div>
     </section>
 

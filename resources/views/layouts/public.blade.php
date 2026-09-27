@@ -115,10 +115,7 @@
             padding: 38px 0 30px;
         }
         .hero-stage {
-            display: grid;
-            grid-template-columns: 1.2fr 0.8fr;
-            gap: 22px;
-            align-items: stretch;
+            display: block;
         }
         .hero-grid {
             display: grid;
@@ -176,9 +173,7 @@
         h1 { font-size: clamp(42px, 6vw, 76px); margin-top: 18px; letter-spacing: -0.04em; }
         h2 { font-size: clamp(30px, 4vw, 46px); letter-spacing: -0.03em; }
         h3 { font-size: 22px; }
-        .hero-title {
-            max-width: 12ch;
-        }
+        .hero-title { max-width: 14ch; }
         .lead {
             margin: 18px 0 0;
             font-size: 18px;
@@ -211,10 +206,7 @@
             font-size: 13px;
             line-height: 1.5;
         }
-        .hero-aside {
-            display: grid;
-            gap: 16px;
-        }
+        .hero-aside { display: none; }
         .hero-showcase {
             border-radius: 34px;
             padding: 22px;
@@ -466,7 +458,7 @@
         }
 
         @media (max-width: 1024px) {
-            .hero-stage, .hero-grid, .two-col, .card-grid, .room-grid, .mini-grid, .process-grid { grid-template-columns: 1fr; }
+            .hero-grid, .two-col, .card-grid, .room-grid, .mini-grid, .process-grid { grid-template-columns: 1fr; }
             .header-row { align-items: start; flex-direction: column; }
             .site-nav, .header-cta { width: 100%; }
             .hero-meta-strip { grid-template-columns: 1fr; }

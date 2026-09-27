@@ -26,29 +26,6 @@
                     <a href="{{ route('site.contact') }}" class="btn btn-secondary">Parler a l equipe</a>
                 </div>
             </article>
-
-            <aside class="hero-aside">
-                <article class="hero-showcase">
-                    <span class="eyebrow" style="background:rgba(255,255,255,0.14); color:#fff;">Repere rapide</span>
-                    <h3 style="margin-top:14px;">Ce que ce service apporte</h3>
-                    <ul class="showcase-list">
-                        @foreach ($servicePage['highlights'] as $highlight)
-                            <li><span>{{ $highlight }}</span><strong></strong></li>
-                        @endforeach
-                    </ul>
-                </article>
-                @if (count($servicePage['contactPhones']) > 0)
-                    <article class="hero-secondary-card">
-                        <span class="eyebrow">Contacts</span>
-                        <h3 style="margin-top:14px;">Reperes operationnels</h3>
-                        <div class="metric-row" style="margin-top:14px;">
-                            @foreach ($servicePage['contactPhones'] as $phone)
-                                <span class="metric">{{ $phone }}</span>
-                            @endforeach
-                        </div>
-                    </article>
-                @endif
-            </aside>
         </div>
     </section>
 
@@ -59,6 +36,33 @@
                 <h2>Ce que le module expose actuellement</h2>
                 <p>{{ $servicePage['summary'] }}</p>
             </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container section-surface">
+            <div class="section-head">
+                <div>
+                    <span class="eyebrow">Repere rapide</span>
+                    <h2>Ce que ce service apporte</h2>
+                </div>
+            </div>
+            <div class="process-grid">
+                @foreach ($servicePage['highlights'] as $highlight)
+                    <article class="process-step">
+                        <span class="process-step-index">{{ $loop->iteration }}</span>
+                        <h3>{{ $highlight }}</h3>
+                        <p class="muted" style="margin-top:10px;">Lecture rapide pour aider le visiteur a comprendre le positionnement du service.</p>
+                    </article>
+                @endforeach
+            </div>
+            @if (count($servicePage['contactPhones']) > 0)
+                <div class="metric-row" style="margin-top:18px;">
+                    @foreach ($servicePage['contactPhones'] as $phone)
+                        <span class="metric">{{ $phone }}</span>
+                    @endforeach
+                </div>
+            @endif
         </div>
     </section>
 

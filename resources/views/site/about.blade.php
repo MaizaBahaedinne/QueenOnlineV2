@@ -8,17 +8,28 @@
                 <h1 class="hero-title">Queen Park aligne enfin la vitrine et l exploitation.</h1>
                 <p class="lead">Le site public n est pas une vitrine deconnectee. Il reprend les services que vous avez deja structures dans la plateforme afin de limiter les doublons, garder des prix cohérents et simplifier la prise de contact.</p>
             </article>
-            <aside class="hero-aside">
-                <article class="hero-showcase">
-                    <span class="eyebrow" style="background:rgba(255,255,255,0.14); color:#fff;">Base existante</span>
-                    <h3 style="margin-top:14px;">Ce que la vitrine consomme deja</h3>
-                    <ul class="showcase-list">
-                        <li><span>Salles actives</span><strong>{{ $siteStats['active_rooms'] }}</strong></li>
-                        <li><span>Ressources services</span><strong>{{ $siteStats['active_items'] }}</strong></li>
-                        <li><span>Packs affichables</span><strong>{{ $siteStats['active_packs'] }}</strong></li>
-                    </ul>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container section-surface">
+            <div class="process-grid">
+                <article class="process-step">
+                    <span class="process-step-index">1</span>
+                    <h3>{{ $siteStats['active_rooms'] }} salle(s) actives</h3>
+                    <p class="muted" style="margin-top:10px;">Issues du module de salles et exploitables sur la vitrine.</p>
                 </article>
-            </aside>
+                <article class="process-step">
+                    <span class="process-step-index">2</span>
+                    <h3>{{ $siteStats['active_items'] }} ressource(s) services</h3>
+                    <p class="muted" style="margin-top:10px;">Lues depuis les modules internes sans ressaisie manuelle.</p>
+                </article>
+                <article class="process-step">
+                    <span class="process-step-index">3</span>
+                    <h3>{{ $siteStats['active_packs'] }} pack(s) affichables</h3>
+                    <p class="muted" style="margin-top:10px;">Disponibles pour enrichir les pages publiques par service.</p>
+                </article>
+            </div>
         </div>
     </section>
 

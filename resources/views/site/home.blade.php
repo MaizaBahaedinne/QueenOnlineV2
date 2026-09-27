@@ -33,49 +33,6 @@
                     <a href="{{ route('login') }}" class="btn btn-secondary">Acces equipe</a>
                 </div>
             </article>
-
-            <aside class="hero-aside">
-                <article class="hero-showcase">
-                    <span class="eyebrow" style="background:rgba(255,255,255,0.14); color:#fff;">Vision rapide</span>
-                    <h3 style="margin-top:14px;">Parcours visiteur plus net</h3>
-                    <div class="hero-showcase-grid">
-                        <div class="hero-showcase-card">
-                            <strong>Accueil</strong>
-                            <p>Comprendre l offre en quelques secondes.</p>
-                        </div>
-                        <div class="hero-showcase-card">
-                            <strong>Services</strong>
-                            <p>Entrer par besoin plutot que par structure interne.</p>
-                        </div>
-                        <div class="hero-showcase-card">
-                            <strong>Devis</strong>
-                            <p>Transformer l interet en demande qualifiee.</p>
-                        </div>
-                    </div>
-                    @if (count($featuredRooms) > 0)
-                        @php $heroRoom = $featuredRooms[0]; @endphp
-                        <div class="hero-room-card" style="margin-top:16px;">
-                            <strong>{{ $heroRoom['name'] }}</strong>
-                            <p>{{ $heroRoom['description'] ?: 'Salle active issue de la plateforme.' }}</p>
-                            <div class="metric-row" style="margin-top:12px;">
-                                <span class="metric" style="background:rgba(255,255,255,0.14); color:#fff; border-color:rgba(255,255,255,0.18);">{{ $heroRoom['capacity'] }} invites</span>
-                                @if ($heroRoom['price'])
-                                    <span class="metric" style="background:rgba(255,255,255,0.14); color:#fff; border-color:rgba(255,255,255,0.18);">{{ $heroRoom['price'] }}</span>
-                                @endif
-                            </div>
-                        </div>
-                    @endif
-                </article>
-                <article class="hero-secondary-card">
-                    <span class="eyebrow">Donnees directes</span>
-                    <h3 style="margin-top:14px;">Ce que le site sait deja montrer</h3>
-                    <ul class="showcase-list">
-                        <li><span>Prestataires actifs</span><strong>{{ $siteStats['active_items'] }}</strong></li>
-                        <li><span>Packs prets a vendre</span><strong>{{ $siteStats['active_packs'] }}</strong></li>
-                        <li><span>Services consultables</span><strong>{{ $siteStats['services'] }}</strong></li>
-                    </ul>
-                </article>
-            </aside>
         </div>
     </section>
 
@@ -140,30 +97,59 @@
             </article>
 
             <article class="info-card">
-                <span class="eyebrow">Salles en avant</span>
-                <h3 style="margin-top:14px;">Capacites, lieux et positionnement tarifaire</h3>
-                @if (count($featuredRooms) > 0)
-                    <div class="room-grid" style="margin-top:18px; grid-template-columns: 1fr;">
-                        @foreach ($featuredRooms as $room)
-                            <div class="room-card">
-                                <strong>{{ $room['name'] }}</strong>
-                                <p>{{ $room['description'] ?: 'Salle active disponible dans la plateforme.' }}</p>
-                                <div class="metric-row" style="margin-top:12px;">
-                                    <span class="metric">{{ $room['capacity'] }} invites</span>
-                                    @if ($room['price'])
-                                        <span class="metric">{{ $room['price'] }}</span>
-                                    @endif
-                                    @if ($room['location'])
-                                        <span class="metric">{{ $room['location'] }}</span>
-                                    @endif
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="empty-state" style="margin-top:18px;">Aucune salle active n est disponible pour le moment.</div>
-                @endif
+                <span class="eyebrow">Vision rapide</span>
+                <h3 style="margin-top:14px;">Ce que le visiteur comprend tout de suite</h3>
+                <div class="process-grid" style="grid-template-columns:1fr; margin-top:18px;">
+                    <article class="process-step">
+                        <span class="process-step-index">A</span>
+                        <h3>Accueil</h3>
+                        <p class="muted" style="margin-top:10px;">Comprendre l offre en quelques secondes avec une promesse claire.</p>
+                    </article>
+                    <article class="process-step">
+                        <span class="process-step-index">B</span>
+                        <h3>Services</h3>
+                        <p class="muted" style="margin-top:10px;">Entrer par besoin et comparer les options visibles.</p>
+                    </article>
+                    <article class="process-step">
+                        <span class="process-step-index">C</span>
+                        <h3>Devis</h3>
+                        <p class="muted" style="margin-top:10px;">Transformer l interet en demande qualifiee sans friction.</p>
+                    </article>
+                </div>
             </article>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container">
+            <div class="section-head">
+                <div>
+                    <span class="eyebrow">Salles en avant</span>
+                    <h2>Capacites, lieux et positionnement tarifaire</h2>
+                    <p>Une selection de salles visibles dès l accueil pour donner une perception immediate du niveau d offre.</p>
+                </div>
+            </div>
+            @if (count($featuredRooms) > 0)
+                <div class="room-grid">
+                    @foreach ($featuredRooms as $room)
+                        <div class="room-card">
+                            <strong>{{ $room['name'] }}</strong>
+                            <p>{{ $room['description'] ?: 'Salle active disponible dans la plateforme.' }}</p>
+                            <div class="metric-row" style="margin-top:12px;">
+                                <span class="metric">{{ $room['capacity'] }} invites</span>
+                                @if ($room['price'])
+                                    <span class="metric">{{ $room['price'] }}</span>
+                                @endif
+                                @if ($room['location'])
+                                    <span class="metric">{{ $room['location'] }}</span>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="empty-state">Aucune salle active n est disponible pour le moment.</div>
+            @endif
         </div>
     </section>
 

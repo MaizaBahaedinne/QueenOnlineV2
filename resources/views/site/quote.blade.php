@@ -22,17 +22,28 @@
                     </div>
                 </div>
             </article>
-            <aside class="hero-aside">
-                <article class="hero-showcase">
-                    <span class="eyebrow" style="background:rgba(255,255,255,0.14); color:#fff;">Conseil</span>
-                    <h3 style="margin-top:14px;">Cadre de reponse</h3>
-                    <ul class="showcase-list">
-                        <li><span>Bon service</span><strong>d abord</strong></li>
-                        <li><span>Prix publics</span><strong>repere</strong></li>
-                        <li><span>Traitement interne</span><strong>ensuite</strong></li>
-                    </ul>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container section-surface">
+            <div class="process-grid">
+                <article class="process-step">
+                    <span class="process-step-index">1</span>
+                    <h3>Bon service</h3>
+                    <p class="muted" style="margin-top:10px;">Le visiteur entre directement dans le bon univers de prestation.</p>
                 </article>
-            </aside>
+                <article class="process-step">
+                    <span class="process-step-index">2</span>
+                    <h3>Prix publics comme repere</h3>
+                    <p class="muted" style="margin-top:10px;">Le site guide sans promettre un devis ferme trop tot.</p>
+                </article>
+                <article class="process-step">
+                    <span class="process-step-index">3</span>
+                    <h3>Traitement interne ensuite</h3>
+                    <p class="muted" style="margin-top:10px;">Les informations recueillies permettent un retour equipe plus rapide.</p>
+                </article>
+            </div>
         </div>
     </section>
 

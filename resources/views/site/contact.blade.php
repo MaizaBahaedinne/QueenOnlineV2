@@ -15,18 +15,28 @@
                     </div>
                 @endif
             </article>
+        </div>
+    </section>
 
-            <aside class="hero-aside">
-                <article class="hero-showcase">
-                    <span class="eyebrow" style="background:rgba(255,255,255,0.14); color:#fff;">Usage</span>
-                    <h3 style="margin-top:14px;">Ce que ce formulaire permet</h3>
-                    <ul class="showcase-list">
-                        <li><span>Centraliser les premiers messages</span><strong>oui</strong></li>
-                        <li><span>Associer un service des le depart</span><strong>oui</strong></li>
-                        <li><span>Preparer le suivi interne</span><strong>oui</strong></li>
-                    </ul>
+    <section class="section">
+        <div class="container section-surface">
+            <div class="process-grid">
+                <article class="process-step">
+                    <span class="process-step-index">1</span>
+                    <h3>Centraliser les messages</h3>
+                    <p class="muted" style="margin-top:10px;">Les premiers contacts visiteurs sont stockes dans le meme projet.</p>
                 </article>
-            </aside>
+                <article class="process-step">
+                    <span class="process-step-index">2</span>
+                    <h3>Associer un service</h3>
+                    <p class="muted" style="margin-top:10px;">Le contexte est mieux qualifie avant meme la reponse de l equipe.</p>
+                </article>
+                <article class="process-step">
+                    <span class="process-step-index">3</span>
+                    <h3>Preparer le suivi</h3>
+                    <p class="muted" style="margin-top:10px;">La base est prete pour une future interface admin de traitement.</p>
+                </article>
+            </div>
         </div>
     </section>
 
