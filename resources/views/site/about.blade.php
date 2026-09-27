@@ -2,12 +2,20 @@
 
 @section('content')
     <section class="page-hero">
-        <div class="container hero-stage">
-            <article class="hero-panel">
-                <span class="eyebrow">A propos</span>
-                <h1 class="hero-title">Queen Park aligne enfin la vitrine et l exploitation.</h1>
-                <p class="lead">Le site public n est pas une vitrine deconnectee. Il reprend les services que vous avez deja structures dans la plateforme afin de limiter les doublons, garder des prix cohérents et simplifier la prise de contact.</p>
-            </article>
+        <div class="hero-band">
+            <div class="hero-slides" aria-hidden="true">
+                <div class="hero-slide hero-slide-1"></div>
+                <div class="hero-slide hero-slide-2"></div>
+                <div class="hero-slide hero-slide-3"></div>
+            </div>
+            <div class="hero-overlay" aria-hidden="true"></div>
+            <div class="container hero-stage">
+                <article class="hero-panel">
+                    <span class="eyebrow">A propos</span>
+                    <h1 class="hero-title">Queen Park aligne enfin la vitrine et l exploitation.</h1>
+                    <p class="lead">Le site public n est pas une vitrine deconnectee. Il reprend les services que vous avez deja structures dans la plateforme afin de limiter les doublons, garder des prix cohérents et simplifier la prise de contact.</p>
+                </article>
+            </div>
         </div>
     </section>
 

@@ -2,19 +2,27 @@
 
 @section('content')
     <section class="page-hero">
-        <div class="container hero-stage">
-            <article class="hero-panel">
-                <span class="eyebrow">Contact</span>
-                <h1 class="hero-title">Parler a Queen Park sans perdre le visiteur en route.</h1>
-                <p class="lead">Le formulaire enregistre une demande directement dans la base du projet. Tu peux aussi orienter les visiteurs vers les services deja actifs sur la plateforme.</p>
-                @if (count($contactPhones) > 0)
-                    <div class="metric-row" style="margin-top:18px;">
-                        @foreach ($contactPhones as $phone)
-                            <span class="metric">{{ $phone }}</span>
-                        @endforeach
-                    </div>
-                @endif
-            </article>
+        <div class="hero-band">
+            <div class="hero-slides" aria-hidden="true">
+                <div class="hero-slide hero-slide-1"></div>
+                <div class="hero-slide hero-slide-2"></div>
+                <div class="hero-slide hero-slide-3"></div>
+            </div>
+            <div class="hero-overlay" aria-hidden="true"></div>
+            <div class="container hero-stage">
+                <article class="hero-panel">
+                    <span class="eyebrow">Contact</span>
+                    <h1 class="hero-title">Parler a Queen Park sans perdre le visiteur en route.</h1>
+                    <p class="lead">Le formulaire enregistre une demande directement dans la base du projet. Tu peux aussi orienter les visiteurs vers les services deja actifs sur la plateforme.</p>
+                    @if (count($contactPhones) > 0)
+                        <div class="metric-row" style="margin-top:18px;">
+                            @foreach ($contactPhones as $phone)
+                                <span class="metric">{{ $phone }}</span>
+                            @endforeach
+                        </div>
+                    @endif
+                </article>
+            </div>
         </div>
     </section>
 

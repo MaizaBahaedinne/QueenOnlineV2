@@ -2,30 +2,38 @@
 
 @section('content')
     <section class="page-hero">
-        <div class="container hero-stage">
-            <article class="hero-panel">
-                <span class="eyebrow">{{ $servicePage['accent'] }}</span>
-                <h1 class="hero-title">{{ $servicePage['name'] }}</h1>
-                <p class="lead">{{ $servicePage['headline'] }}</p>
-                <div class="hero-meta-strip">
-                    <div class="hero-meta-card">
-                        <strong>{{ $servicePage['stats']['items'] }}</strong>
-                        <span>ressource(s) actives</span>
+        <div class="hero-band">
+            <div class="hero-slides" aria-hidden="true">
+                <div class="hero-slide hero-slide-1"></div>
+                <div class="hero-slide hero-slide-2"></div>
+                <div class="hero-slide hero-slide-3"></div>
+            </div>
+            <div class="hero-overlay" aria-hidden="true"></div>
+            <div class="container hero-stage">
+                <article class="hero-panel">
+                    <span class="eyebrow">{{ $servicePage['accent'] }}</span>
+                    <h1 class="hero-title">{{ $servicePage['name'] }}</h1>
+                    <p class="lead">{{ $servicePage['headline'] }}</p>
+                    <div class="hero-meta-strip">
+                        <div class="hero-meta-card">
+                            <strong>{{ $servicePage['stats']['items'] }}</strong>
+                            <span>ressource(s) actives</span>
+                        </div>
+                        <div class="hero-meta-card">
+                            <strong>{{ $servicePage['stats']['packs'] }}</strong>
+                            <span>pack(s) associe(s)</span>
+                        </div>
+                        <div class="hero-meta-card">
+                            <strong>{{ $servicePage['startingPrice'] ?: 'Sur demande' }}</strong>
+                            <span>niveau de depart</span>
+                        </div>
                     </div>
-                    <div class="hero-meta-card">
-                        <strong>{{ $servicePage['stats']['packs'] }}</strong>
-                        <span>pack(s) associe(s)</span>
+                    <div class="hero-actions">
+                        <a href="{{ route('site.quote', ['service' => $servicePage['slug']]) }}" class="btn btn-primary">Obtenir un devis</a>
+                        <a href="{{ route('site.contact') }}" class="btn btn-secondary">Parler a l equipe</a>
                     </div>
-                    <div class="hero-meta-card">
-                        <strong>{{ $servicePage['startingPrice'] ?: 'Sur demande' }}</strong>
-                        <span>niveau de depart</span>
-                    </div>
-                </div>
-                <div class="hero-actions">
-                    <a href="{{ route('site.quote', ['service' => $servicePage['slug']]) }}" class="btn btn-primary">Obtenir un devis</a>
-                    <a href="{{ route('site.contact') }}" class="btn btn-secondary">Parler a l equipe</a>
-                </div>
-            </article>
+                </article>
+            </div>
         </div>
     </section>
 

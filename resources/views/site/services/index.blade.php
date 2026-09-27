@@ -2,26 +2,34 @@
 
 @section('content')
     <section class="page-hero">
-        <div class="container hero-stage">
-            <article class="hero-panel">
-                <span class="eyebrow">Services</span>
-                <h1 class="hero-title">Chaque service doit pouvoir se vendre seul.</h1>
-                <p class="lead">Au lieu d une liste faible, la vitrine presente maintenant des portes d entree claires: categorie, niveau de prix, volume de ressources et acces direct au devis.</p>
-                <div class="hero-meta-strip">
-                    <div class="hero-meta-card">
-                        <strong>{{ count($servicePages) }}</strong>
-                        <span>univers consultables</span>
+        <div class="hero-band">
+            <div class="hero-slides" aria-hidden="true">
+                <div class="hero-slide hero-slide-1"></div>
+                <div class="hero-slide hero-slide-2"></div>
+                <div class="hero-slide hero-slide-3"></div>
+            </div>
+            <div class="hero-overlay" aria-hidden="true"></div>
+            <div class="container hero-stage">
+                <article class="hero-panel">
+                    <span class="eyebrow">Services</span>
+                    <h1 class="hero-title">Chaque service doit pouvoir se vendre seul.</h1>
+                    <p class="lead">Au lieu d une liste faible, la vitrine presente maintenant des portes d entree claires: categorie, niveau de prix, volume de ressources et acces direct au devis.</p>
+                    <div class="hero-meta-strip">
+                        <div class="hero-meta-card">
+                            <strong>{{ count($servicePages) }}</strong>
+                            <span>univers consultables</span>
+                        </div>
+                        <div class="hero-meta-card">
+                            <strong>{{ collect($servicePages)->sum(fn ($page) => $page['stats']['items']) }}</strong>
+                            <span>ressources visibles</span>
+                        </div>
+                        <div class="hero-meta-card">
+                            <strong>{{ collect($servicePages)->sum(fn ($page) => $page['stats']['packs']) }}</strong>
+                            <span>packs listables</span>
+                        </div>
                     </div>
-                    <div class="hero-meta-card">
-                        <strong>{{ collect($servicePages)->sum(fn ($page) => $page['stats']['items']) }}</strong>
-                        <span>ressources visibles</span>
-                    </div>
-                    <div class="hero-meta-card">
-                        <strong>{{ collect($servicePages)->sum(fn ($page) => $page['stats']['packs']) }}</strong>
-                        <span>packs listables</span>
-                    </div>
-                </div>
-            </article>
+                </article>
+            </div>
         </div>
     </section>
 

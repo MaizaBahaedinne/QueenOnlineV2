@@ -2,37 +2,45 @@
 
 @section('content')
     <section class="page-hero">
-        <div class="container hero-stage">
-            <article class="hero-panel">
-                <span class="eyebrow">Queen Park</span>
-                <h1 class="hero-title">Des evenements mieux presentes, mieux orientes, mieux convertis.</h1>
-                <p class="lead">Queen Park expose les vraies ressources deja actives dans la plateforme, mais avec une interface publique plus lisible pour rassurer, expliquer l offre et pousser vers le devis.</p>
-                <div class="hero-meta-strip">
-                    <div class="hero-meta-card">
-                        <strong>{{ $siteStats['services'] }}</strong>
-                        <span>services publics relies a la base interne</span>
+        <div class="hero-band">
+            <div class="hero-slides" aria-hidden="true">
+                <div class="hero-slide hero-slide-1"></div>
+                <div class="hero-slide hero-slide-2"></div>
+                <div class="hero-slide hero-slide-3"></div>
+            </div>
+            <div class="hero-overlay" aria-hidden="true"></div>
+            <div class="container hero-stage">
+                <article class="hero-panel">
+                    <span class="eyebrow">Queen Park</span>
+                    <h1 class="hero-title">Des evenements mieux presentes, mieux orientes, mieux convertis.</h1>
+                    <p class="lead">Queen Park expose les vraies ressources deja actives dans la plateforme, mais avec une interface publique plus lisible pour rassurer, expliquer l offre et pousser vers le devis.</p>
+                    <div class="hero-meta-strip">
+                        <div class="hero-meta-card">
+                            <strong>{{ $siteStats['services'] }}</strong>
+                            <span>services publics relies a la base interne</span>
+                        </div>
+                        <div class="hero-meta-card">
+                            <strong>{{ $siteStats['active_items'] }}</strong>
+                            <span>ressources actives visibles sans ressaisie</span>
+                        </div>
+                        <div class="hero-meta-card">
+                            <strong>{{ $siteStats['active_rooms'] }}</strong>
+                            <span>salles affichables avec capacite et prix</span>
+                        </div>
                     </div>
-                    <div class="hero-meta-card">
-                        <strong>{{ $siteStats['active_items'] }}</strong>
-                        <span>ressources actives visibles sans ressaisie</span>
+                    <div class="hero-actions">
+                        <a href="{{ route('site.quote') }}" class="btn btn-primary">Obtenir un devis</a>
+                        <a href="{{ route('site.services.index') }}" class="btn btn-secondary">Explorer les services</a>
                     </div>
-                    <div class="hero-meta-card">
-                        <strong>{{ $siteStats['active_rooms'] }}</strong>
-                        <span>salles affichables avec capacite et prix</span>
+                    <div class="quote-band">
+                        <div>
+                            <strong>Une vitrine enfin exploitable commercialement</strong>
+                            <p>Presentation claire, CTA visibles, pages service distinctes et demandes de devis centralisees dans le meme projet.</p>
+                        </div>
+                        <a href="{{ route('login') }}" class="btn btn-secondary">Acces equipe</a>
                     </div>
-                </div>
-                <div class="hero-actions">
-                    <a href="{{ route('site.quote') }}" class="btn btn-primary">Obtenir un devis</a>
-                    <a href="{{ route('site.services.index') }}" class="btn btn-secondary">Explorer les services</a>
-                </div>
-                <div class="quote-band">
-                    <div>
-                        <strong>Une vitrine enfin exploitable commercialement</strong>
-                        <p>Presentation claire, CTA visibles, pages service distinctes et demandes de devis centralisees dans le meme projet.</p>
-                    </div>
-                    <a href="{{ route('login') }}" class="btn btn-secondary">Acces equipe</a>
-                </div>
-            </article>
+                </article>
+            </div>
         </div>
     </section>
 

@@ -2,26 +2,34 @@
 
 @section('content')
     <section class="page-hero">
-        <div class="container hero-stage">
-            <article class="hero-panel">
-                <span class="eyebrow">Devis</span>
-                <h1 class="hero-title">Faire passer l interet en demande concrete.</h1>
-                <p class="lead">Le visiteur choisit un service, precise sa date, son volume et son budget. La demande est stockee dans la base pour traitement par l equipe.</p>
-                <div class="hero-meta-strip">
-                    <div class="hero-meta-card">
-                        <strong>Service</strong>
-                        <span>Le besoin est cadre dès l entree.</span>
+        <div class="hero-band">
+            <div class="hero-slides" aria-hidden="true">
+                <div class="hero-slide hero-slide-1"></div>
+                <div class="hero-slide hero-slide-2"></div>
+                <div class="hero-slide hero-slide-3"></div>
+            </div>
+            <div class="hero-overlay" aria-hidden="true"></div>
+            <div class="container hero-stage">
+                <article class="hero-panel">
+                    <span class="eyebrow">Devis</span>
+                    <h1 class="hero-title">Faire passer l interet en demande concrete.</h1>
+                    <p class="lead">Le visiteur choisit un service, precise sa date, son volume et son budget. La demande est stockee dans la base pour traitement par l equipe.</p>
+                    <div class="hero-meta-strip">
+                        <div class="hero-meta-card">
+                            <strong>Service</strong>
+                            <span>Le besoin est cadre dès l entree.</span>
+                        </div>
+                        <div class="hero-meta-card">
+                            <strong>Date</strong>
+                            <span>Le contexte evenementiel est qualifie.</span>
+                        </div>
+                        <div class="hero-meta-card">
+                            <strong>Budget</strong>
+                            <span>L equipe peut prioriser plus vite.</span>
+                        </div>
                     </div>
-                    <div class="hero-meta-card">
-                        <strong>Date</strong>
-                        <span>Le contexte evenementiel est qualifie.</span>
-                    </div>
-                    <div class="hero-meta-card">
-                        <strong>Budget</strong>
-                        <span>L equipe peut prioriser plus vite.</span>
-                    </div>
-                </div>
-            </article>
+                </article>
+            </div>
         </div>
     </section>
 
