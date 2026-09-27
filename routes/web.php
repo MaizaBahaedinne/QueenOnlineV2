@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MigrationMappingController;
+use App\Http\Controllers\PublicWebsiteController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\RoleController;
@@ -17,6 +18,14 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ModuleController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/', [PublicWebsiteController::class, 'home'])->name('site.home');
+Route::get('/a-propos', [PublicWebsiteController::class, 'about'])->name('site.about');
+Route::get('/services', [PublicWebsiteController::class, 'services'])->name('site.services.index');
+Route::get('/services/{service}', [PublicWebsiteController::class, 'service'])->name('site.services.show');
+Route::get('/contact', [PublicWebsiteController::class, 'contact'])->name('site.contact');
+Route::get('/devis', [PublicWebsiteController::class, 'quote'])->name('site.quote');
+Route::post('/demandes', [PublicWebsiteController::class, 'storeInquiry'])->name('site.inquiries.store');
+
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.perform');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -26,7 +35,7 @@ Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 
 Route::middleware('auth')->group(function () {
-	Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+	Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 	Route::get('/profile/password', [ProfileController::class, 'editPassword'])->name('profile.password.edit');
 	Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
 	Route::get('clients/cin-check', [ClientController::class, 'checkCin'])->name('clients.cin-check');

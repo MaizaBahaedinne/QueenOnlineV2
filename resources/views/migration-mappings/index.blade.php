@@ -5,6 +5,10 @@
         $canCreate = auth()->user()?->canFeature('reservations', 'create', 'create') ?? false;
         $canUpdate = auth()->user()?->canFeature('reservations', 'update', 'update') ?? false;
         $canDelete = auth()->user()?->canFeature('reservations', 'delete', 'delete') ?? false;
+        $groupedMappings = $mappings->groupBy('source_table');
+        $totalMappings = $mappings->count();
+        $activeMappings = $mappings->where('is_active', true)->count();
+        $inactiveMappings = $totalMappings - $activeMappings;
     @endphp
 
     <style>
@@ -16,10 +20,50 @@
         .mapping-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
         .mapping-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .mapping-form-grid .full { grid-column: 1 / -1; }
-        .mapping-group-title { margin: 14px 0 8px; color: #184268; font-size: 14px; font-weight: 700; }
+        .mapping-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+        .mapping-summary-card { background: linear-gradient(180deg, #f9fbfd 0%, #eef5fb 100%); border: 1px solid #d6e0ec; border-radius: 16px; padding: 14px 16px; }
+        .mapping-summary-label { margin: 0; color: #55738f; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .mapping-summary-value { margin: 6px 0 0; color: #17324f; font-size: 30px; font-weight: 700; }
+        .mapping-summary-hint { margin: 6px 0 0; color: #5d7389; font-size: 13px; }
+        .mapping-layout { display: grid; gap: 14px; margin-top: 16px; }
+        .mapping-actions-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-top: 14px; }
+        .mapping-actions-group { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .mapping-search { width: min(360px, 100%); }
+        .mapping-groups { display: grid; gap: 14px; }
+        .mapping-table-group { border: 1px solid #d6e0ec; border-radius: 18px; background: #fdfefe; overflow: hidden; }
+        .mapping-table-group[hidden] { display: none; }
+        .mapping-table-group summary { list-style: none; cursor: pointer; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: linear-gradient(180deg, #f8fbfd 0%, #eff6fb 100%); }
+        .mapping-table-group summary::-webkit-details-marker { display: none; }
+        .mapping-table-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .mapping-table-name { margin: 0; color: #17324f; font-size: 18px; font-weight: 700; }
+        .mapping-table-stats { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .mapping-pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 5px 10px; font-size: 12px; font-weight: 600; }
+        .mapping-pill-neutral { background: #eaf1f8; color: #36536d; }
+        .mapping-pill-success { background: #e4f5ea; color: #21663b; }
+        .mapping-pill-muted { background: #f1f3f5; color: #5f6d7a; }
+        .mapping-group-body { padding: 16px 18px 18px; }
+        .mapping-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+        .mapping-card { border: 1px solid #d6e0ec; border-radius: 16px; padding: 14px; background: #fff; box-shadow: 0 8px 18px rgba(15, 44, 71, 0.05); }
+        .mapping-card[hidden] { display: none; }
+        .mapping-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+        .mapping-card-title { margin: 0; color: #17324f; font-size: 16px; font-weight: 700; }
+        .mapping-card-sub { margin: 4px 0 0; color: #6a7f93; font-size: 13px; }
+        .mapping-card-body { display: grid; gap: 10px; margin-top: 12px; }
+        .mapping-data-row { display: grid; gap: 4px; padding: 10px 12px; border-radius: 12px; background: #f8fbfd; }
+        .mapping-data-label { color: #62809b; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+        .mapping-data-value { color: #17324f; font-size: 14px; line-height: 1.45; word-break: break-word; }
+        .mapping-card-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+        .mapping-empty { border: 1px dashed #c8d6e4; border-radius: 16px; padding: 26px 18px; text-align: center; color: #60778c; background: #fafcfe; }
+        .mapping-empty strong { display: block; color: #17324f; margin-bottom: 6px; }
 
         @media (max-width: 860px) {
             .mapping-form-grid { grid-template-columns: 1fr; }
+            .mapping-summary-grid { grid-template-columns: 1fr; }
+            .mapping-actions-bar { align-items: stretch; }
+            .mapping-actions-group { width: 100%; }
+            .mapping-search { width: 100%; }
+            .mapping-table-group summary { padding: 14px; }
+            .mapping-group-body { padding: 14px; }
         }
     </style>
 
@@ -62,69 +106,141 @@
             @endif
         </div>
 
-        <div style="overflow-x:auto; margin-top:12px;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Table source</th>
-                        <th>Colonne source</th>
-                        <th>Condition / Valeur</th>
-                        <th>Signification</th>
-                        <th>Ordre</th>
-                        <th>Actif</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @php $lastTable = null; @endphp
-                    @forelse ($mappings as $row)
-                        @if ($lastTable !== $row->source_table)
-                            <tr>
-                                <td colspan="7" class="mapping-group-title">{{ $row->source_table }}</td>
-                            </tr>
-                            @php $lastTable = $row->source_table; @endphp
-                        @endif
-                        <tr>
-                            <td>{{ $row->source_table }}</td>
-                            <td>{{ $row->source_column }}</td>
-                            <td>{{ $row->condition_value ?: '-' }}</td>
-                            <td>{{ $row->signification ?: '-' }}</td>
-                            <td>{{ $row->sort_order }}</td>
-                            <td>{{ $row->is_active ? 'Oui' : 'Non' }}</td>
-                            <td>
-                                <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                    @if ($canUpdate)
-                                        <button
-                                            type="button"
-                                            class="btn"
-                                            data-open-modal="mapping-edit-modal"
-                                            data-map-id="{{ $row->id }}"
-                                            data-map-source-table="{{ $row->source_table }}"
-                                            data-map-source-column="{{ $row->source_column }}"
-                                            data-map-condition-value="{{ $row->condition_value }}"
-                                            data-map-signification="{{ $row->signification }}"
-                                            data-map-sort-order="{{ $row->sort_order }}"
-                                            data-map-is-active="{{ $row->is_active ? '1' : '0' }}"
-                                        >Modifier</button>
-                                    @endif
-                                    @if ($canDelete)
-                                        <button
-                                            type="button"
-                                            class="btn"
-                                            data-open-modal="mapping-delete-modal"
-                                            data-map-id="{{ $row->id }}"
-                                            data-map-source-table="{{ $row->source_table }}"
-                                            data-map-source-column="{{ $row->source_column }}"
-                                        >Supprimer</button>
-                                    @endif
+        <div class="mapping-summary-grid">
+            <article class="mapping-summary-card">
+                <p class="mapping-summary-label">Tables source</p>
+                <p class="mapping-summary-value">{{ $groupedMappings->count() }}</p>
+                <p class="mapping-summary-hint">Organisation par blocs repliables pour eviter le tableau large.</p>
+            </article>
+            <article class="mapping-summary-card">
+                <p class="mapping-summary-label">Mappings actifs</p>
+                <p class="mapping-summary-value">{{ $activeMappings }}</p>
+                <p class="mapping-summary-hint">Sur {{ $totalMappings }} lignes, {{ $inactiveMappings }} sont inactives.</p>
+            </article>
+            <article class="mapping-summary-card">
+                <p class="mapping-summary-label">Filtre courant</p>
+                <p class="mapping-summary-value" style="font-size:22px;">{{ $sourceTableFilter !== '' ? $sourceTableFilter : 'Toutes les tables' }}</p>
+                <p class="mapping-summary-hint">Ajoute une recherche texte pour retrouver une colonne ou une regle.</p>
+            </article>
+        </div>
+
+        <div class="mapping-layout">
+            <div class="mapping-actions-bar">
+                <div class="mapping-actions-group">
+                    <input
+                        type="search"
+                        id="mapping-search-input"
+                        class="search mapping-search"
+                        style="max-width:none;"
+                        placeholder="Rechercher une colonne, une condition ou une signification"
+                    >
+                    <button type="button" class="btn" id="mapping-expand-all">Tout ouvrir</button>
+                    <button type="button" class="btn" id="mapping-collapse-all">Tout fermer</button>
+                </div>
+                <div class="mapping-actions-group">
+                    <span class="mapping-pill mapping-pill-neutral" id="mapping-visible-count">{{ $totalMappings }} ligne(s) visible(s)</span>
+                </div>
+            </div>
+
+            @if ($groupedMappings->isEmpty())
+                <div class="mapping-empty">
+                    <strong>Aucune ligne de mapping.</strong>
+                    Cree un premier mapping ou retire les filtres actifs.
+                </div>
+            @else
+                <div class="mapping-groups" id="mapping-groups">
+                    @foreach ($groupedMappings as $table => $rows)
+                        @php
+                            $activeCount = $rows->where('is_active', true)->count();
+                            $openGroup = $sourceTableFilter !== '' || $loop->first;
+                        @endphp
+                        <details class="mapping-table-group" data-source-table="{{ \\Illuminate\\Support\\Str::lower($table) }}" {{ $openGroup ? 'open' : '' }}>
+                            <summary>
+                                <div>
+                                    <h2 class="mapping-table-name">{{ $table }}</h2>
+                                    <div class="mapping-table-meta">
+                                        <span class="mapping-pill mapping-pill-neutral">{{ $rows->count() }} ligne(s)</span>
+                                        <span class="mapping-pill mapping-pill-success">{{ $activeCount }} active(s)</span>
+                                        @if ($rows->count() - $activeCount > 0)
+                                            <span class="mapping-pill mapping-pill-muted">{{ $rows->count() - $activeCount }} inactive(s)</span>
+                                        @endif
+                                    </div>
                                 </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="7" class="muted">Aucune ligne de mapping.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
+                                <div class="mapping-table-stats">
+                                    <span class="mapping-pill mapping-pill-neutral">Table source</span>
+                                </div>
+                            </summary>
+                            <div class="mapping-group-body">
+                                <div class="mapping-card-grid">
+                                    @foreach ($rows as $row)
+                                        @php
+                                            $searchText = implode(' ', array_filter([
+                                                $row->source_table,
+                                                $row->source_column,
+                                                $row->condition_value,
+                                                $row->signification,
+                                                (string) $row->sort_order,
+                                                $row->is_active ? 'oui active' : 'non inactive',
+                                            ]));
+                                        @endphp
+                                        <article class="mapping-card" data-search-text="{{ \\Illuminate\\Support\\Str::lower($searchText) }}">
+                                            <div class="mapping-card-top">
+                                                <div>
+                                                    <h3 class="mapping-card-title">{{ $row->source_column }}</h3>
+                                                    <p class="mapping-card-sub">Cible: {{ $row->target_table ?: $row->source_table }}.{{ $row->target_column ?: $row->source_column }}</p>
+                                                </div>
+                                                <span class="mapping-pill {{ $row->is_active ? 'mapping-pill-success' : 'mapping-pill-muted' }}">{{ $row->is_active ? 'Actif' : 'Inactif' }}</span>
+                                            </div>
+
+                                            <div class="mapping-card-body">
+                                                <div class="mapping-data-row">
+                                                    <span class="mapping-data-label">Condition / Valeur</span>
+                                                    <span class="mapping-data-value">{{ $row->condition_value ?: 'Aucune condition specifique' }}</span>
+                                                </div>
+                                                <div class="mapping-data-row">
+                                                    <span class="mapping-data-label">Signification</span>
+                                                    <span class="mapping-data-value">{{ $row->signification ?: 'Aucune signification renseignee' }}</span>
+                                                </div>
+                                                <div class="mapping-data-row">
+                                                    <span class="mapping-data-label">Ordre</span>
+                                                    <span class="mapping-data-value">{{ $row->sort_order }}</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="mapping-card-actions">
+                                                @if ($canUpdate)
+                                                    <button
+                                                        type="button"
+                                                        class="btn"
+                                                        data-open-modal="mapping-edit-modal"
+                                                        data-map-id="{{ $row->id }}"
+                                                        data-map-source-table="{{ $row->source_table }}"
+                                                        data-map-source-column="{{ $row->source_column }}"
+                                                        data-map-condition-value="{{ $row->condition_value }}"
+                                                        data-map-signification="{{ $row->signification }}"
+                                                        data-map-sort-order="{{ $row->sort_order }}"
+                                                        data-map-is-active="{{ $row->is_active ? '1' : '0' }}"
+                                                    >Modifier</button>
+                                                @endif
+                                                @if ($canDelete)
+                                                    <button
+                                                        type="button"
+                                                        class="btn"
+                                                        data-open-modal="mapping-delete-modal"
+                                                        data-map-id="{{ $row->id }}"
+                                                        data-map-source-table="{{ $row->source_table }}"
+                                                        data-map-source-column="{{ $row->source_column }}"
+                                                    >Supprimer</button>
+                                                @endif
+                                            </div>
+                                        </article>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </details>
+                    @endforeach
+                </div>
+            @endif
         </div>
     </section>
 
@@ -228,6 +344,59 @@
     <script>
         const schemaTablesUrl = "{{ route('migration-mappings.schema.tables') }}";
         const schemaColumnsUrl = "{{ route('migration-mappings.schema.columns') }}";
+        const mappingSearchInput = document.getElementById('mapping-search-input');
+        const mappingVisibleCount = document.getElementById('mapping-visible-count');
+        const mappingGroups = Array.from(document.querySelectorAll('.mapping-table-group'));
+        const mappingExpandAllButton = document.getElementById('mapping-expand-all');
+        const mappingCollapseAllButton = document.getElementById('mapping-collapse-all');
+
+        const updateVisibleCount = () => {
+            if (!mappingVisibleCount) {
+                return;
+            }
+
+            const visibleCards = document.querySelectorAll('.mapping-card:not([hidden])').length;
+            mappingVisibleCount.textContent = `${visibleCards} ligne(s) visible(s)`;
+        };
+
+        const filterMappings = () => {
+            const term = (mappingSearchInput?.value || '').trim().toLowerCase();
+
+            mappingGroups.forEach((group) => {
+                let hasVisibleCard = false;
+                const cards = Array.from(group.querySelectorAll('.mapping-card'));
+
+                cards.forEach((card) => {
+                    const haystack = card.dataset.searchText || '';
+                    const matches = term === '' || haystack.includes(term);
+                    card.hidden = !matches;
+                    if (matches) {
+                        hasVisibleCard = true;
+                    }
+                });
+
+                group.hidden = !hasVisibleCard;
+                if (term !== '' && hasVisibleCard) {
+                    group.open = true;
+                }
+            });
+
+            updateVisibleCount();
+        };
+
+        mappingSearchInput?.addEventListener('input', filterMappings);
+        mappingExpandAllButton?.addEventListener('click', () => {
+            mappingGroups.forEach((group) => {
+                if (!group.hidden) {
+                    group.open = true;
+                }
+            });
+        });
+        mappingCollapseAllButton?.addEventListener('click', () => {
+            mappingGroups.forEach((group) => {
+                group.open = false;
+            });
+        });
 
         const fetchSchemaTables = async (connection) => {
             const params = new URLSearchParams({ connection });
@@ -357,6 +526,7 @@
         const createSelectors = wireSchemaSelectors('mapping-create');
         const editSelectors = wireSchemaSelectors('mapping-edit');
 
+    filterMappings();
         createSelectors.syncWithValues().catch(() => {});
 
         const openModalButtons = document.querySelectorAll('[data-open-modal]');

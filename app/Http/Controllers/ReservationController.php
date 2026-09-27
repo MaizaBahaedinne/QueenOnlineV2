@@ -2040,7 +2040,7 @@ class ReservationController extends MatrixAwareController
         }
 
         $reservation = DB::transaction(function () use ($validated, $selectedSalleOptions) {
-            $reservation = Reservation::query()->create($validated);
+            $reservation = Reservation::query()->create($this->filterReservationLocationPayload($validated));
 
             foreach ($selectedSalleOptions as $option) {
                 ReservationSalleOption::query()->create([
@@ -2071,7 +2071,7 @@ class ReservationController extends MatrixAwareController
             'total_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        $reservation->update($validated);
+        $reservation->update($this->filterReservationLocationPayload($validated));
 
         return redirect()->route('reservations.show', $reservation)->with('success', 'Informations de la reservation mises a jour.');
     }
@@ -2717,6 +2717,37 @@ class ReservationController extends MatrixAwareController
         if ($reservation->linkedAdditionalService()->exists()) {
             abort(403, 'La reservation liee au service supplementaire est verrouillee.');
         }
+    }
+
+    private function filterReservationLocationPayload(array $payload): array
+    {
+        $columns = [
+            'address_number',
+            'address_street',
+            'city',
+            'governorate',
+            'latitude',
+            'longitude',
+            'itinerary_departure',
+            'itinerary_stops',
+            'itinerary_return',
+        ];
+
+        if (Schema::hasColumn('reservations', 'service_slug')) {
+            $columns[] = 'service_slug';
+        }
+
+        if (Schema::hasColumn('reservations', 'service_resource_id')) {
+            $columns[] = 'service_resource_id';
+        }
+
+        foreach ($columns as $column) {
+            if (! Schema::hasColumn('reservations', $column)) {
+                unset($payload[$column]);
+            }
+        }
+
+        return $payload;
     }
 
     private function buildAvailabilityPayload(string $serviceSlug, string $eventDate, string $startTime, string $endTime, ?int $excludeReservationId = null): array
