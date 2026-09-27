@@ -2,25 +2,28 @@
 
 @section('content')
     <section class="page-hero">
-        <div class="container two-col">
+        <div class="container hero-stage">
             <article class="hero-panel">
                 <span class="eyebrow">A propos</span>
-                <h1>Queen Park aligne la vitrine et l exploitation.</h1>
+                <h1 class="hero-title">Queen Park aligne enfin la vitrine et l exploitation.</h1>
                 <p class="lead">Le site public n est pas une vitrine deconnectee. Il reprend les services que vous avez deja structures dans la plateforme afin de limiter les doublons, garder des prix cohérents et simplifier la prise de contact.</p>
             </article>
-            <article class="info-card">
-                <h3>Ce que la vitrine consomme deja</h3>
-                <ul class="bullet-list" style="margin-top:16px;">
-                    <li>{{ $siteStats['active_rooms'] }} salle(s) actives exploitees depuis le module de salles.</li>
-                    <li>{{ $siteStats['active_items'] }} ressource(s) actives lues depuis les modules services.</li>
-                    <li>{{ $siteStats['active_packs'] }} pack(s) disponibles affichables sans ressaisie.</li>
-                </ul>
-            </article>
+            <aside class="hero-aside">
+                <article class="hero-showcase">
+                    <span class="eyebrow" style="background:rgba(255,255,255,0.14); color:#fff;">Base existante</span>
+                    <h3 style="margin-top:14px;">Ce que la vitrine consomme deja</h3>
+                    <ul class="showcase-list">
+                        <li><span>Salles actives</span><strong>{{ $siteStats['active_rooms'] }}</strong></li>
+                        <li><span>Ressources services</span><strong>{{ $siteStats['active_items'] }}</strong></li>
+                        <li><span>Packs affichables</span><strong>{{ $siteStats['active_packs'] }}</strong></li>
+                    </ul>
+                </article>
+            </aside>
         </div>
     </section>
 
     <section class="section">
-        <div class="container card-grid">
+        <div class="container section-surface card-grid">
             <article class="info-card">
                 <span class="eyebrow">1. Source unique</span>
                 <h3 style="margin-top:14px;">Les donnees viennent de la plateforme</h3>

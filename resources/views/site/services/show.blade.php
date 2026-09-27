@@ -2,34 +2,53 @@
 
 @section('content')
     <section class="page-hero">
-        <div class="container two-col">
+        <div class="container hero-stage">
             <article class="hero-panel">
                 <span class="eyebrow">{{ $servicePage['accent'] }}</span>
-                <h1>{{ $servicePage['name'] }}</h1>
+                <h1 class="hero-title">{{ $servicePage['name'] }}</h1>
                 <p class="lead">{{ $servicePage['headline'] }}</p>
+                <div class="hero-meta-strip">
+                    <div class="hero-meta-card">
+                        <strong>{{ $servicePage['stats']['items'] }}</strong>
+                        <span>ressource(s) actives</span>
+                    </div>
+                    <div class="hero-meta-card">
+                        <strong>{{ $servicePage['stats']['packs'] }}</strong>
+                        <span>pack(s) associe(s)</span>
+                    </div>
+                    <div class="hero-meta-card">
+                        <strong>{{ $servicePage['startingPrice'] ?: 'Sur demande' }}</strong>
+                        <span>niveau de depart</span>
+                    </div>
+                </div>
                 <div class="hero-actions">
                     <a href="{{ route('site.quote', ['service' => $servicePage['slug']]) }}" class="btn btn-primary">Obtenir un devis</a>
                     <a href="{{ route('site.contact') }}" class="btn btn-secondary">Parler a l equipe</a>
                 </div>
             </article>
 
-            <article class="info-card">
-                <h3>Repere rapide</h3>
-                <div class="metric-row" style="margin-top:16px;">
-                    <span class="metric">{{ $servicePage['stats']['items'] }} ressource(s)</span>
-                    @if ($servicePage['stats']['packs'] > 0)
-                        <span class="metric">{{ $servicePage['stats']['packs'] }} pack(s)</span>
-                    @endif
-                    @if ($servicePage['startingPrice'])
-                        <span class="metric">A partir de {{ $servicePage['startingPrice'] }}</span>
-                    @endif
-                </div>
-                <ul class="bullet-list" style="margin-top:18px;">
-                    @foreach ($servicePage['highlights'] as $highlight)
-                        <li>{{ $highlight }}</li>
-                    @endforeach
-                </ul>
-            </article>
+            <aside class="hero-aside">
+                <article class="hero-showcase">
+                    <span class="eyebrow" style="background:rgba(255,255,255,0.14); color:#fff;">Repere rapide</span>
+                    <h3 style="margin-top:14px;">Ce que ce service apporte</h3>
+                    <ul class="showcase-list">
+                        @foreach ($servicePage['highlights'] as $highlight)
+                            <li><span>{{ $highlight }}</span><strong></strong></li>
+                        @endforeach
+                    </ul>
+                </article>
+                @if (count($servicePage['contactPhones']) > 0)
+                    <article class="hero-secondary-card">
+                        <span class="eyebrow">Contacts</span>
+                        <h3 style="margin-top:14px;">Reperes operationnels</h3>
+                        <div class="metric-row" style="margin-top:14px;">
+                            @foreach ($servicePage['contactPhones'] as $phone)
+                                <span class="metric">{{ $phone }}</span>
+                            @endforeach
+                        </div>
+                    </article>
+                @endif
+            </aside>
         </div>
     </section>
 
@@ -113,6 +132,18 @@
                     </div>
                 @endif
             </article>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container cta-panel">
+            <span class="eyebrow" style="background:rgba(255,255,255,0.14); color:#fff;">Action</span>
+            <h2 style="margin-top:14px; color:#fff;">Passer du parcours de lecture au besoin concret</h2>
+            <p>Si ce service correspond au besoin du client, la suite logique doit etre immediate: demande de devis ou prise de contact, sans aller-retour inutile.</p>
+            <div class="hero-actions">
+                <a href="{{ route('site.quote', ['service' => $servicePage['slug']]) }}" class="btn btn-secondary">Demander un devis</a>
+                <a href="{{ route('site.contact') }}" class="btn btn-secondary">Contacter l equipe</a>
+            </div>
         </div>
     </section>
 @endsection

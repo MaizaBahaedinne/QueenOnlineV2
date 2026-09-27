@@ -2,20 +2,37 @@
 
 @section('content')
     <section class="page-hero">
-        <div class="container two-col">
+        <div class="container hero-stage">
             <article class="hero-panel">
                 <span class="eyebrow">Devis</span>
-                <h1>Recuperer une demande commerciale sans ressaisie.</h1>
+                <h1 class="hero-title">Faire passer l interet en demande concrete.</h1>
                 <p class="lead">Le visiteur choisit un service, precise sa date, son volume et son budget. La demande est stockee dans la base pour traitement par l equipe.</p>
+                <div class="hero-meta-strip">
+                    <div class="hero-meta-card">
+                        <strong>Service</strong>
+                        <span>Le besoin est cadre dès l entree.</span>
+                    </div>
+                    <div class="hero-meta-card">
+                        <strong>Date</strong>
+                        <span>Le contexte evenementiel est qualifie.</span>
+                    </div>
+                    <div class="hero-meta-card">
+                        <strong>Budget</strong>
+                        <span>L equipe peut prioriser plus vite.</span>
+                    </div>
+                </div>
             </article>
-            <article class="info-card">
-                <h3>Conseil d usage</h3>
-                <ul class="bullet-list" style="margin-top:16px;">
-                    <li>Oriente le visiteur vers le bon service avant la prise de contact.</li>
-                    <li>Utilise les prix d entree comme repere, pas comme devis ferme.</li>
-                    <li>Complete plus tard avec workflow admin et attribution interne.</li>
-                </ul>
-            </article>
+            <aside class="hero-aside">
+                <article class="hero-showcase">
+                    <span class="eyebrow" style="background:rgba(255,255,255,0.14); color:#fff;">Conseil</span>
+                    <h3 style="margin-top:14px;">Cadre de reponse</h3>
+                    <ul class="showcase-list">
+                        <li><span>Bon service</span><strong>d abord</strong></li>
+                        <li><span>Prix publics</span><strong>repere</strong></li>
+                        <li><span>Traitement interne</span><strong>ensuite</strong></li>
+                    </ul>
+                </article>
+            </aside>
         </div>
     </section>
 
