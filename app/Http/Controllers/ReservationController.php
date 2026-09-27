@@ -51,6 +51,16 @@ class ReservationController extends MatrixAwareController
         'voiture' => 'Voiture',
     ];
 
+    private const RESERVATION_SERVICE_MODULES = [
+        'salles' => 'salles',
+        'troupe-musicale' => 'troupe-musicale',
+        'photographe' => 'photographe',
+        'chanteur' => 'chanteur',
+        'notaire' => 'notaire',
+        'animation' => 'animation',
+        'voiture' => 'voiture',
+    ];
+
     private const GOVERNORATES = [
         'Ariana', 'Beja', 'Ben Arous', 'Bizerte', 'Gabes', 'Gafsa', 'Jendouba', 'Kairouan',
         'Kasserine', 'Kebili', 'Le Kef', 'Mahdia', 'La Manouba', 'Medenine', 'Monastir',
@@ -101,13 +111,23 @@ class ReservationController extends MatrixAwareController
     {
         $this->enforcePermission('reservations', 'list', 'view');
 
-        $service = trim((string) request()->query('service', 'salles'));
-        if ($service === '') {
-            $service = 'salles';
+        $allowedServices = $this->allowedReservationServiceSlugs();
+        if (empty($allowedServices)) {
+            abort(403);
         }
 
-        if ($service !== 'all' && ! array_key_exists($service, self::RESERVATION_SERVICES)) {
-            $service = 'salles';
+        $service = trim((string) request()->query('service', 'salles'));
+        if ($service === '') {
+            $service = $allowedServices[0];
+        }
+
+        $canUseAllServices = count($allowedServices) > 1;
+        if ($service === 'all' && ! $canUseAllServices) {
+            $service = $allowedServices[0];
+        }
+
+        if ($service !== 'all' && (! array_key_exists($service, self::RESERVATION_SERVICES) || ! in_array($service, $allowedServices, true))) {
+            $service = $allowedServices[0];
         }
 
         $scope = trim((string) request()->query('scope', 'all'));
@@ -132,6 +152,20 @@ class ReservationController extends MatrixAwareController
             } elseif ($service !== 'salles') {
                 $reservationsQuery->whereRaw('1 = 0');
             }
+        } elseif ($hasServiceSlugColumn) {
+            $reservationsQuery->where(function ($query) use ($allowedServices) {
+                if (in_array('salles', $allowedServices, true)) {
+                    $query
+                        ->whereIn('service_slug', $allowedServices)
+                        ->orWhereNull('service_slug');
+
+                    return;
+                }
+
+                $query->whereIn('service_slug', $allowedServices);
+            });
+        } elseif (! in_array('salles', $allowedServices, true)) {
+            $reservationsQuery->whereRaw('1 = 0');
         }
 
         if ($scope === 'interne') {
@@ -167,6 +201,20 @@ class ReservationController extends MatrixAwareController
             } elseif ($service !== 'salles') {
                 $scopeCountsQuery->whereRaw('1 = 0');
             }
+        } elseif ($hasServiceSlugColumn) {
+            $scopeCountsQuery->where(function ($query) use ($allowedServices) {
+                if (in_array('salles', $allowedServices, true)) {
+                    $query
+                        ->whereIn('service_slug', $allowedServices)
+                        ->orWhereNull('service_slug');
+
+                    return;
+                }
+
+                $query->whereIn('service_slug', $allowedServices);
+            });
+        } elseif (! in_array('salles', $allowedServices, true)) {
+            $scopeCountsQuery->whereRaw('1 = 0');
         }
 
         $internalCount = $hasServiceSlugColumn
@@ -281,6 +329,7 @@ class ReservationController extends MatrixAwareController
     public function show(Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'list', 'view');
+        $this->ensureReservationServiceAccess($this->reservationServiceSlug($reservation));
 
         $reservation->load([
             'client',
@@ -1799,6 +1848,7 @@ class ReservationController extends MatrixAwareController
         $resolvedClientId = $this->resolveReservationClient($request);
         $requestServiceSlug = trim((string) $request->input('service_slug', 'salles'));
         $serviceSlugForValidation = in_array($requestServiceSlug, array_keys(self::RESERVATION_SERVICES), true) ? $requestServiceSlug : 'salles';
+        $this->ensureReservationServiceAccess($serviceSlugForValidation);
 
         $serviceSpecificLines = [];
 
@@ -2172,6 +2222,7 @@ class ReservationController extends MatrixAwareController
     public function update(Request $request, Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'update', 'update');
+        $this->ensureReservationServiceAccess($this->reservationServiceSlug($reservation));
 
         $request->merge([
             'start_time' => substr((string) $request->input('start_time', ''), 0, 5),
@@ -2260,6 +2311,7 @@ class ReservationController extends MatrixAwareController
     public function destroy(Reservation $reservation)
     {
         $this->enforcePermission('reservations', 'delete', 'delete');
+        $this->ensureReservationServiceAccess($this->reservationServiceSlug($reservation));
 
         $reservation->delete();
 
@@ -2572,6 +2624,31 @@ class ReservationController extends MatrixAwareController
         }
 
         return $serviceSlug;
+    }
+
+    private function allowedReservationServiceSlugs(): array
+    {
+        $user = Auth::user();
+        if (! $user instanceof \App\Models\User) {
+            return [];
+        }
+
+        $allowedServices = [];
+
+        foreach (self::RESERVATION_SERVICE_MODULES as $serviceSlug => $moduleSlug) {
+            if ($user->canFeature($moduleSlug, 'list', 'view')) {
+                $allowedServices[] = $serviceSlug;
+            }
+        }
+
+        return $allowedServices;
+    }
+
+    private function ensureReservationServiceAccess(string $serviceSlug): void
+    {
+        if (! in_array($serviceSlug, $this->allowedReservationServiceSlugs(), true)) {
+            abort(403);
+        }
     }
 
     private function reservationDateTime(?string $dateValue, ?string $timeValue): ?Carbon

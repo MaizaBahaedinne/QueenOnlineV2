@@ -33,6 +33,29 @@
         $canViewNotaire = $currentUser?->canFeature('notaire', 'list', 'view') ?? false;
         $canViewAnimation = $currentUser?->canFeature('animation', 'list', 'view') ?? false;
         $canViewVoiture = $currentUser?->canFeature('voiture', 'list', 'view') ?? false;
+        $reservationServicePermissions = [
+            'salles' => $canViewSalles,
+            'troupe-musicale' => $canViewTroupe,
+            'photographe' => $canViewPhotographe,
+            'chanteur' => $canViewChanteur,
+            'notaire' => $canViewNotaire,
+            'animation' => $canViewAnimation,
+            'voiture' => $canViewVoiture,
+        ];
+        $reservationServiceLabels = [
+            'salles' => 'Salles',
+            'troupe-musicale' => 'Troupe musicale',
+            'photographe' => 'Photographe',
+            'chanteur' => 'Chanteur',
+            'notaire' => 'Notaire',
+            'animation' => 'Animation',
+            'voiture' => 'Voiture',
+        ];
+        $visibleReservationServices = collect($reservationServicePermissions)
+            ->filter(fn (bool $canView) => $canView)
+            ->keys()
+            ->values()
+            ->all();
         $isPilotage = $current === 'dashboard';
         $isExploitation = str_starts_with((string) $current, 'clients.')
             || str_starts_with((string) $current, 'staff.')
@@ -98,28 +121,12 @@
                                 <a class="{{ str_starts_with((string) $current, 'reservations.') ? 'active' : '' }}" href="{{ route('reservations.index') }}"><i class="fa fa-calendar menu-icon" aria-hidden="true"></i><span>Reservations</span></a>
                                 @if (str_starts_with((string) $current, 'reservations.'))
                                     <ul class="menu-submenu">
-                                        @if ($canViewSalles)
-                                            <li><a class="{{ $reservationService === 'salles' ? 'active' : '' }}" href="{{ route('reservations.index') }}">Salles</a></li>
+                                        @if (count($visibleReservationServices) > 1)
                                             <li><a class="{{ $reservationService === 'all' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'all']) }}">Toutes</a></li>
                                         @endif
-                                        @if ($canViewTroupe)
-                                            <li><a class="{{ $reservationService === 'troupe-musicale' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'troupe-musicale']) }}">Troupe musicale</a></li>
-                                        @endif
-                                        @if ($canViewPhotographe)
-                                            <li><a class="{{ $reservationService === 'photographe' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'photographe']) }}">Photographe</a></li>
-                                        @endif
-                                        @if ($canViewChanteur)
-                                            <li><a class="{{ $reservationService === 'chanteur' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'chanteur']) }}">Chanteur</a></li>
-                                        @endif
-                                        @if ($canViewNotaire)
-                                            <li><a class="{{ $reservationService === 'notaire' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'notaire']) }}">Notaire</a></li>
-                                        @endif
-                                        @if ($canViewAnimation)
-                                            <li><a class="{{ $reservationService === 'animation' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'animation']) }}">Animation</a></li>
-                                        @endif
-                                        @if ($canViewVoiture)
-                                            <li><a class="{{ $reservationService === 'voiture' ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => 'voiture']) }}">Voiture</a></li>
-                                        @endif
+                                        @foreach ($visibleReservationServices as $serviceSlug)
+                                            <li><a class="{{ $reservationService === $serviceSlug || ($reservationService === '' && $serviceSlug === 'salles') ? 'active' : '' }}" href="{{ route('reservations.index', ['service' => $serviceSlug]) }}">{{ $reservationServiceLabels[$serviceSlug] ?? ucfirst(str_replace('-', ' ', $serviceSlug)) }}</a></li>
+                                        @endforeach
                                     </ul>
                                 @endif
                             </li>
