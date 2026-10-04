@@ -1,12 +1,29 @@
 @extends('layouts.public')
 
 @section('content')
+    @php
+        $heroPhotos = collect($servicePages)
+            ->pluck('coverImageUrl')
+            ->filter()
+            ->take(3)
+            ->values();
+    @endphp
+
     <section class="page-hero">
         <div class="hero-band">
             <div class="hero-slides" aria-hidden="true">
-                <div class="hero-slide hero-slide-1"></div>
-                <div class="hero-slide hero-slide-2"></div>
-                <div class="hero-slide hero-slide-3"></div>
+                @if ($heroPhotos->count() > 0)
+                    @foreach ($heroPhotos as $index => $photoUrl)
+                        <div
+                            class="hero-slide hero-slide-photo hero-slide-{{ ($index % 3) + 1 }}"
+                            data-bg="{{ $photoUrl }}"
+                        ></div>
+                    @endforeach
+                @else
+                    <div class="hero-slide hero-slide-1"></div>
+                    <div class="hero-slide hero-slide-2"></div>
+                    <div class="hero-slide hero-slide-3"></div>
+                @endif
             </div>
             <div class="hero-overlay" aria-hidden="true"></div>
             <div class="container hero-stage">
@@ -68,4 +85,13 @@
             </div>
         </div>
     </section>
+
+    <script>
+        document.querySelectorAll('.hero-slide-photo[data-bg]').forEach((slide) => {
+            const imageUrl = slide.getAttribute('data-bg');
+            if (imageUrl) {
+                slide.style.backgroundImage = `url("${imageUrl}")`;
+            }
+        });
+    </script>
 @endsection

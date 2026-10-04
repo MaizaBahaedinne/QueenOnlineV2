@@ -4,9 +4,13 @@
     <section class="page-hero">
         <div class="hero-band">
             <div class="hero-slides" aria-hidden="true">
-                <div class="hero-slide hero-slide-1"></div>
-                <div class="hero-slide hero-slide-2"></div>
-                <div class="hero-slide hero-slide-3"></div>
+                @if (!empty($servicePage['coverImageUrl']))
+                    <div class="hero-slide hero-slide-photo hero-slide-static" data-bg="{{ $servicePage['coverImageUrl'] }}"></div>
+                @else
+                    <div class="hero-slide hero-slide-1"></div>
+                    <div class="hero-slide hero-slide-2"></div>
+                    <div class="hero-slide hero-slide-3"></div>
+                @endif
             </div>
             <div class="hero-overlay" aria-hidden="true"></div>
             <div class="container hero-stage">
@@ -158,4 +162,13 @@
             </div>
         </div>
     </section>
+
+    <script>
+        document.querySelectorAll('.hero-slide-photo[data-bg]').forEach((slide) => {
+            const imageUrl = slide.getAttribute('data-bg');
+            if (imageUrl) {
+                slide.style.backgroundImage = `url("${imageUrl}")`;
+            }
+        });
+    </script>
 @endsection

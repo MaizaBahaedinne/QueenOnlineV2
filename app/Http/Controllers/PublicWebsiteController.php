@@ -6,6 +6,7 @@ use App\Models\PublicInquiry;
 use App\Models\Salle;
 use App\Models\ServiceModuleItem;
 use App\Models\ServiceModulePack;
+use App\Models\ServiceModuleSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -207,6 +208,7 @@ class PublicWebsiteController extends Controller
         $itemsByModule = $this->activeItemsByModule();
         $packsByModule = $this->activePacksByModule();
         $rooms = $this->activeRooms();
+        $coverImagesByModule = $this->coverImagesByModule();
 
         $pages = [];
         foreach (self::SERVICE_META as $slug => $meta) {
@@ -227,6 +229,7 @@ class PublicWebsiteController extends Controller
                 'accent' => $meta['accent'],
                 'headline' => $meta['headline'],
                 'summary' => $meta['summary'],
+                'coverImageUrl' => $coverImagesByModule[$slug] ?? null,
                 'startingPrice' => $this->formatPrice($startingPrice),
                 'stats' => [
                     'items' => $items->count(),
@@ -263,6 +266,7 @@ class PublicWebsiteController extends Controller
             'accent' => $meta['accent'],
             'headline' => $meta['headline'],
             'summary' => $meta['summary'],
+            'coverImageUrl' => null,
             'startingPrice' => $this->formatPrice($rooms->min('price_per_day')),
             'stats' => [
                 'items' => $rooms->count(),
@@ -349,6 +353,21 @@ class PublicWebsiteController extends Controller
         }
 
         return array_slice($highlights, 0, 3);
+    }
+
+    private function coverImagesByModule(): array
+    {
+        if (! Schema::hasTable('service_module_settings')) {
+            return [];
+        }
+
+        return ServiceModuleSetting::query()
+            ->whereNotNull('cover_image_path')
+            ->get(['module_slug', 'cover_image_path'])
+            ->mapWithKeys(function (ServiceModuleSetting $setting): array {
+                return [$setting->module_slug => asset('storage/' . $setting->cover_image_path)];
+            })
+            ->all();
     }
 
     private function formatPrice(null|int|float|string $value): ?string

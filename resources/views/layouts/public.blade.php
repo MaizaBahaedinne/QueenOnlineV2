@@ -192,6 +192,15 @@
             animation: heroFade 18s infinite;
             transform: scale(1.02);
         }
+        .hero-slide-photo {
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        .hero-slide-static {
+            opacity: 1;
+            animation: none;
+        }
         .hero-slide::before,
         .hero-slide::after {
             content: "";
