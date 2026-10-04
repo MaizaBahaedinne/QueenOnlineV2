@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ServiceModuleSetting;
 use App\Models\ServiceModuleItem;
 use App\Models\ServiceModulePack;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ServiceModuleController extends MatrixAwareController
@@ -37,6 +39,11 @@ class ServiceModuleController extends MatrixAwareController
             ->latest()
             ->get();
 
+        $moduleSetting = null;
+        if (Schema::hasTable('service_module_settings')) {
+            $moduleSetting = ServiceModuleSetting::query()->firstWhere('module_slug', $module);
+        }
+
         $troupes = collect();
         $partnershipPricesBySinger = [];
         if ($module === 'chanteur') {
@@ -65,6 +72,8 @@ class ServiceModuleController extends MatrixAwareController
             'items' => $items,
             'troupes' => $troupes,
             'partnershipPricesBySinger' => $partnershipPricesBySinger,
+            'moduleSetting' => $moduleSetting,
+            'hasModuleSettingsTable' => Schema::hasTable('service_module_settings'),
         ]);
     }
 
@@ -249,6 +258,52 @@ class ServiceModuleController extends MatrixAwareController
         $pack->delete();
 
         return redirect()->route('service-modules.packs.index', $module)->with('success', 'Pack supprime.');
+    }
+
+    public function updateCoverImage(Request $request, string $module)
+    {
+        $this->moduleMeta($module);
+        $this->enforcePermission($module, 'update', 'update');
+
+        abort_unless(Schema::hasTable('service_module_settings'), 400, 'La table des parametres service est manquante. Lancez les migrations.');
+
+        $validated = $request->validate([
+            'cover_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+        ]);
+
+        $setting = ServiceModuleSetting::query()->firstOrCreate(
+            ['module_slug' => $module],
+            ['cover_image_path' => null]
+        );
+
+        if (! empty($setting->cover_image_path)) {
+            Storage::disk('public')->delete($setting->cover_image_path);
+        }
+
+        $path = $validated['cover_image']->store('service-modules/covers', 'public');
+
+        $setting->update([
+            'cover_image_path' => $path,
+        ]);
+
+        return redirect()->route('service-modules.show', $module)->with('success', 'Photo du service mise a jour.');
+    }
+
+    public function destroyCoverImage(string $module)
+    {
+        $this->moduleMeta($module);
+        $this->enforcePermission($module, 'update', 'update');
+
+        abort_unless(Schema::hasTable('service_module_settings'), 400, 'La table des parametres service est manquante. Lancez les migrations.');
+
+        $setting = ServiceModuleSetting::query()->firstWhere('module_slug', $module);
+
+        if ($setting && ! empty($setting->cover_image_path)) {
+            Storage::disk('public')->delete($setting->cover_image_path);
+            $setting->update(['cover_image_path' => null]);
+        }
+
+        return redirect()->route('service-modules.show', $module)->with('success', 'Photo du service supprimee.');
     }
 
     private function moduleMeta(string $module): array

@@ -114,4 +114,6 @@ Route::middleware('auth')->group(function () {
 	Route::post('service-modules/{module}/packs', [ServiceModuleController::class, 'storePack'])->name('service-modules.packs.store');
 	Route::patch('service-modules/{module}/packs/{pack}', [ServiceModuleController::class, 'updatePack'])->name('service-modules.packs.update');
 	Route::delete('service-modules/{module}/packs/{pack}', [ServiceModuleController::class, 'destroyPack'])->name('service-modules.packs.destroy');
+	Route::post('service-modules/{module}/cover-image', [ServiceModuleController::class, 'updateCoverImage'])->name('service-modules.cover-image.update');
+	Route::delete('service-modules/{module}/cover-image', [ServiceModuleController::class, 'destroyCoverImage'])->name('service-modules.cover-image.destroy');
 });

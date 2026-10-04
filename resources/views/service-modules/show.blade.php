@@ -59,6 +59,41 @@
         <h1 class="panel-title">{{ $moduleMeta['name'] }}</h1>
         <p class="panel-sub">Module metier operationnel (donnees + CRUD).</p>
 
+        @if ($hasModuleSettingsTable)
+            <div class="panel" style="box-shadow:none; margin-top:12px;">
+                <h2 class="panel-title" style="margin:0;">Photo du service (site vitrine)</h2>
+                <p class="panel-sub" style="margin-top:6px;">Cette image sera reutilisable ensuite sur le site web vitrine.</p>
+
+                @if (!empty($moduleSetting?->cover_image_path))
+                    <div style="margin-top:10px;">
+                        <img
+                            src="{{ asset('storage/'.$moduleSetting->cover_image_path) }}"
+                            alt="Photo du service {{ $moduleMeta['name'] }}"
+                            style="width:100%; max-width:420px; border-radius:12px; border:1px solid var(--line); object-fit:cover;"
+                        >
+                    </div>
+                @endif
+
+                @if ($canUpdate)
+                    <form method="POST" action="{{ route('service-modules.cover-image.update', $moduleSlug) }}" enctype="multipart/form-data" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:12px;">
+                        @csrf
+                        <input class="search" style="max-width:none; width:min(360px,100%);" type="file" name="cover_image" accept="image/png,image/jpeg,image/webp" required>
+                        <button type="submit" class="btn btn-primary">{{ !empty($moduleSetting?->cover_image_path) ? 'Remplacer la photo' : 'Ajouter la photo' }}</button>
+                    </form>
+
+                    @if (!empty($moduleSetting?->cover_image_path))
+                        <form method="POST" action="{{ route('service-modules.cover-image.destroy', $moduleSlug) }}" style="margin-top:8px;">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn">Supprimer la photo</button>
+                        </form>
+                    @endif
+                @endif
+            </div>
+        @else
+            <p class="badge" style="margin-top:10px;">Photo service non disponible: migration non appliquee.</p>
+        @endif
+
         @if ($moduleMeta['packs'] && $canViewPacks)
             <div style="margin-top:12px; display:flex; justify-content:flex-end;">
                 <a class="btn" href="{{ route('service-modules.packs.index', $moduleSlug) }}">Gerer les packs</a>
