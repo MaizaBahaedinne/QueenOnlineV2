@@ -88,6 +88,54 @@
             background: rgba(75, 31, 92, 0.10);
             color: var(--brand-deep);
         }
+        .nav-group {
+            position: relative;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .nav-trigger {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .nav-trigger::after {
+            content: "▾";
+            font-size: 12px;
+            line-height: 1;
+            opacity: 0.8;
+        }
+        .sub-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            min-width: 230px;
+            padding: 10px;
+            margin: 0;
+            list-style: none;
+            border-radius: 16px;
+            border: 1px solid rgba(75, 31, 92, 0.14);
+            background: rgba(255, 255, 255, 0.96);
+            box-shadow: 0 18px 40px rgba(75, 31, 92, 0.18);
+            display: none;
+            z-index: 50;
+        }
+        .sub-menu li {
+            padding: 8px 10px;
+            border-radius: 10px;
+            color: var(--brand);
+            font-size: 14px;
+        }
+        .sub-menu li + li {
+            margin-top: 4px;
+        }
+        .sub-menu li:hover {
+            background: rgba(75, 31, 92, 0.08);
+        }
+        .nav-group:hover .sub-menu,
+        .nav-group:focus-within .sub-menu {
+            display: block;
+        }
         .header-cta { display: flex; align-items: center; gap: 10px; }
         .btn {
             display: inline-flex;
@@ -542,6 +590,14 @@
             .hero-grid, .two-col, .card-grid, .room-grid, .mini-grid, .process-grid { grid-template-columns: 1fr; }
             .header-row { align-items: start; flex-direction: column; }
             .site-nav, .header-cta { width: 100%; }
+            .nav-group { width: 100%; }
+            .sub-menu {
+                position: static;
+                display: block;
+                width: 100%;
+                margin-top: 6px;
+                box-shadow: none;
+            }
             .hero-meta-strip { grid-template-columns: 1fr; }
             .hero-band { min-height: 580px; }
         }
@@ -566,7 +622,6 @@
                     <span class="brand-mark">QP</span>
                     <span class="brand-copy">
                         <small>Queen Park</small>
-                        <strong>Maison de services evenementiels</strong>
                     </span>
                 </a>
 
@@ -574,7 +629,16 @@
                 <nav class="site-nav" aria-label="Navigation principale">
                     <a href="{{ route('site.home') }}" class="{{ $currentRoute === 'site.home' ? 'is-active' : '' }}">Accueil</a>
                     <a href="{{ route('site.about') }}" class="{{ $currentRoute === 'site.about' ? 'is-active' : '' }}">A propos</a>
-                    <a href="{{ route('site.services.index') }}" class="{{ str_starts_with((string) $currentRoute, 'site.services') ? 'is-active' : '' }}">Services</a>
+                    <div class="nav-group">
+                        <a href="{{ route('site.services.index') }}" class="nav-trigger {{ str_starts_with((string) $currentRoute, 'site.services') ? 'is-active' : '' }}">Services</a>
+                        @if (! empty($serviceOptions ?? []))
+                            <ul class="sub-menu" aria-label="Services proposes">
+                                @foreach ($serviceOptions as $serviceOption)
+                                    <li>{{ $serviceOption['name'] }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
                     <a href="{{ route('site.contact') }}" class="{{ $currentRoute === 'site.contact' ? 'is-active' : '' }}">Contact</a>
                 </nav>
 
