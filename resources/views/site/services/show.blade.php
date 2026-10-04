@@ -86,6 +86,13 @@
                     <div class="mini-grid" style="margin-top:18px; grid-template-columns: 1fr;">
                         @foreach ($servicePage['items'] as $item)
                             <div class="mini-card">
+                                @if (!empty($item['imageUrl']))
+                                    <img
+                                        src="{{ $item['imageUrl'] }}"
+                                        alt="{{ $item['name'] }}"
+                                        style="width:100%; height:160px; border-radius:12px; object-fit:cover; margin-bottom:12px;"
+                                    >
+                                @endif
                                 <strong>{{ $item['name'] }}</strong>
                                 <p>{{ $item['notes'] ?: 'Une prestation disponible pour accompagner votre evenement.' }}</p>
                                 <div class="metric-row" style="margin-top:12px;">

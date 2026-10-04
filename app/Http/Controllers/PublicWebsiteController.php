@@ -241,6 +241,7 @@ class PublicWebsiteController extends Controller
                         'name' => $item->name,
                         'price' => $this->formatPrice($item->base_price),
                         'notes' => $item->notes,
+                        'imageUrl' => ! empty($item->image_path) ? asset('storage/' . $item->image_path) : null,
                     ];
                 })->all(),
                 'packs' => $packs->take(6)->map(function (ServiceModulePack $pack): array {
