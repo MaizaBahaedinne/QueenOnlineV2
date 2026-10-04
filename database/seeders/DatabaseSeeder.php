@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
         $this->call(RoleSeeder::class);
         $this->call(ModuleSeeder::class);
         $this->call(MigrationMappingPreMappingSeeder::class);
+        $this->call(ChanteurSeeder::class);
 
         User::query()->updateOrCreate(
             ['email' => 'admin@queenonline.test'],
