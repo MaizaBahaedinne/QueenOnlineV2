@@ -1,6 +1,32 @@
 @extends('layouts.public')
 
 @section('content')
+    <style>
+        .service-items-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-top: 18px;
+        }
+
+        .service-rooms-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-top: 18px;
+        }
+
+        @media (max-width: 768px) {
+            .service-items-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .service-rooms-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+    </style>
+
     <section class="page-hero">
         <div class="hero-band">
             <div class="hero-slides" aria-hidden="true">
@@ -24,8 +50,8 @@
                             <span>option(s) disponibles</span>
                         </div>
                         <div class="hero-meta-card">
-                            <strong>{{ $servicePage['stats']['packs'] }}</strong>
-                            <span>formule(s) proposee(s)</span>
+                            <strong>{{ count($servicePage['contactPhones']) }}</strong>
+                            <span>contact(s) utile(s)</span>
                         </div>
                         <div class="hero-meta-card">
                             <strong>{{ $servicePage['startingPrice'] ?: 'Sur demande' }}</strong>
@@ -79,11 +105,11 @@
     </section>
 
     <section class="section">
-        <div class="container two-col">
+        <div class="container">
             <article class="info-card">
                 <h3>Prestations disponibles</h3>
                 @if (count($servicePage['items']) > 0)
-                    <div class="mini-grid" style="margin-top:18px; grid-template-columns: 1fr;">
+                    <div class="service-items-grid">
                         @foreach ($servicePage['items'] as $item)
                             <div class="mini-card">
                                 @if (!empty($item['imageUrl']))
@@ -104,7 +130,7 @@
                         @endforeach
                     </div>
                 @elseif (count($servicePage['rooms']) > 0)
-                    <div class="room-grid" style="margin-top:18px; grid-template-columns: 1fr;">
+                    <div class="service-rooms-grid">
                         @foreach ($servicePage['rooms'] as $room)
                             <div class="room-card">
                                 <strong>{{ $room['name'] }}</strong>
@@ -123,27 +149,6 @@
                     </div>
                 @else
                     <div class="empty-state" style="margin-top:18px;">Aucune prestation n est disponible pour le moment sur cette page.</div>
-                @endif
-            </article>
-
-            <article class="info-card">
-                <h3>Formules</h3>
-                @if (count($servicePage['packs']) > 0)
-                    <div class="mini-grid" style="margin-top:18px; grid-template-columns: 1fr;">
-                        @foreach ($servicePage['packs'] as $pack)
-                            <div class="mini-card">
-                                <strong>{{ $pack['name'] }}</strong>
-                                <p>{{ $pack['description'] ?: 'Une formule disponible pour ce service.' }}</p>
-                                @if ($pack['price'])
-                                    <div class="metric-row" style="margin-top:12px;">
-                                        <span class="metric">{{ $pack['price'] }}</span>
-                                    </div>
-                                @endif
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="empty-state" style="margin-top:18px;">Aucune formule n est proposee pour le moment sur ce service.</div>
                 @endif
 
                 @if (count($servicePage['contactPhones']) > 0)
