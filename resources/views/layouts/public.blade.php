@@ -93,6 +93,8 @@
             display: inline-flex;
             flex-direction: column;
             align-items: flex-start;
+            padding-bottom: 8px;
+            margin-bottom: -8px;
         }
         .nav-trigger {
             display: inline-flex;
@@ -107,7 +109,7 @@
         }
         .sub-menu {
             position: absolute;
-            top: calc(100% + 8px);
+            top: 100%;
             left: 0;
             min-width: 230px;
             padding: 10px;
@@ -121,15 +123,19 @@
             z-index: 50;
         }
         .sub-menu li {
+            margin: 0;
+        }
+        .sub-menu li + li {
+            margin-top: 4px;
+        }
+        .sub-menu a {
+            display: block;
             padding: 8px 10px;
             border-radius: 10px;
             color: var(--brand);
             font-size: 14px;
         }
-        .sub-menu li + li {
-            margin-top: 4px;
-        }
-        .sub-menu li:hover {
+        .sub-menu a:hover {
             background: rgba(75, 31, 92, 0.08);
         }
         .nav-group:hover .sub-menu,
@@ -634,7 +640,9 @@
                         @if (! empty($serviceOptions ?? []))
                             <ul class="sub-menu" aria-label="Services proposes">
                                 @foreach ($serviceOptions as $serviceOption)
-                                    <li>{{ $serviceOption['name'] }}</li>
+                                    <li>
+                                        <a href="{{ route('site.services.show', $serviceOption['slug']) }}">{{ $serviceOption['name'] }}</a>
+                                    </li>
                                 @endforeach
                             </ul>
                         @endif
