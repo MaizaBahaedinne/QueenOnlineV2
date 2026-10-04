@@ -116,6 +116,7 @@
                     <table>
                         <thead>
                             <tr>
+                                <th>Photo</th>
                                 <th>Nom</th>
                                 <th>Telephone</th>
                                 <th>Prix base</th>
@@ -135,6 +136,17 @@
                                         : [];
                                 @endphp
                                 <tr>
+                                    <td>
+                                        @if (!empty($item->image_path))
+                                            <img
+                                                src="{{ asset('storage/'.$item->image_path) }}"
+                                                alt="Photo {{ $item->name }}"
+                                                style="width:64px; height:64px; border-radius:10px; object-fit:cover; border:1px solid var(--line);"
+                                            >
+                                        @else
+                                            -
+                                        @endif
+                                    </td>
                                     <td>{{ $item->name }}</td>
                                     <td>{{ $item->phone ?? '-' }}</td>
                                     <td>{{ number_format((float) $item->base_price, 2, '.', ' ') }}</td>
@@ -180,6 +192,7 @@
                                                     data-item-price="{{ $item->base_price }}"
                                                     data-item-status="{{ $item->status }}"
                                                     data-item-notes="{{ $item->notes }}"
+                                                    data-item-image-url="{{ !empty($item->image_path) ? asset('storage/'.$item->image_path) : '' }}"
                                                 >
                                                     Modifier
                                                 </button>
@@ -200,7 +213,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $moduleSlug === 'chanteur' ? 7 : 6 }}" class="muted">Aucun element.</td>
+                                    <td colspan="{{ $moduleSlug === 'chanteur' ? 8 : 7 }}" class="muted">Aucun element.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -218,7 +231,7 @@
                     <h3 class="modal-title">Ajouter un element</h3>
                     <button type="button" class="btn" data-close-modal>Fermer</button>
                 </div>
-                <form method="POST" action="{{ route('service-modules.items.store', $moduleSlug) }}" style="display:grid; gap:10px;">
+                <form method="POST" action="{{ route('service-modules.items.store', $moduleSlug) }}" enctype="multipart/form-data" style="display:grid; gap:10px;">
                     @csrf
                     <input class="search" style="max-width:none;" type="text" name="name" placeholder="Nom" required>
                     <input class="search" style="max-width:none;" type="text" name="phone" placeholder="Telephone">
@@ -228,6 +241,7 @@
                         <option value="inactive">Inactif</option>
                     </select>
                     <input class="search" style="max-width:none;" type="text" name="notes" placeholder="Notes">
+                    <input class="search" style="max-width:none;" type="file" name="image" accept="image/png,image/jpeg,image/webp">
                     <button type="submit" class="btn btn-primary">Enregistrer</button>
                 </form>
             </div>
@@ -241,7 +255,7 @@
                     <h3 class="modal-title">Modifier element</h3>
                     <button type="button" class="btn" data-close-modal>Fermer</button>
                 </div>
-                <form method="POST" id="item-edit-form" action="#" style="display:grid; gap:10px;">
+                <form method="POST" id="item-edit-form" action="#" enctype="multipart/form-data" style="display:grid; gap:10px;">
                     @csrf
                     @method('PATCH')
                     <input class="search" style="max-width:none;" type="text" name="name" id="item-edit-name" required>
@@ -252,6 +266,17 @@
                         <option value="inactive">Inactif</option>
                     </select>
                     <input class="search" style="max-width:none;" type="text" name="notes" id="item-edit-notes">
+                    <div id="item-edit-image-current" class="panel-sub" style="margin:0; display:none;">
+                        <span>Photo actuelle:</span>
+                        <div style="margin-top:8px;">
+                            <img id="item-edit-image-preview" src="" alt="Photo actuelle" style="width:84px; height:84px; border-radius:10px; object-fit:cover; border:1px solid var(--line);">
+                        </div>
+                    </div>
+                    <input class="search" style="max-width:none;" type="file" name="image" id="item-edit-image" accept="image/png,image/jpeg,image/webp">
+                    <label style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" name="remove_image" id="item-edit-remove-image" value="1">
+                        <span>Supprimer la photo actuelle</span>
+                    </label>
                     <button type="submit" class="btn btn-primary">Mettre a jour</button>
                 </form>
             </div>
@@ -327,6 +352,20 @@
                     document.getElementById('item-edit-price').value = button.dataset.itemPrice ?? '';
                     document.getElementById('item-edit-status').value = button.dataset.itemStatus ?? 'active';
                     document.getElementById('item-edit-notes').value = button.dataset.itemNotes ?? '';
+                    document.getElementById('item-edit-image').value = '';
+                    document.getElementById('item-edit-remove-image').checked = false;
+
+                    const imageUrl = button.dataset.itemImageUrl ?? '';
+                    const currentImageBlock = document.getElementById('item-edit-image-current');
+                    const currentImagePreview = document.getElementById('item-edit-image-preview');
+
+                    if (imageUrl) {
+                        currentImagePreview.src = imageUrl;
+                        currentImageBlock.style.display = 'block';
+                    } else {
+                        currentImagePreview.src = '';
+                        currentImageBlock.style.display = 'none';
+                    }
                 }
 
                 if (modalId === 'item-delete-modal') {

@@ -13,6 +13,7 @@ class ServiceModuleItem extends Model
         'base_price',
         'status',
         'notes',
+        'image_path',
     ];
 
     public function packs()

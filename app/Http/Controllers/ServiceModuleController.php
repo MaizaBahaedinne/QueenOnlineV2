@@ -121,7 +121,12 @@ class ServiceModuleController extends MatrixAwareController
             'base_price' => ['nullable', 'numeric', 'min:0'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'notes' => ['nullable', 'string'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
         ]);
+
+        $imagePath = $request->hasFile('image')
+            ? $request->file('image')->store('service-modules/items', 'public')
+            : null;
 
         ServiceModuleItem::query()->create([
             'module_slug' => $module,
@@ -130,6 +135,7 @@ class ServiceModuleController extends MatrixAwareController
             'base_price' => $validated['base_price'] ?? 0,
             'status' => $validated['status'],
             'notes' => $validated['notes'] ?? null,
+            'image_path' => $imagePath,
         ]);
 
         return redirect()->route('service-modules.show', $module)->with('success', 'Element ajoute.');
@@ -146,7 +152,24 @@ class ServiceModuleController extends MatrixAwareController
             'base_price' => ['nullable', 'numeric', 'min:0'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'notes' => ['nullable', 'string'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'remove_image' => ['nullable', 'boolean'],
         ]);
+
+        if ($request->boolean('remove_image') && ! empty($item->image_path)) {
+            Storage::disk('public')->delete($item->image_path);
+            $validated['image_path'] = null;
+        }
+
+        if ($request->hasFile('image')) {
+            if (! empty($item->image_path)) {
+                Storage::disk('public')->delete($item->image_path);
+            }
+
+            $validated['image_path'] = $request->file('image')->store('service-modules/items', 'public');
+        }
+
+        unset($validated['image'], $validated['remove_image']);
 
         $item->update($validated);
 
@@ -157,6 +180,10 @@ class ServiceModuleController extends MatrixAwareController
     {
         $this->assertItemInModule($module, $item);
         $this->enforcePermission($module, 'delete', 'delete');
+
+        if (! empty($item->image_path)) {
+            Storage::disk('public')->delete($item->image_path);
+        }
 
         $item->delete();
 
