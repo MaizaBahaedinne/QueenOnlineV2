@@ -54,8 +54,8 @@
                             <span>contact(s) utile(s)</span>
                         </div>
                         <div class="hero-meta-card">
-                            <strong>{{ $servicePage['startingPrice'] ?: 'Sur demande' }}</strong>
-                            <span>niveau de depart</span>
+                            <strong>Sur demande</strong>
+                            <span>informations tarifaires</span>
                         </div>
                     </div>
                     <div class="hero-actions">
@@ -121,11 +121,6 @@
                                 @endif
                                 <strong>{{ $item['name'] }}</strong>
                                 <p>{{ $item['notes'] ?: 'Une prestation disponible pour accompagner votre evenement.' }}</p>
-                                <div class="metric-row" style="margin-top:12px;">
-                                    @if ($item['price'])
-                                        <span class="metric">{{ $item['price'] }}</span>
-                                    @endif
-                                </div>
                             </div>
                         @endforeach
                     </div>
@@ -137,9 +132,6 @@
                                 <p>{{ $room['description'] ?: 'Une salle Queen Park prete a accueillir votre reception.' }}</p>
                                 <div class="metric-row" style="margin-top:12px;">
                                     <span class="metric">{{ $room['capacity'] }} invites</span>
-                                    @if ($room['price'])
-                                        <span class="metric">{{ $room['price'] }}</span>
-                                    @endif
                                     @if ($room['location'])
                                         <span class="metric">{{ $room['location'] }}</span>
                                     @endif

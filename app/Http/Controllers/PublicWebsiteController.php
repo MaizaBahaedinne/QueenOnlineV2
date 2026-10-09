@@ -236,7 +236,7 @@ class PublicWebsiteController extends Controller
                     'packs' => $packs->count(),
                 ],
                 'highlights' => $this->buildHighlights($slug, $items, $packs),
-                'items' => $items->take(6)->map(function (ServiceModuleItem $item): array {
+                'items' => $items->map(function (ServiceModuleItem $item): array {
                     return [
                         'name' => $item->name,
                         'price' => $this->formatPrice($item->base_price),
